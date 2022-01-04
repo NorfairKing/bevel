@@ -29,8 +29,6 @@ stdenv.mkDerivation {
       sqlite3.c \
       -o $out/bin/bevel-gather-after
 
-    strip --strip-unneeded $out/bin/bevel-gather-before
-    strip --strip-unneeded $out/bin/bevel-gather-after
     ldd $out/bin/bevel-gather-before || true
     ldd $out/bin/bevel-gather-after || true
     du -h $out/bin/bevel-gather-before
