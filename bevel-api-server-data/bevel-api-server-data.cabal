@@ -36,6 +36,7 @@ library
     , bevel-data
     , password
     , password-instances
+    , path
     , persistent
     , persistent-sqlite
     , persistent-template

@@ -17,13 +17,19 @@ module Bevel.API.Server.Data.DB where
 
 import Bevel.API.Server.Data.Username
 import Bevel.Data
+import Control.Arrow (left)
 import Data.Password.Bcrypt
 import Data.Password.Instances ()
+import Data.Proxy
+import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Validity
 import Data.Validity.Persist ()
+import Data.Word
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import GHC.Generics (Generic)
+import Path
 
 share
   [mkPersist sqlSettings, mkMigrate "serverMigration"]
@@ -38,11 +44,20 @@ User
   deriving Show Eq Ord Generic
 
 
-ServerAppendfulThing sql=appendful_thing
-  user UserId
-  number Int
+ServerCommand
+  serverUser UserId
 
-  deriving Show Eq Ord Generic
+  text Text
+  begin Word64 -- Microseconds since 1970
+  end Word64 -- Microseconds since 1970
+  workdir (Path Abs Dir)
+  user Text
+  host Text
+
+  deriving Show
+  deriving Eq
+  deriving Ord
+  deriving Generic
 
 |]
 
@@ -57,14 +72,33 @@ instance Validity (PasswordHash a) where
 
 instance Validity User
 
-instance Validity ServerAppendfulThing
+instance Validity ServerCommand
 
-serverAppendfulMakeThing :: ServerAppendfulThing -> Thing
-serverAppendfulMakeThing ServerAppendfulThing {..} = Thing {..}
-  where
-    thingNumber = serverAppendfulThingNumber
+instance PersistField (Path Abs Dir) where
+  toPersistValue = toPersistValue . fromAbsDir
+  fromPersistValue pv = do
+    s <- fromPersistValue pv
+    left (T.pack . show) $ parseAbsDir s
 
-makeServerAppendfulThing :: UserId -> Thing -> ServerAppendfulThing
-makeServerAppendfulThing serverAppendfulThingUser Thing {..} = ServerAppendfulThing {..}
+instance PersistFieldSql (Path Abs Dir) where
+  sqlType Proxy = sqlType (Proxy :: Proxy String)
+
+serverMakeCommand :: ServerCommand -> Command
+serverMakeCommand ServerCommand {..} = Command {..}
   where
-    serverAppendfulThingNumber = thingNumber
+    commandText = serverCommandText
+    commandBegin = serverCommandBegin
+    commandEnd = serverCommandEnd
+    commandWorkdir = serverCommandWorkdir
+    commandUser = serverCommandUser
+    commandHost = serverCommandHost
+
+makeServerCommand :: UserId -> Command -> ServerCommand
+makeServerCommand serverCommandServerUser Command {..} = ServerCommand {..}
+  where
+    serverCommandText = commandText
+    serverCommandBegin = commandBegin
+    serverCommandEnd = commandEnd
+    serverCommandWorkdir = commandWorkdir
+    serverCommandUser = commandUser
+    serverCommandHost = commandHost

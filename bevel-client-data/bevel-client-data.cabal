@@ -30,10 +30,12 @@ library
       base >=4.7 && <5
     , bevel-api-server-data
     , bevel-data
+    , path
     , persistent
     , persistent-sqlite
     , persistent-template
     , safe
+    , text
     , time
   default-language: Haskell2010
 

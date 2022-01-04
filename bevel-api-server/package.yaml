@@ -15,11 +15,11 @@ library:
     - aeson
     - appendful
     - appendful-persistent
-    - bytestring
-    - envparse
     - bevel-api
     - bevel-api-server-data
     - bevel-data
+    - bytestring
+    - envparse
     - jose
     - monad-logger
     - mtl

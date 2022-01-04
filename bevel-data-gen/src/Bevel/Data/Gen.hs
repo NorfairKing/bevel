@@ -5,4 +5,4 @@ module Bevel.Data.Gen
   )
 where
 
-import Bevel.Data.Thing.Gen as X ()
+import Bevel.Data.Command.Gen as X ()

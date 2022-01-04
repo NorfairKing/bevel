@@ -20,8 +20,8 @@ source-repository head
 
 library
   exposed-modules:
+      Bevel.Data.Command.Gen
       Bevel.Data.Gen
-      Bevel.Data.Thing.Gen
   other-modules:
       Paths_bevel_data_gen
   hs-source-dirs:
@@ -42,7 +42,7 @@ test-suite bevel-data-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Bevel.Data.ThingSpec
+      Bevel.Data.CommandSpec
       Paths_bevel_data_gen
   hs-source-dirs:
       test

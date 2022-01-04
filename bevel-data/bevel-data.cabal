@@ -21,13 +21,14 @@ source-repository head
 library
   exposed-modules:
       Bevel.Data
-      Bevel.Data.Thing
+      Bevel.Data.Command
   other-modules:
       Paths_bevel_data
   hs-source-dirs:
       src
   build-depends:
       aeson
+    , autodocodec
     , base >=4.7 && <5
     , base16
     , bytestring

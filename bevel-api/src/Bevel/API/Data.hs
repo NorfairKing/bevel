@@ -82,7 +82,7 @@ instance FromJWT AuthCookie
 instance ToJWT AuthCookie
 
 data SyncRequest = SyncRequest
-  { syncRequestAppendfulThingSyncRequest :: Appendful.SyncRequest ClientAppendfulThingId ServerAppendfulThingId Thing
+  { syncRequestCommandSyncRequest :: Appendful.SyncRequest ClientCommandId ServerCommandId Command
   }
   deriving (Show, Eq, Generic)
 
@@ -91,16 +91,16 @@ instance Validity SyncRequest
 instance FromJSON SyncRequest where
   parseJSON = withObject "SyncResponse" $ \o ->
     SyncRequest
-      <$> o .: "appendful"
+      <$> o .: "commands"
 
 instance ToJSON SyncRequest where
   toJSON SyncRequest {..} =
     object
-      [ "appendful" .= syncRequestAppendfulThingSyncRequest
+      [ "commands" .= syncRequestCommandSyncRequest
       ]
 
 data SyncResponse = SyncResponse
-  { syncResponseAppendfulThingSyncResponse :: Appendful.SyncResponse ClientAppendfulThingId ServerAppendfulThingId Thing
+  { syncResponseCommandSyncResponse :: Appendful.SyncResponse ClientCommandId ServerCommandId Command
   }
   deriving (Show, Eq, Generic)
 
@@ -109,12 +109,12 @@ instance Validity SyncResponse
 instance FromJSON SyncResponse where
   parseJSON = withObject "SyncResponse" $ \o ->
     SyncResponse
-      <$> o .: "appendful"
+      <$> o .: "commands"
 
 instance ToJSON SyncResponse where
   toJSON SyncResponse {..} =
     object
-      [ "appendful" .= syncResponseAppendfulThingSyncResponse
+      [ "commands" .= syncResponseCommandSyncResponse
       ]
 
 instance (PersistEntity a, ToBackendKey SqlBackend a) => ToJSONKey (Key a) where

@@ -8,10 +8,10 @@ import qualified Data.Appendful.Persistent as Appendful
 handlePostSync :: AuthCookie -> SyncRequest -> H SyncResponse
 handlePostSync AuthCookie {..} SyncRequest {..} = withUser authCookieUsername $ \(Entity uid _) ->
   runDB $ do
-    syncResponseAppendfulThingSyncResponse <-
+    syncResponseCommandSyncResponse <-
       Appendful.serverProcessSyncQuery
-        [ServerAppendfulThingUser ==. uid]
-        serverAppendfulMakeThing
-        (makeServerAppendfulThing uid)
-        syncRequestAppendfulThingSyncRequest
+        [ServerCommandServerUser ==. uid]
+        serverMakeCommand
+        (makeServerCommand uid)
+        syncRequestCommandSyncRequest
     pure SyncResponse {..}

@@ -15,32 +15,52 @@ module Bevel.Client.Data.DB where
 
 import Bevel.API.Server.Data
 import Bevel.Data
+import Data.Text (Text)
+import Data.Word
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import Path
 
 share
   [mkPersist sqlSettings, mkMigrate "clientMigration"]
   [persistLowerCase|
 
-ClientAppendfulThing sql=appendful_thing
-    number Int
-    serverId ServerAppendfulThingId Maybe
-    deriving Show Eq
+ClientCommand
+  text Text
+  begin Word64 -- Microseconds since 1970
+  end Word64 -- Microseconds since 1970
+  workdir (Path Abs Dir)
+  user Text
+  host Text
+
+  serverId ServerCommandId Maybe
+
+  deriving Show Eq
 
 |]
 
-clientAppendfulMakeThing :: ClientAppendfulThing -> Thing
-clientAppendfulMakeThing ClientAppendfulThing {..} = Thing {..}
+clientMakeCommand :: ClientCommand -> Command
+clientMakeCommand ClientCommand {..} = Command {..}
   where
-    thingNumber = clientAppendfulThingNumber
+    commandText = clientCommandText
+    commandBegin = clientCommandBegin
+    commandEnd = clientCommandEnd
+    commandWorkdir = clientCommandWorkdir
+    commandUser = clientCommandUser
+    commandHost = clientCommandHost
 
-makeSyncedClientAppendfulThing :: ServerAppendfulThingId -> Thing -> ClientAppendfulThing
-makeSyncedClientAppendfulThing sid = makeClientAppendfulThing (Just sid)
+makeSyncedClientCommand :: ServerCommandId -> Command -> ClientCommand
+makeSyncedClientCommand sid = makeClientCommand (Just sid)
 
-makeUnsyncedClientAppendfulThing :: Thing -> ClientAppendfulThing
-makeUnsyncedClientAppendfulThing = makeClientAppendfulThing Nothing
+makeUnsyncedClientCommand :: Command -> ClientCommand
+makeUnsyncedClientCommand = makeClientCommand Nothing
 
-makeClientAppendfulThing :: Maybe ServerAppendfulThingId -> Thing -> ClientAppendfulThing
-makeClientAppendfulThing clientAppendfulThingServerId Thing {..} = ClientAppendfulThing {..}
+makeClientCommand :: Maybe ServerCommandId -> Command -> ClientCommand
+makeClientCommand clientCommandServerId Command {..} = ClientCommand {..}
   where
-    clientAppendfulThingNumber = thingNumber
+    clientCommandText = commandText
+    clientCommandBegin = commandBegin
+    clientCommandEnd = commandEnd
+    clientCommandWorkdir = commandWorkdir
+    clientCommandUser = commandUser
+    clientCommandHost = commandHost
