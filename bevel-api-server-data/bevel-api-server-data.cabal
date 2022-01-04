@@ -1,0 +1,47 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.5.
+--
+-- see: https://github.com/sol/hpack
+
+name:           bevel-api-server-data
+version:        0.0.0.0
+homepage:       https://github.com/NorfairKing/bevel#readme
+bug-reports:    https://github.com/NorfairKing/bevel/issues
+author:         Tom Sydney Kerckhove
+maintainer:     syd@cs-syd.eu
+copyright:      Copyright (c) 2020-2022 Tom Sydney Kerckhove
+license:        AllRightsReserved
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/NorfairKing/bevel
+
+library
+  exposed-modules:
+      Bevel.API.Server.Data
+      Bevel.API.Server.Data.DB
+      Bevel.API.Server.Data.Username
+  other-modules:
+      Paths_bevel_api_server_data
+  hs-source-dirs:
+      src
+  build-depends:
+      aeson
+    , appendful
+    , appendful-persistent
+    , autodocodec
+    , base >=4.7 && <5
+    , bevel-data
+    , password
+    , password-instances
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , text
+    , time
+    , validity
+    , validity-persistent
+    , validity-text
+  default-language: Haskell2010

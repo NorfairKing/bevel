@@ -1,0 +1,66 @@
+resolver: lts-18.16
+packages:
+- bevel-api
+- bevel-api-gen
+- bevel-api-server
+- bevel-api-server-data
+- bevel-api-server-data-gen
+- bevel-api-server-gen
+- bevel-cli
+- bevel-client
+- bevel-client-data
+- bevel-data
+- bevel-data-gen
+extra-deps:
+- github: NorfairKing/autodocodec
+  commit: d269215812a8641f143ee96163b980db47a55c2c
+  subdirs:
+  - autodocodec
+  - autodocodec-schema
+  - autodocodec-yaml
+- github: NorfairKing/appendful
+  commit: c0d9116d70b9aaf8374b6f10dd8d17998d498981
+  subdirs:
+  - appendful
+  - appendful-persistent
+  - genvalidity-appendful
+- github: NorfairKing/validity
+  commit: 466bb2f140e62cae0d4fe3770681c3d74e99cf40
+  subdirs:
+  - validity
+  - validity-aeson
+  - validity-bytestring
+  - validity-containers
+  - validity-path
+  - validity-persistent
+  - validity-primitive
+  - validity-scientific
+  - validity-text
+  - validity-time
+  - validity-unordered-containers
+  - validity-uuid
+  - validity-vector
+  - genvalidity
+  - genvalidity-aeson
+  - genvalidity-bytestring
+  - genvalidity-containers
+  - genvalidity-criterion
+  - genvalidity-hspec
+  - genvalidity-hspec-aeson
+  - genvalidity-hspec-binary
+  - genvalidity-hspec-cereal
+  - genvalidity-hspec-hashable
+  - genvalidity-hspec-optics
+  - genvalidity-hspec-persistent
+  - genvalidity-path
+  - genvalidity-persistent
+  - genvalidity-property
+  - genvalidity-scientific
+  - genvalidity-text
+  - genvalidity-time
+  - genvalidity-unordered-containers
+  - genvalidity-uuid
+  - genvalidity-vector
+
+nix:
+  shell-file: shell.nix

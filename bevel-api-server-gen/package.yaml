@@ -1,0 +1,75 @@
+name:                bevel-api-server-gen
+version:             0.0.0.0
+github:              "NorfairKing/bevel"
+license:             AllRightsReserved
+author:              "Tom Sydney Kerckhove"
+maintainer:          "syd@cs-syd.eu"
+copyright:           "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - QuickCheck
+  - bytestring
+  - cookie
+  - genvalidity-hspec
+  - hspec
+  - http-client
+  - http-types
+  - monad-logger
+  - persistent
+  - persistent-sqlite
+  - servant
+  - servant-auth-client
+  - servant-auth-server
+  - servant-client
+  - bevel-api
+  - bevel-api-gen
+  - bevel-api-gen
+  - bevel-api-server
+  - bevel-client
+  - bevel-data
+  - bevel-data-gen
+  - bevel-api-server-data
+  - bevel-api-server-data-gen
+  - text
+  - warp
+
+tests:
+  bevel-api-server-tests:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - QuickCheck
+    - bytestring
+    - cookie
+    - genvalidity-hspec
+    - hspec
+    - http-client
+    - http-types
+    - monad-logger
+    - persistent
+    - persistent-sqlite
+    - servant
+    - servant-auth-client
+    - servant-auth-server
+    - servant-client
+    - bevel-api
+    - bevel-api-gen
+    - bevel-api-gen
+    - bevel-api-server
+    - bevel-api-server-gen
+    - bevel-client
+    - bevel-data
+    - bevel-data-gen
+    - bevel-api-server-data
+    - bevel-api-server-data-gen
+    - text
+    - warp
