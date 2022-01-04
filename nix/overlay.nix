@@ -2,6 +2,7 @@ final: previous:
 with final.haskell.lib;
 
 {
+  bevelPackages = final.bevelHaskellPackages // { inherit (final) bevel-gather; };
   bevel-gather = final.callPackage ../bevel-gather { };
   bevelHaskellPackages =
     let

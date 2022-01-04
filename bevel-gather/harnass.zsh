@@ -13,5 +13,7 @@ _bevel_precmd(){
   bevel-gather-after
 }
 
+echo "Bevel Harnass enabled"
+
 add-zsh-hook preexec _bevel_preexec
 add-zsh-hook precmd _bevel_precmd
