@@ -2,7 +2,8 @@ final: previous:
 with final.haskell.lib;
 
 {
-  bevelPackages =
+  bevel-gather = final.callPackage ../bevel-gather { };
+  bevelHaskellPackages =
     let
       bevelPkg =
         name:
@@ -58,7 +59,7 @@ with final.haskell.lib;
               )
             )
             (
-              self: super: final.bevelPackages
+              self: super: final.bevelHaskellPackages
             );
       }
     );
