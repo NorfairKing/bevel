@@ -50,18 +50,23 @@ spec = tempDirSpec "bevel" $ do
             clientCommandServerId `shouldBe` Nothing
           _ -> expectationFailure "expected a single command"
 
-    it "works concurrently" $ \tdir -> do
-      forAllValid $ \text -> do
-        databaseFile <- resolveFile tdir "history.sqlite"
-        runNoLoggingT $
-          withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
-            _ <- runSqlPool (runMigrationQuiet clientMigration) pool
-            pure ()
+    modifyMaxSuccess (`div` 10) $
+      it "works concurrently" $ \tdir -> do
+        forAllValid $ \text -> do
+          databaseFile <- resolveFile tdir "history.sqlite"
+          runNoLoggingT $
+            withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
+              _ <- runSqlPool (runMigrationQuiet clientMigration) pool
+              pure ()
 
-        let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
-        let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-before" [T.unpack text]
-        ecs <- replicateConcurrently 10 $ runProcess pc
-        ecs `shouldSatisfy` all (== ExitSuccess)
+          let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
+          let pc = setStdout closed $ setStderr closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-before" [T.unpack text]
+          replicateConcurrently_ 10 $ runProcess pc
+
+          commands <- runNoLoggingT $
+            withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
+              runSqlPool (selectList [] [Asc ClientCommandId]) pool
+          shouldBeValid commands
 
   describe "after" $ do
     it "can gather the end of a command" $ \tdir ->
@@ -110,30 +115,48 @@ spec = tempDirSpec "bevel" $ do
                       clientCommandServerId `shouldBe` Nothing
                     _ -> expectationFailure "expected a single command"
 
-    it "works concurrently" $ \tdir -> do
-      forAllValid $ \text ->
-        forAllValid $ \begin ->
-          forAllValid $ \workdir ->
-            forAllValid $ \exitCode ->
-              forAllValid $ \user ->
-                forAllValid $ \host -> do
-                  databaseFile <- resolveFile tdir "history.sqlite"
-                  cid <- runNoLoggingT $
-                    withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> flip runSqlPool pool $ do
-                      _ <- runMigrationQuiet clientMigration
-                      insert
-                        ClientCommand
-                          { clientCommandText = text,
-                            clientCommandBegin = begin,
-                            clientCommandEnd = Nothing,
-                            clientCommandWorkdir = workdir,
-                            clientCommandUser = user,
-                            clientCommandHost = host,
-                            clientCommandExit = Nothing,
-                            clientCommandServerId = Nothing
-                          }
+    modifyMaxSuccess (`div` 10) $
+      it "works concurrently" $ \tdir -> do
+        forAllValid $ \text ->
+          forAllValid $ \begin ->
+            forAllValid $ \workdir ->
+              forAllValid $ \exitCode ->
+                forAllValid $ \user ->
+                  forAllValid $ \host -> do
+                    databaseFile <- resolveFile tdir "history.sqlite"
+                    cid <- runNoLoggingT $
+                      withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> flip runSqlPool pool $ do
+                        _ <- runMigrationQuiet clientMigration
+                        insert
+                          ClientCommand
+                            { clientCommandText = text,
+                              clientCommandBegin = begin,
+                              clientCommandEnd = Nothing,
+                              clientCommandWorkdir = workdir,
+                              clientCommandUser = user,
+                              clientCommandHost = host,
+                              clientCommandExit = Nothing,
+                              clientCommandServerId = Nothing
+                            }
 
-                  let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
-                  let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-after" [show (fromSqlKey cid), show (exitCode :: Int8)]
-                  ecs <- replicateConcurrently 10 $ runProcess pc
-                  ecs `shouldSatisfy` all (== ExitSuccess)
+                    let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
+                    let pc = setStdout closed $ setStderr closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-after" [show (fromSqlKey cid), show (exitCode :: Int8)]
+                    replicateConcurrently_ 10 $ runProcess pc
+
+                    commands <- runNoLoggingT $
+                      withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
+                        runSqlPool (selectList [] [Asc ClientCommandId]) pool
+
+                    case commands of
+                      [Entity cid' ClientCommand {..}] -> do
+                        cid' `shouldBe` cid
+                        let ClientCommand _ _ _ _ _ _ _ _ = undefined
+                        clientCommandText `shouldBe` text
+                        clientCommandBegin `shouldBe` begin
+                        clientCommandEnd `shouldSatisfy` isJust
+                        clientCommandWorkdir `shouldBe` workdir
+                        clientCommandUser `shouldBe` user
+                        clientCommandHost `shouldBe` host
+                        clientCommandExit `shouldBe` Just exitCode
+                        clientCommandServerId `shouldBe` Nothing
+                      _ -> expectationFailure "expected a single command"
