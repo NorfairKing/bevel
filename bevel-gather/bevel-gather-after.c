@@ -24,15 +24,18 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  char *home = getenv("HOME");
-  if (home == NULL) {
-    home = ".";
-  };
-  char *data_dir = getenv("XDG_DATA_HOME");
-  if (data_dir == NULL) {
-    data_dir = strcat(home, "/.local/share");
+  char *bevel_db_file = getenv("BEVEL_DATABASE");
+  if (bevel_db_file == NULL) {
+    char *data_dir = getenv("XDG_DATA_HOME");
+    if (data_dir == NULL) {
+      char *home = getenv("HOME");
+      if (home == NULL) {
+        home = ".";
+      };
+      data_dir = strcat(home, "/.local/share");
+    }
+    bevel_db_file = strcat(data_dir, "/bevel/history.sqlite3");
   }
-  char *bevel_db_file = strcat(data_dir, "/bevel/history.sqlite3");
 
   sqlite3 *db;
 

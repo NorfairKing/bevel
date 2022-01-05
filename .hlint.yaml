@@ -9,4 +9,6 @@
 - ignore:
     name: "Use tuple-section"
 - ignore:
+    name: "Use record patterns"
+- ignore:
     name: "Replace case with maybe"

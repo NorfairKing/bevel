@@ -16,14 +16,14 @@ library:
   - appendful-persistent
   - autodocodec
   - autodocodec-yaml
-  - cookie
-  - envparse
-  - filelock
   - bevel-api
   - bevel-api-server-data
   - bevel-client
   - bevel-client-data
   - bevel-data
+  - cookie
+  - envparse
+  - filelock
   - http-client
   - http-client-tls
   - monad-logger
@@ -60,14 +60,20 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - genvalidity
-    - genvalidity-sydtest
-    - sydtest
-    - path
-    - path-io
-    - servant-client
+    - async
     - bevel-api
+    - bevel-api-server-data
     - bevel-api-server-gen
     - bevel-cli
-    - bevel-api-server-data
+    - bevel-client-data
+    - bevel-client-data-gen
+    - genvalidity
+    - genvalidity-sydtest
+    - monad-logger
+    - path
+    - path-io
+    - persistent-sqlite
+    - servant-client
+    - sydtest
     - text
+    - typed-process

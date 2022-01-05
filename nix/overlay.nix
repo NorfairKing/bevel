@@ -35,8 +35,11 @@ with final.haskell.lib;
             hyperlinkSource = false;
             enableLibraryProfiling = false;
             enableExecutableProfiling = false;
-            buildDepends = (old.buildInputs or [ ]) ++ (with final; [
+            buildDepends = (old.buildDepends or [ ]) ++ (with final; [
               haskellPackages.autoexporter
+            ]);
+            testDepends = (old.testDepends or [ ]) ++ (with final; [
+              final.bevel-gather
             ]);
             # Ugly hack because we can't just add flags to the 'test' invocation.
             # Show test output as we go, instead of all at once afterwards.

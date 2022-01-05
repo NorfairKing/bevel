@@ -6,8 +6,9 @@ in
 pkgs.haskell.lib.buildStackProject {
   name = "bevel-nix-shell";
   buildInputs = with pkgs; [
-    haskellPackages.autoexporter
     (import sources.niv { inherit pkgs; }).niv
+    bevel-gather
+    haskellPackages.autoexporter
     killall
     zlib
   ] ++ pre-commit.tools;

@@ -79,6 +79,7 @@ test-suite bevel-cli-test
   main-is: Spec.hs
   other-modules:
       Bevel.CLISpec
+      Bevel.GatherSpec
       Paths_bevel_cli
   hs-source-dirs:
       test
@@ -86,16 +87,22 @@ test-suite bevel-cli-test
   build-tool-depends:
       sydtest-discover:sydtest-discover
   build-depends:
-      base >=4.7 && <5
+      async
+    , base >=4.7 && <5
     , bevel-api
     , bevel-api-server-data
     , bevel-api-server-gen
     , bevel-cli
+    , bevel-client-data
+    , bevel-client-data-gen
     , genvalidity
     , genvalidity-sydtest
+    , monad-logger
     , path
     , path-io
+    , persistent-sqlite
     , servant-client
     , sydtest
     , text
+    , typed-process
   default-language: Haskell2010
