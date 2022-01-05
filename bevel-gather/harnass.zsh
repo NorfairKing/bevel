@@ -1,19 +1,24 @@
 # Source this in your ~/.zshrc
 autoload -U add-zsh-hook
 
+export BEVEL_HISTORY_ID=""
+
 # Executed before the command
 _bevel_preexec(){
-  echo "before"
-  bevel-gather-before
+  # I don't know why, but $1 contains the whole command.
+  local command_id=$(bevel-gather-before "$1")
+  export BEVEL_HISTORY_ID="command_id"
 }
 
 # Executed after the command
 _bevel_precmd(){
-  echo "after"
-  bevel-gather-after
+  local EXIT="$?"
+  if [[ -z "${ATUIN_HISTORY_ID}" ]]
+  then
+    return
+  fi
+  bevel-gather-after "${ATUIN_HISTORY_ID}" "$EXIT"
 }
-
-echo "Bevel Harnass enabled"
 
 add-zsh-hook preexec _bevel_preexec
 add-zsh-hook precmd _bevel_precmd

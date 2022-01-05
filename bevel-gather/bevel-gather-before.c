@@ -23,14 +23,14 @@ sqlite3_int64 getTimeMillis() {
   return millis;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
 
   sqlite3 *db;
 
   int opened = sqlite3_open(DB_FILE, &db);
 
   if (opened != SQLITE_OK) {
-    goto error;
+    goto sqlite_error;
   }
 
   sqlite3_stmt *stmt;
@@ -41,16 +41,24 @@ int main(void) {
                          -1, &stmt, NULL);
 
   if (prepared != SQLITE_OK) {
-    goto error;
+    goto sqlite_error;
   }
 
   // We need these things for a "command has started" insertion:
   //
   // 1. Text of the command
-
+  char *text;
+  if (argc < 2) {
+    text = "";
+  } else {
+    text = argv[1];
+  }
+  printf("%s\n", text);
   // 2. Begin time
   sqlite3_int64 begin = getTimeMillis();
   // 3. Workdir
+  char workdir[PATH_MAX];
+  getcwd(workdir, sizeof(workdir));
   // 4. User
   struct passwd *userinfo;
   userinfo = getpwuid(geteuid());
@@ -59,9 +67,9 @@ int main(void) {
   gethostname(hostname, HOST_NAME_MAX + 1);
 
   // We bind all these values to the prepared statement for insertion
-  sqlite3_bind_text(stmt, 1, "here goes the command", -1, NULL);
+  sqlite3_bind_text(stmt, 1, text, -1, NULL);
   sqlite3_bind_int64(stmt, 2, begin);
-  sqlite3_bind_text(stmt, 3, "here goes the workdir", -1, NULL);
+  sqlite3_bind_text(stmt, 3, workdir, -1, NULL);
   sqlite3_bind_text(stmt, 4, userinfo->pw_name, -1, NULL);
   sqlite3_bind_text(stmt, 5, hostname, -1, NULL);
 
@@ -69,7 +77,7 @@ int main(void) {
   int inserted = sqlite3_step(stmt);
 
   if (inserted != SQLITE_DONE) {
-    goto error;
+    goto sqlite_error;
   }
 
   sqlite3_int64 command_id = sqlite3_last_insert_rowid(db);
@@ -80,7 +88,7 @@ int main(void) {
 
   return 0;
 
-error:
+sqlite_error:
   fprintf(stderr, "Failed to insert command: %s\n", sqlite3_errmsg(db));
   sqlite3_close(db);
 
