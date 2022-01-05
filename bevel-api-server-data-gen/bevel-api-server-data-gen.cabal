@@ -42,6 +42,7 @@ test-suite bevel-api-server-data-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Bevel.API.Server.Data.DBSpec
       Paths_bevel_api_server_data_gen
   hs-source-dirs:
       test
