@@ -93,7 +93,7 @@ combineToInstructions (Arguments cmd Flags {..}) Environment {..} mConf = do
 getDefaultClientDatabase :: IO (Path Abs File)
 getDefaultClientDatabase = do
   dataDir <- getDefaultDataDir
-  resolveFile dataDir "data.sqlite3"
+  resolveFile dataDir "history.sqlite3"
 
 getDefaultDataDir :: IO (Path Abs Dir)
 getDefaultDataDir = getXdgDir XdgData (Just [reldir|bevel|])

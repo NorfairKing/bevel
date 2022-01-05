@@ -10,8 +10,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#define DB_FILE "/home/syd/.local/share/bevel/data.sqlite3"
-
 sqlite3_int64 getTime() {
   struct timespec tms;
 
@@ -25,9 +23,18 @@ sqlite3_int64 getTime() {
 
 int main(int argc, char **argv) {
 
-  sqlite3 *db;
+  char *home = getenv("HOME");
+  if (home == NULL) {
+    home = ".";
+  };
+  char *data_dir = getenv("XDG_DATA_HOME");
+  if (data_dir == NULL) {
+    data_dir = strcat(home, "/.local/share");
+  }
+  char *bevel_db_file = strcat(data_dir, "/bevel/history.sqlite3");
 
-  int opened = sqlite3_open(DB_FILE, &db);
+  sqlite3 *db;
+  int opened = sqlite3_open(bevel_db_file, &db);
 
   if (opened != SQLITE_OK) {
     goto sqlite_error;

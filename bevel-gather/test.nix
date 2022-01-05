@@ -1,6 +1,19 @@
-{ musl, sqlite, gnutar, stdenv, gitignoreSource, zsh }:
+{ musl
+, sqlite
+, gnutar
+, stdenv
+, gitignoreSource
+, zsh
+}:
 let
-  gather = import ./default.nix { inherit musl sqlite gnutar stdenv gitignoreSource; };
+  gather = import ./default.nix {
+    inherit
+      musl
+      sqlite
+      gnutar
+      stdenv
+      gitignoreSource;
+  };
 in
 stdenv.mkDerivation {
   name = "bevel-gather-test";
