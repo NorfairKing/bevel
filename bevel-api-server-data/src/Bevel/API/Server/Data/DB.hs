@@ -44,12 +44,12 @@ User
   deriving Show Eq Ord Generic
 
 
-ServerCommand
+ServerCommand sql=command
   serverUser UserId
 
   text Text
   begin Word64 -- Microseconds since 1970
-  end Word64 -- Microseconds since 1970
+  end Word64 Maybe default=NULL -- Microseconds since 1970
   workdir (Path Abs Dir)
   user Text
   host Text

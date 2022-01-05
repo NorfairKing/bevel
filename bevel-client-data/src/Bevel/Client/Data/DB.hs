@@ -25,15 +25,15 @@ share
   [mkPersist sqlSettings, mkMigrate "clientMigration"]
   [persistLowerCase|
 
-ClientCommand
+ClientCommand sql=command
   text Text
   begin Word64 -- Microseconds since 1970
-  end Word64 -- Microseconds since 1970
+  end Word64 Maybe default=NULL -- Microseconds since 1970
   workdir (Path Abs Dir)
   user Text
   host Text
 
-  serverId ServerCommandId Maybe
+  serverId ServerCommandId Maybe default=NULL
 
   deriving Show Eq
 

@@ -18,7 +18,7 @@ import Path
 data Command = Command
   { commandText :: !Text,
     commandBegin :: !Word64,
-    commandEnd :: !Word64,
+    commandEnd :: !(Maybe Word64),
     commandWorkdir :: !(Path Abs Dir),
     commandUser :: !Text,
     commandHost :: !Text
