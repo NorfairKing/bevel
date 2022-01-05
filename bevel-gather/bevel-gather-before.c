@@ -12,15 +12,15 @@
 
 #define DB_FILE "/home/syd/.local/share/bevel/data.sqlite3"
 
-sqlite3_int64 getTimeMillis() {
+sqlite3_int64 getTime() {
   struct timespec tms;
 
   if (clock_gettime(CLOCK_REALTIME, &tms)) {
     return -1;
   }
-  int64_t millis = tms.tv_sec * 1000;
-  millis += tms.tv_nsec;
-  return millis;
+  int64_t nanos = tms.tv_sec * 1000000000;
+  nanos += tms.tv_nsec;
+  return nanos;
 }
 
 int main(int argc, char **argv) {
@@ -53,9 +53,8 @@ int main(int argc, char **argv) {
   } else {
     text = argv[1];
   }
-  printf("%s\n", text);
   // 2. Begin time
-  sqlite3_int64 begin = getTimeMillis();
+  sqlite3_int64 begin = getTime();
   // 3. Workdir
   char workdir[PATH_MAX];
   getcwd(workdir, sizeof(workdir));
@@ -73,7 +72,6 @@ int main(int argc, char **argv) {
   sqlite3_bind_text(stmt, 4, userinfo->pw_name, -1, NULL);
   sqlite3_bind_text(stmt, 5, hostname, -1, NULL);
 
-  // TODO deal with errors here
   int inserted = sqlite3_step(stmt);
 
   if (inserted != SQLITE_DONE) {

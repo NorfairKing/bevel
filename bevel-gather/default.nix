@@ -20,14 +20,14 @@ stdenv.mkDerivation {
     mkdir -p $out/bin
     musl-gcc \
       -Wall -Wextra -pedantic -O2 -s -static -Wl,--gc-sections -Wl,--strip-all \
-      $src/bevel-gather-before.c \
-      sqlite3.c \
-      -o $out/bin/bevel-gather-before
-    musl-gcc \
-      -Wall -Wextra -pedantic -O2 -s -static -Wl,--gc-sections -Wl,--strip-all \
       $src/bevel-gather-after.c \
       sqlite3.c \
       -o $out/bin/bevel-gather-after
+    musl-gcc \
+      -Wall -Wextra -pedantic -O2 -s -static -Wl,--gc-sections -Wl,--strip-all \
+      $src/bevel-gather-before.c \
+      sqlite3.c \
+      -o $out/bin/bevel-gather-before
 
     ldd $out/bin/bevel-gather-before || true
     ldd $out/bin/bevel-gather-after || true

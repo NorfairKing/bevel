@@ -7,17 +7,17 @@ export BEVEL_HISTORY_ID=""
 _bevel_preexec(){
   # I don't know why, but $1 contains the whole command.
   local command_id=$(bevel-gather-before "$1")
-  export BEVEL_HISTORY_ID="command_id"
+  export BEVEL_HISTORY_ID="$command_id"
 }
 
 # Executed after the command
 _bevel_precmd(){
   local EXIT="$?"
-  if [[ -z "${ATUIN_HISTORY_ID}" ]]
+  if [[ -z "${BEVEL_HISTORY_ID}" ]]
   then
     return
   fi
-  bevel-gather-after "${ATUIN_HISTORY_ID}" "$EXIT"
+  bevel-gather-after "${BEVEL_HISTORY_ID}" "${EXIT}"
 }
 
 add-zsh-hook preexec _bevel_preexec

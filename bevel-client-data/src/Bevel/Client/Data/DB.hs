@@ -15,6 +15,7 @@ module Bevel.Client.Data.DB where
 
 import Bevel.API.Server.Data
 import Bevel.Data
+import Data.Int
 import Data.Text (Text)
 import Data.Word
 import Database.Persist.Sqlite
@@ -27,11 +28,12 @@ share
 
 ClientCommand sql=command
   text Text
-  begin Word64 -- Microseconds since 1970
-  end Word64 Maybe default=NULL -- Microseconds since 1970
+  begin Word64
+  end Word64 Maybe default=NULL
   workdir (Path Abs Dir)
   user Text
   host Text
+  exit Int8 Maybe default=NULL
 
   serverId ServerCommandId Maybe default=NULL
 
@@ -48,6 +50,7 @@ clientMakeCommand ClientCommand {..} = Command {..}
     commandWorkdir = clientCommandWorkdir
     commandUser = clientCommandUser
     commandHost = clientCommandHost
+    commandExit = clientCommandExit
 
 makeSyncedClientCommand :: ServerCommandId -> Command -> ClientCommand
 makeSyncedClientCommand sid = makeClientCommand (Just sid)
@@ -64,3 +67,4 @@ makeClientCommand clientCommandServerId Command {..} = ClientCommand {..}
     clientCommandWorkdir = commandWorkdir
     clientCommandUser = commandUser
     clientCommandHost = commandHost
+    clientCommandExit = commandExit

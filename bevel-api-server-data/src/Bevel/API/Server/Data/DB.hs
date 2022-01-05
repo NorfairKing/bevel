@@ -18,6 +18,7 @@ module Bevel.API.Server.Data.DB where
 import Bevel.API.Server.Data.Username
 import Bevel.Data
 import Control.Arrow (left)
+import Data.Int
 import Data.Password.Bcrypt
 import Data.Password.Instances ()
 import Data.Proxy
@@ -48,11 +49,12 @@ ServerCommand sql=command
   serverUser UserId
 
   text Text
-  begin Word64 -- Microseconds since 1970
-  end Word64 Maybe default=NULL -- Microseconds since 1970
+  begin Word64
+  end Word64 Maybe default=NULL
   workdir (Path Abs Dir)
   user Text
   host Text
+  exit Int8 Maybe default=NULL
 
   deriving Show
   deriving Eq
@@ -92,6 +94,7 @@ serverMakeCommand ServerCommand {..} = Command {..}
     commandWorkdir = serverCommandWorkdir
     commandUser = serverCommandUser
     commandHost = serverCommandHost
+    commandExit = serverCommandExit
 
 makeServerCommand :: UserId -> Command -> ServerCommand
 makeServerCommand serverCommandServerUser Command {..} = ServerCommand {..}
@@ -102,3 +105,4 @@ makeServerCommand serverCommandServerUser Command {..} = ServerCommand {..}
     serverCommandWorkdir = commandWorkdir
     serverCommandUser = commandUser
     serverCommandHost = commandHost
+    serverCommandExit = commandExit

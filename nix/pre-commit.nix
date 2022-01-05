@@ -10,6 +10,10 @@ in
       hpack.enable = true;
       nixpkgs-fmt.enable = true;
       ormolu.enable = true;
+      clang-format = {
+        enable = true;
+        types_or = [ "c" ];
+      };
     };
   };
   tools = with pre-commit-hooks; [
