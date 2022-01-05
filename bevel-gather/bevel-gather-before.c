@@ -1,10 +1,12 @@
 #include <inttypes.h>
 #include <limits.h>
+#include <pwd.h>
 #include <sqlite3.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -50,6 +52,8 @@ int main(void) {
   sqlite3_int64 begin = getTimeMillis();
   // 3. Workdir
   // 4. User
+  struct passwd *userinfo;
+  userinfo = getpwuid(geteuid());
   // 5. Host
   char hostname[HOST_NAME_MAX + 1];
   gethostname(hostname, HOST_NAME_MAX + 1);
@@ -58,7 +62,7 @@ int main(void) {
   sqlite3_bind_text(stmt, 1, "here goes the command", -1, NULL);
   sqlite3_bind_int64(stmt, 2, begin);
   sqlite3_bind_text(stmt, 3, "here goes the workdir", -1, NULL);
-  sqlite3_bind_text(stmt, 4, "here goes the user", -1, NULL);
+  sqlite3_bind_text(stmt, 4, userinfo->pw_name, -1, NULL);
   sqlite3_bind_text(stmt, 5, hostname, -1, NULL);
 
   // TODO deal with errors here
