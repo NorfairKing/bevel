@@ -15,7 +15,7 @@ in
     {
       programs.bevel =
         {
-          enable = mkEnableOption "Bevel cli and syncing";
+          enable = mkEnableOption "Bevel";
           bevelReleasePackages =
             mkOption {
               description = "The bevelPackages attribute defined in the nix/overlay.nix file in the bevel repository.";
@@ -26,6 +26,10 @@ in
               description = "The contents of the config file, as an attribute set. This will be translated to Yaml and put in the right place along with the rest of the options defined in this submodule.";
               default = { };
             };
+          harness = {
+            enableBashIntegration = mkEnableOption "Bevel Harnass for bash";
+            enableZshIntegration = mkEnableOption "Bevel Harnass for zsh";
+          };
           sync =
             mkOption {
               default = null;
@@ -130,9 +134,8 @@ in
       packages =
         [
           cfg.bevelReleasePackages.bevel-cli
-          cfg.bevelReleasePackages.bevel-gather
+          cfg.bevelReleasePackages.bevel-gather # Needed for the harness
         ];
-
 
     in
     mkIf cfg.enable {
@@ -146,5 +149,14 @@ in
           timers = timers;
         };
       home.packages = packages;
+
+      programs.bash.initExtra = mkIf (cfg.harness.enableBashIntegration) ''
+        source "${pkgs.bash-preexec}/share/bash/bash-preexec.sh"
+        source "${cfg.bevelReleasePackages.bevel-gather}/share/harness.bash"
+      '';
+
+      programs.zsh.initExtra = mkIf (cfg.harness.enableZshIntegration) ''
+        source "${cfg.bevelReleasePackages.bevel-gather}/share/harness.zsh"
+      '';
     };
 }

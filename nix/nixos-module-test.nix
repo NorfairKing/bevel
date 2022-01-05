@@ -36,10 +36,19 @@ pkgs.nixosTest (
             imports = [
               ./home-manager-module.nix
             ];
+            home.packages = with pkgs; [
+              sqlite
+            ];
+            programs.bash.enable = true;
+            programs.zsh.enable = true;
             xdg.enable = true;
             programs.bevel = {
               enable = true;
               bevelReleasePackages = pkgs.bevelReleasePackages;
+              harness = {
+                enableBashIntegration = true;
+                enableZshIntegration = true;
+              };
               sync = {
                 enable = true;
                 server-url = "server:${builtins.toString port}";

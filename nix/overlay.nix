@@ -38,9 +38,6 @@ with final.haskell.lib;
             buildDepends = (old.buildDepends or [ ]) ++ (with final; [
               haskellPackages.autoexporter
             ]);
-            testDepends = (old.testDepends or [ ]) ++ (with final; [
-              final.bevel-gather
-            ]);
             # Ugly hack because we can't just add flags to the 'test' invocation.
             # Show test output as we go, instead of all at once afterwards.
             testTarget = (old.testTarget or "") + " --show-details=direct";
@@ -58,7 +55,7 @@ with final.haskell.lib;
       "bevel-api-server-gen" = bevelPkg "bevel-api-server-gen";
       "bevel-api-server-data" = bevelPkg "bevel-api-server-data";
       "bevel-api-server-data-gen" = bevelPkg "bevel-api-server-data-gen";
-      "bevel-cli" = bevelPkgWithComp "bevel" "bevel-cli";
+      "bevel-cli" = addTestToolDepend (bevelPkgWithComp "bevel" "bevel-cli") final.bevel-gather;
       "bevel-client" = bevelPkg "bevel-client";
       "bevel-client-data" = bevelPkg "bevel-client-data";
       "bevel-client-data-gen" = bevelPkg "bevel-client-data-gen";
