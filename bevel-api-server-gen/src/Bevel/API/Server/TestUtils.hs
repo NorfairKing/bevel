@@ -19,11 +19,11 @@ import qualified Data.Text.Encoding as TE
 import Database.Persist.Sqlite
 import Network.HTTP.Client as HTTP
 import Network.Wai.Handler.Warp as Warp
+import Servant.API as Servant
 import Servant.Auth.Server
-import Test.Hspec
-import Test.Hspec.QuickCheck
 import Test.QuickCheck
-import Test.Validity
+import Test.Syd
+import Test.Syd.Validity
 import Web.Cookie
 
 serverSpec :: SpecWith ClientEnv -> Spec
@@ -54,7 +54,7 @@ testClientOrErr :: ClientEnv -> ClientM a -> IO a
 testClientOrErr cenv func = do
   res <- testClient cenv func
   case res of
-    Left err -> failure $ show err
+    Left err -> expectationFailure $ show err
     Right r -> pure r
 
 testClient :: ClientEnv -> ClientM a -> IO (Either ClientError a)
@@ -80,18 +80,13 @@ withNewUser cenv rf func = do
 
 testLogin :: ClientEnv -> LoginForm -> IO Token
 testLogin cenv lf = do
-  Headers NoContent (HCons sessionHeader HNil) <- testClientOrErr cenv $ postLogin bevelClient lf
+  Headers NoContent (Servant.HCons sessionHeader Servant.HNil) <- testClientOrErr cenv $ postLogin bevelClient lf
   case sessionHeader of
-    MissingHeader -> failure "The server responded but the response was missing the right session header."
-    UndecodableHeader _ -> failure "The server responded but the response had an undecodable session header."
+    MissingHeader -> expectationFailure "The server responded but the response was missing the right session header."
+    UndecodableHeader _ -> expectationFailure "The server responded but the response had an undecodable session header."
     Header setCookieText -> do
       let cookies = parseSetCookie . TE.encodeUtf8 <$> T.lines setCookieText
           jwtCookie = find ((== "JWT-Cookie") . setCookieName) cookies
       case jwtCookie of
-        Nothing -> failure "No JWT-Cookie was found in the Set-Cookie session header."
+        Nothing -> expectationFailure "No JWT-Cookie was found in the Set-Cookie session header."
         Just setCookie -> pure $ Token $ setCookieValue setCookie
-
-failure :: String -> IO a
-failure err = do
-  expectationFailure $ show err
-  error "Won't get here anyway"

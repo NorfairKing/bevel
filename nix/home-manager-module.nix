@@ -16,10 +16,10 @@ in
       programs.bevel =
         {
           enable = mkEnableOption "Bevel cli and syncing";
-          bevelPackages =
+          bevelReleasePackages =
             mkOption {
               description = "The bevelPackages attribute defined in the nix/overlay.nix file in the bevel repository.";
-              default = (import ./pkgs.nix { }).bevelPackages;
+              default = (import ./pkgs.nix { }).bevelReleasePackages;
             };
           config =
             mkOption {
@@ -82,7 +82,7 @@ in
               ExecStart =
                 "${pkgs.writeShellScript "sync-bevel-service-ExecStart"
                   ''
-                    exec ${cfg.bevelPackages.bevel-cli}/bin/bevel sync
+                    exec ${cfg.bevelReleasePackages.bevel-cli}/bin/bevel sync
                   ''}";
               Type = "oneshot";
             };
@@ -129,7 +129,8 @@ in
         );
       packages =
         [
-          cfg.bevelPackages.bevel-cli
+          cfg.bevelReleasePackages.bevel-cli
+          cfg.bevelReleasePackages.bevel-gather
         ];
 
 

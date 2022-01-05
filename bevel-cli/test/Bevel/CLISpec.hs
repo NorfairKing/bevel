@@ -9,8 +9,8 @@ import Path
 import Path.IO
 import Servant.Client
 import System.Environment
-import Test.Hspec
-import Test.Validity
+import Test.Syd
+import Test.Syd.Validity
 
 spec :: Spec
 spec = serverSpec $

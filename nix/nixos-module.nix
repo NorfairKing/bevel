@@ -1,4 +1,6 @@
-{ envname, bevelPackages ? (import ./pkgs.nix { }).bevelPackages }:
+{ envname
+, bevelReleasePackages ? (import ./pkgs.nix { }).bevelReleasePackages
+}:
 { lib, pkgs, config, ... }:
 with lib;
 
@@ -95,7 +97,7 @@ in
               ''
                 mkdir -p "${api-server-working-dir}"
                 cd ${api-server-working-dir};
-                ${bevelPackages.bevel-api-server}/bin/bevel-api-server
+                ${bevelReleasePackages.bevel-api-server}/bin/bevel-api-server
               '';
             serviceConfig =
               {

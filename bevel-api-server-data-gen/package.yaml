@@ -1,10 +1,10 @@
-name:                bevel-api-server-data-gen
-version:             0.0.0.0
-github:              "NorfairKing/bevel"
-license:             AllRightsReserved
-author:              "Tom Sydney Kerckhove"
-maintainer:          "syd@cs-syd.eu"
-copyright:           "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
+name: bevel-api-server-data-gen
+version: 0.0.0.0
+github: "NorfairKing/bevel"
+license: AllRightsReserved
+author: "Tom Sydney Kerckhove"
+maintainer: "syd@cs-syd.eu"
+copyright: "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
 
 dependencies:
 - base >= 4.7 && < 5
@@ -24,14 +24,15 @@ library:
 
 tests:
   bevel-api-server-data-test:
-    main:                Spec.hs
-    source-dirs:         test
+    main: Spec.hs
+    build-tools: sydtest-discover
+    source-dirs: test
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - genvalidity-hspec
-    - hspec
+    - genvalidity-sydtest
+    - sydtest
     - bevel-api-server-data
     - bevel-api-server-data-gen

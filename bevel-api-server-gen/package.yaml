@@ -1,10 +1,10 @@
-name:                bevel-api-server-gen
-version:             0.0.0.0
-github:              "NorfairKing/bevel"
-license:             AllRightsReserved
-author:              "Tom Sydney Kerckhove"
-maintainer:          "syd@cs-syd.eu"
-copyright:           "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
+name: bevel-api-server-gen
+version: 0.0.0.0
+github: "NorfairKing/bevel"
+license: AllRightsReserved
+author: "Tom Sydney Kerckhove"
+maintainer: "syd@cs-syd.eu"
+copyright: "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
 
 dependencies:
 - base >= 4.7 && < 5
@@ -15,8 +15,8 @@ library:
   - QuickCheck
   - bytestring
   - cookie
-  - genvalidity-hspec
-  - hspec
+  - genvalidity-sydtest
+  - sydtest
   - http-client
   - http-types
   - monad-logger
@@ -40,8 +40,9 @@ library:
 
 tests:
   bevel-api-server-tests:
-    main:                Spec.hs
-    source-dirs:         test
+    main: Spec.hs
+    source-dirs: test
+    build-tools: sydtest-discover
     ghc-options:
     - -threaded
     - -rtsopts
@@ -50,8 +51,8 @@ tests:
     - QuickCheck
     - bytestring
     - cookie
-    - genvalidity-hspec
-    - hspec
+    - genvalidity-sydtest
+    - sydtest
     - http-client
     - http-types
     - monad-logger

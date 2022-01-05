@@ -18,6 +18,20 @@ extra-deps:
   - autodocodec
   - autodocodec-schema
   - autodocodec-yaml
+- github: NorfairKing/sydtest
+  commit: 127362d7e48d9b983f61e358966af71003f95026
+  subdirs:
+  - sydtest
+  - sydtest-aeson
+  - sydtest-discover
+  - sydtest-hspec
+  - sydtest-persistent
+  - sydtest-persistent-sqlite
+  - sydtest-process
+  - sydtest-servant
+  - sydtest-typed-process
+  - sydtest-wai
+  - sydtest-yesod
 - github: NorfairKing/appendful
   commit: c0d9116d70b9aaf8374b6f10dd8d17998d498981
   subdirs:
@@ -56,6 +70,11 @@ extra-deps:
   - genvalidity-persistent
   - genvalidity-property
   - genvalidity-scientific
+  - genvalidity-sydtest
+  - genvalidity-sydtest-aeson
+  - genvalidity-sydtest-hashable
+  - genvalidity-sydtest-lens
+  - genvalidity-sydtest-persistent
   - genvalidity-text
   - genvalidity-time
   - genvalidity-unordered-containers

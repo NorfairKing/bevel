@@ -1,10 +1,10 @@
-name:                bevel-api-gen
-version:             0.0.0.0
-github:              "NorfairKing/bevel-api-cli-login"
-license:             AllRightsReserved
-author:              "Tom Sydney Kerckhove"
-maintainer:          "syd@cs-syd.eu"
-copyright:           "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
+name: bevel-api-gen
+version: 0.0.0.0
+github: "NorfairKing/bevel-api-cli-login"
+license: AllRightsReserved
+author: "Tom Sydney Kerckhove"
+maintainer: "syd@cs-syd.eu"
+copyright: "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
 
 dependencies:
 - base >= 4.7 && < 5
@@ -21,14 +21,15 @@ library:
 
 tests:
   bevel-api-test:
-    main:                Spec.hs
-    source-dirs:         test
+    main: Spec.hs
+    source-dirs: test
+    build-tools: sydtest-discover
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - genvalidity-hspec
-    - hspec
+    - genvalidity-sydtest
+    - sydtest
     - bevel-api
     - bevel-api-gen

@@ -1,24 +1,47 @@
 final: previous:
+with final.lib;
 with final.haskell.lib;
 
 {
-  bevelPackages = final.bevelHaskellPackages // { inherit (final) bevel-gather; };
-  bevel-gather = final.callPackage ../bevel-gather { };
+  bevel-gather = final.callPackage ../bevel-gather/default.nix { };
   bevelHaskellPackages =
     let
-      bevelPkg =
-        name:
-        doBenchmark (
-          addBuildDepend
-            (
-              buildStrictly (
-                disableLibraryProfiling (
-                  final.haskellPackages.callCabal2nixWithOptions name (final.gitignoreSource (../. + "/${name}")) "--no-hpack" { }
-                )
-              )
-            )
-            (final.haskellPackages.autoexporter)
-        );
+      bevelPkg = name:
+        overrideCabal
+          (
+            final.haskellPackages.callCabal2nixWithOptions name (final.gitignoreSource (../. + "/${name}"))
+              "--no-hpack"
+              { }
+          )
+          (old: {
+            configureFlags = (old.configureFlags or [ ]) ++ [
+              # Optimisations
+              "--ghc-options=-O2"
+              # Extra warnings
+              "--ghc-options=-Wall"
+              "--ghc-options=-Wincomplete-uni-patterns"
+              "--ghc-options=-Wincomplete-record-updates"
+              "--ghc-options=-Wpartial-fields"
+              "--ghc-options=-Widentities"
+              "--ghc-options=-Wredundant-constraints"
+              "--ghc-options=-Wcpp-undef"
+              "--ghc-options=-Werror"
+            ];
+            doBenchmark = true;
+            doHaddock = false;
+            doCoverage = false;
+            doHoogle = false;
+            doCheck = false; # Only check the release version.
+            hyperlinkSource = false;
+            enableLibraryProfiling = false;
+            enableExecutableProfiling = false;
+            buildDepends = (old.buildInputs or [ ]) ++ (with final; [
+              haskellPackages.autoexporter
+            ]);
+            # Ugly hack because we can't just add flags to the 'test' invocation.
+            # Show test output as we go, instead of all at once afterwards.
+            testTarget = (old.testTarget or "") + " --show-details=direct";
+          });
       bevelPkgWithComp =
         exeName: name:
         generateOptparseApplicativeCompletion exeName (bevelPkg name);
@@ -39,10 +62,13 @@ with final.haskell.lib;
       "bevel-data-gen" = bevelPkg "bevel-data-gen";
     };
 
+  bevelReleasePackages = mapAttrs (_: pkg: justStaticExecutables (doCheck pkg)) final.bevelHaskellPackages // {
+    inherit (final) bevel-gather;
+  };
   bevelRelease =
     final.symlinkJoin {
       name = "bevel-release";
-      paths = builtins.map justStaticExecutables (final.lib.attrValues final.bevelPackages);
+      paths = attrValues final.bevelReleasePackages;
     };
 
 

@@ -2,7 +2,10 @@
 , pkgs ? import ./pkgs.nix { inherit sources; }
 }:
 let
-  bevel-production = import (./nixos-module.nix) { envname = "production"; bevelPackages = pkgs.bevelPackages; };
+  bevel-production = import (./nixos-module.nix) {
+    envname = "production";
+    bevelReleasePackages = pkgs.bevelReleasePackages;
+  };
   home-manager = import (sources.home-manager + "/nixos/default.nix");
   port = 8001;
 in
@@ -34,10 +37,9 @@ pkgs.nixosTest (
               ./home-manager-module.nix
             ];
             xdg.enable = true;
-            home.stateVersion = "20.09";
             programs.bevel = {
               enable = true;
-              bevelPackages = pkgs.bevelPackages;
+              bevelReleasePackages = pkgs.bevelReleasePackages;
               sync = {
                 enable = true;
                 server-url = "server:${builtins.toString port}";

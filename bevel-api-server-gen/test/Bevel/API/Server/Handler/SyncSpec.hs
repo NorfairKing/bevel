@@ -5,8 +5,8 @@ import Bevel.API.Data.Gen ()
 import Bevel.API.Server.TestUtils
 import Bevel.Client
 import Bevel.Data.Gen ()
-import Test.Hspec
-import Test.Validity
+import Test.Syd
+import Test.Syd.Validity
 
 spec :: Spec
 spec = serverSpec $

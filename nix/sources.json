@@ -47,30 +47,6 @@
         "url": "https://github.com/nix-community/home-manager/archive/697cc8c68ed6a606296efbbe9614c32537078756.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "mergeful": {
-        "branch": "master",
-        "description": "Safely synchronise values with safe merge conflicts.",
-        "homepage": "http://hackage.haskell.org/package/mergeful",
-        "owner": "NorfairKing",
-        "repo": "mergeful",
-        "rev": "da86a924d6e23cbe07cd0804b45dddb173d743f8",
-        "sha256": "0vvywf23rqw2i8x4b39vcdl04rag75hdfkvibr86f4apgbkc1xiq",
-        "type": "tarball",
-        "url": "https://github.com/NorfairKing/mergeful/archive/da86a924d6e23cbe07cd0804b45dddb173d743f8.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "mergeless": {
-        "branch": "master",
-        "description": "Merge-less syncing of arbitrary immutable items",
-        "homepage": "http://hackage.haskell.org/package/mergeless",
-        "owner": "NorfairKing",
-        "repo": "mergeless",
-        "rev": "639cdca0dc7cce53a62cf40aa856b156e2ab1f32",
-        "sha256": "0f9gwcfi7f7idi063d606zx19cl4ngqqdk2ipjhfa6rhn8phsy9y",
-        "type": "tarball",
-        "url": "https://github.com/NorfairKing/mergeless/archive/639cdca0dc7cce53a62cf40aa856b156e2ab1f32.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "niv": {
         "branch": "master",
         "description": "Easy dependency management for Nix projects",

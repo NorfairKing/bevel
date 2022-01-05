@@ -7,9 +7,9 @@ where
 
 import Bevel.Data.Command
 import Bevel.Data.Command.Gen ()
-import Test.Hspec
-import Test.Validity
-import Test.Validity.Aeson
+import Test.Syd
+import Test.Syd.Validity
+import Test.Syd.Validity.Aeson
 
 spec :: Spec
 spec = do
