@@ -6,7 +6,9 @@ module Bevel.GatherSpec (spec) where
 
 import Bevel.Client.Data
 import Bevel.Client.Data.Gen ()
+import Control.Concurrent.Async
 import Control.Monad.Logger
+import Data.Int
 import Data.Maybe
 import qualified Data.Text as T
 import Database.Persist.Sqlite
@@ -23,7 +25,6 @@ spec = tempDirSpec "bevel" $ do
   describe "before" $ do
     it "can gather the start of a command" $ \tdir ->
       forAllValid $ \text -> do
-        -- Set up the database migrations
         databaseFile <- resolveFile tdir "history.sqlite"
         runNoLoggingT $
           withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
@@ -49,6 +50,19 @@ spec = tempDirSpec "bevel" $ do
             clientCommandServerId `shouldBe` Nothing
           _ -> expectationFailure "expected a single command"
 
+    it "works concurrently" $ \tdir -> do
+      forAllValid $ \text -> do
+        databaseFile <- resolveFile tdir "history.sqlite"
+        runNoLoggingT $
+          withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
+            _ <- runSqlPool (runMigrationQuiet clientMigration) pool
+            pure ()
+
+        let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
+        let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-before" [T.unpack text]
+        ecs <- replicateConcurrently 10 $ runProcess pc
+        ecs `shouldSatisfy` all (== ExitSuccess)
+
   describe "after" $ do
     it "can gather the end of a command" $ \tdir ->
       forAllValid $ \text ->
@@ -57,7 +71,6 @@ spec = tempDirSpec "bevel" $ do
             forAllValid $ \exitCode ->
               forAllValid $ \user ->
                 forAllValid $ \host -> do
-                  -- Set up the database migrations
                   databaseFile <- resolveFile tdir "history.sqlite"
                   cid <- runNoLoggingT $
                     withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> flip runSqlPool pool $ do
@@ -96,3 +109,31 @@ spec = tempDirSpec "bevel" $ do
                       clientCommandExit `shouldBe` Just exitCode
                       clientCommandServerId `shouldBe` Nothing
                     _ -> expectationFailure "expected a single command"
+
+    it "works concurrently" $ \tdir -> do
+      forAllValid $ \text ->
+        forAllValid $ \begin ->
+          forAllValid $ \workdir ->
+            forAllValid $ \exitCode ->
+              forAllValid $ \user ->
+                forAllValid $ \host -> do
+                  databaseFile <- resolveFile tdir "history.sqlite"
+                  cid <- runNoLoggingT $
+                    withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> flip runSqlPool pool $ do
+                      _ <- runMigrationQuiet clientMigration
+                      insert
+                        ClientCommand
+                          { clientCommandText = text,
+                            clientCommandBegin = begin,
+                            clientCommandEnd = Nothing,
+                            clientCommandWorkdir = workdir,
+                            clientCommandUser = user,
+                            clientCommandHost = host,
+                            clientCommandExit = Nothing,
+                            clientCommandServerId = Nothing
+                          }
+
+                  let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
+                  let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-after" [show (fromSqlKey cid), show (exitCode :: Int8)]
+                  ecs <- replicateConcurrently 10 $ runProcess pc
+                  ecs `shouldSatisfy` all (== ExitSuccess)
