@@ -10,9 +10,10 @@ import Servant.Auth.Server
 type H = ReaderT Env Handler
 
 data Env = Env
-  { envConnectionPool :: ConnectionPool,
-    envCookieSettings :: CookieSettings,
-    envJWTSettings :: JWTSettings
+  { envConnectionPool :: !ConnectionPool,
+    envHashDifficulty :: !Int,
+    envCookieSettings :: !CookieSettings,
+    envJWTSettings :: !JWTSettings
   }
 
 runDB :: SqlPersistT IO a -> H a

@@ -14,7 +14,8 @@ handlePostRegister RegistrationForm {..} = do
   case mUser of
     Just _ -> throwError err409
     Nothing -> do
-      pass <- hashPassword $ mkPassword registrationFormPassword
+      hashDifficulty <- asks envHashDifficulty
+      pass <- hashPasswordWithParams hashDifficulty $ mkPassword registrationFormPassword
       runDB $ insert_ $ User {userName = registrationFormUsername, userPassword = pass}
       pure NoContent
 

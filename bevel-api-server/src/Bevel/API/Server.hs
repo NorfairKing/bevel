@@ -30,6 +30,7 @@ bevelAPIServer = do
         let serverEnv =
               Env
                 { envConnectionPool = pool,
+                  envHashDifficulty = 10,
                   envCookieSettings = defaultCookieSettings,
                   envJWTSettings = defaultJWTSettings jwk
                 }

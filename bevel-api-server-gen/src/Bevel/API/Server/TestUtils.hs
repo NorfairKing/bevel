@@ -42,6 +42,7 @@ withTestServer func man =
         let serverEnv =
               Env
                 { envConnectionPool = pool,
+                  envHashDifficulty = 4,
                   envCookieSettings = defaultCookieSettings,
                   envJWTSettings = defaultJWTSettings jwk
                 }
