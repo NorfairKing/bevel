@@ -1,0 +1,57 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           bevel-client-data-gen
+version:        0.0.0.0
+homepage:       https://github.com/NorfairKing/bevel#readme
+bug-reports:    https://github.com/NorfairKing/bevel/issues
+author:         Tom Sydney Kerckhove
+maintainer:     syd@cs-syd.eu
+license:        AllRightsReserved
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/NorfairKing/bevel
+
+library
+  exposed-modules:
+      Bevel.Client.Data.Gen
+  other-modules:
+      Paths_bevel_client_data_gen
+  hs-source-dirs:
+      src
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , bevel-client-data
+    , bevel-data-gen
+    , bytestring
+    , genvalidity
+    , genvalidity-persistent
+    , genvalidity-text
+    , password
+    , text
+  default-language: Haskell2010
+
+test-suite bevel-client-data-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Bevel.Client.Data.DBSpec
+      Paths_bevel_client_data_gen
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-tool-depends:
+      sydtest-discover:sydtest-discover
+  build-depends:
+      base >=4.7 && <5
+    , bevel-client-data
+    , bevel-client-data-gen
+    , genvalidity-sydtest
+    , sydtest
+  default-language: Haskell2010

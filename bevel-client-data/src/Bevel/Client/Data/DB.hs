@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -17,9 +18,12 @@ import Bevel.API.Server.Data
 import Bevel.Data
 import Data.Int
 import Data.Text (Text)
+import Data.Validity
+import Data.Validity.Text ()
 import Data.Word
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import GHC.Generics (Generic)
 import Path
 
 share
@@ -37,9 +41,14 @@ ClientCommand sql=command
 
   serverId ServerCommandId Maybe default=NULL
 
-  deriving Show Eq
+  deriving Show
+  deriving Eq
+  deriving Ord
+  deriving Generic
 
 |]
+
+instance Validity ClientCommand
 
 clientMakeCommand :: ClientCommand -> Command
 clientMakeCommand ClientCommand {..} = Command {..}

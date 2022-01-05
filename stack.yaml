@@ -9,6 +9,7 @@ packages:
 - bevel-cli
 - bevel-client
 - bevel-client-data
+- bevel-client-data-gen
 - bevel-data
 - bevel-data-gen
 extra-deps:

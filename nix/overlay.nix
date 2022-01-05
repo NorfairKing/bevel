@@ -58,6 +58,7 @@ with final.haskell.lib;
       "bevel-cli" = bevelPkgWithComp "bevel" "bevel-cli";
       "bevel-client" = bevelPkg "bevel-client";
       "bevel-client-data" = bevelPkg "bevel-client-data";
+      "bevel-client-data-gen" = bevelPkg "bevel-client-data-gen";
       "bevel-data" = bevelPkg "bevel-data";
       "bevel-data-gen" = bevelPkg "bevel-data-gen";
     };
