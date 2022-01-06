@@ -73,21 +73,36 @@ tuiApp chan =
     }
 
 data State = State
-  { stateDirs :: Set (Path Abs Dir),
+  { stateChoices :: Choices,
     stateOptions :: !(Maybe (NonEmptyCursor (Path Abs Dir))),
     stateSearch :: !TextCursor,
     stateDone :: !Bool
   }
   deriving (Show)
 
+newtype Choices = Choices
+  { choicesSet :: Set (Path Abs Dir)
+  }
+  deriving (Show)
+
+makeChoices :: [Path Abs Dir] -> Choices
+makeChoices = Choices . S.fromList
+
+instance Semigroup Choices where
+  (<>) (Choices c1) (Choices c2) = Choices $ S.union c1 c2
+
+instance Monoid Choices where
+  mempty = Choices S.empty
+  mappend = (<>)
+
 data ResourceName = SearchBox
   deriving (Show, Eq, Ord)
 
 buildInitialState :: C State
 buildInitialState = do
-  let stateDirs = S.empty
+  let stateChoices = mempty
   let stateSearch = emptyTextCursor
-  let stateOptions = refreshOptions stateDirs stateSearch
+  let stateOptions = refreshOptions stateChoices stateSearch
   let stateDone = False
   pure State {..}
 
@@ -128,7 +143,11 @@ handleTuiEvent _ s e =
           modMOptions mFunc = modOptions $ \nec -> fromMaybe nec $ mFunc nec
           modSearch func = do
             let newSearch = func $ stateSearch s
-            continue $ s {stateSearch = newSearch, stateOptions = refreshOptions (stateDirs s) newSearch}
+            continue $
+              s
+                { stateSearch = newSearch,
+                  stateOptions = refreshOptions (stateChoices s) newSearch
+                }
           modMSearch mFunc = modSearch $ \tc -> fromMaybe tc $ mFunc tc
        in case vtye of
             EvKey KEnter [] -> halt s {stateDone = True}
@@ -142,12 +161,12 @@ handleTuiEvent _ s e =
             EvKey KRight [] -> modMSearch textCursorSelectNext
             _ -> continue s
     AppEvent resp -> case resp of
-      ResponsePartialLoad additionalDirs -> do
-        let newDirs = S.union (stateDirs s) additionalDirs
+      ResponsePartialLoad additionalChoices -> do
+        let newChoices = stateChoices s <> additionalChoices
         continue $
           s
-            { stateDirs = newDirs,
-              stateOptions = refreshOptions newDirs (stateSearch s)
+            { stateChoices = newChoices,
+              stateOptions = refreshOptions newChoices (stateSearch s)
             }
     _ -> continue s
 
@@ -159,7 +178,7 @@ type W = ReaderT WorkerEnv IO
 
 data Request = RequestLoad
 
-data Response = ResponsePartialLoad (Set (Path Abs Dir))
+data Response = ResponsePartialLoad !Choices
 
 tuiWorker :: BChan Request -> BChan Response -> W ()
 tuiWorker reqChan respChan = forever $
@@ -181,15 +200,15 @@ tuiWorker reqChan respChan = forever $
             source
               .| C.map (\(Value d) -> d)
               .| CL.chunksOf 1024
-              .| C.map S.fromList
+              .| C.map makeChoices
               .| C.mapM_
                 ( \s ->
                     liftIO $
                       writeBChan respChan $ ResponsePartialLoad s
                 )
 
-refreshOptions :: Set (Path Abs Dir) -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
-refreshOptions dirs search =
+refreshOptions :: Choices -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
+refreshOptions (Choices dirs) search =
   let query = rebuildTextCursor search
       newOptions = S.toList $ S.filter (fuzzySearch query) dirs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions
