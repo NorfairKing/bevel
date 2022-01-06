@@ -12,15 +12,17 @@ import Brick.Main
 import Brick.Types
 import Brick.Util
 import Brick.Widgets.Core
+import Conduit
 import Control.Concurrent.Async
 import Control.Monad
-import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Cursor.Brick.List.NonEmpty
 import Cursor.Brick.Text
 import Cursor.Simple.List.NonEmpty
 import Cursor.Text
 import Cursor.Types
+import qualified Data.Conduit.Combinators as C
+import qualified Data.Conduit.List as CL
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Set (Set)
@@ -133,7 +135,13 @@ handleTuiEvent _ s e =
             EvKey KRight [] -> modMSearch textCursorSelectNext
             _ -> continue s
     AppEvent resp -> case resp of
-      ResponseLoaded newDirs -> continue $ s {stateDirs = newDirs, stateOptions = refreshOptions newDirs (stateSearch s)}
+      ResponsePartialLoad additionalDirs -> do
+        let newDirs = S.union (stateDirs s) additionalDirs
+        continue $
+          s
+            { stateDirs = newDirs,
+              stateOptions = refreshOptions newDirs (stateSearch s)
+            }
     _ -> continue s
 
 data WorkerEnv = WorkerEnv
@@ -144,24 +152,33 @@ type W = ReaderT WorkerEnv IO
 
 data Request = RequestLoad
 
-data Response = ResponseLoaded (Set (Path Abs Dir))
+data Response = ResponsePartialLoad (Set (Path Abs Dir))
 
 tuiWorker :: BChan Request -> BChan Response -> W ()
-tuiWorker reqChan respChan = forever $ do
-  req <- liftIO $ readBChan reqChan
-  resp <- case req of
-    RequestLoad -> do
-      hostname <- liftIO getHostName
-      username <- liftIO $ userName <$> (getRealUserID >>= getUserEntryForID)
-      let query = select $ do
-            clientCommand <- from $ table @ClientCommand
-            where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
-            where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
-            pure (clientCommand ^. ClientCommandWorkdir)
-      pool <- asks workerEnvConnectionPool
-      dirs <- flip runSqlPool pool $ S.fromList . map (\(Value workdir) -> workdir) <$> query
-      pure $ ResponseLoaded dirs
-  liftIO $ writeBChan respChan resp
+tuiWorker reqChan respChan = forever $
+  runResourceT $ do
+    req <- liftIO $ readBChan reqChan
+    case req of
+      RequestLoad -> do
+        hostname <- liftIO getHostName
+        username <- liftIO $ userName <$> (getRealUserID >>= getUserEntryForID)
+        let source = selectSource $ do
+              clientCommand <- from $ table @ClientCommand
+              where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
+              where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
+              pure (clientCommand ^. ClientCommandWorkdir)
+        pool <- asks workerEnvConnectionPool
+        flip runSqlPool pool $
+          runConduit $
+            source
+              .| C.map (\(Value d) -> d)
+              .| CL.chunksOf 1024
+              .| C.map S.fromList
+              .| C.mapM_
+                ( \s ->
+                    liftIO $
+                      writeBChan respChan $ ResponsePartialLoad s
+                )
 
 refreshOptions :: Set (Path Abs Dir) -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
 refreshOptions dirs search =

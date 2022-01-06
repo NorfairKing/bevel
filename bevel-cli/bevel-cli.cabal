@@ -45,6 +45,7 @@ library
     , bevel-client-data
     , bevel-data
     , brick
+    , conduit
     , containers
     , cookie
     , cursor

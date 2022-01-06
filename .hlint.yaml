@@ -12,3 +12,5 @@
     name: "Use record patterns"
 - ignore:
     name: "Replace case with maybe"
+- ignore:
+    name: "Avoid lambda"
