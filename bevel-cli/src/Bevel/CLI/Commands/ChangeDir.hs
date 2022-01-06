@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
@@ -23,12 +24,16 @@ import Cursor.Text
 import Cursor.Types
 import qualified Data.Conduit.Combinators as C
 import qualified Data.Conduit.List as CL
+import Data.Foldable
+import Data.List
 import qualified Data.List.NonEmpty as NE
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Maybe
-import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Ord as Ord
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Word
 import Database.Esqueleto.Experimental
 import qualified Database.Persist.Sql as DB
 import Graphics.Vty (defaultConfig, mkVty, outputFd)
@@ -39,6 +44,7 @@ import Path
 import System.Exit
 import System.Posix.IO.ByteString (stdError)
 import System.Posix.User (UserEntry (..), getRealUserID, getUserEntryForID)
+import Text.Printf
 
 changeDir :: C ()
 changeDir = do
@@ -81,18 +87,26 @@ data State = State
   deriving (Show)
 
 newtype Choices = Choices
-  { choicesSet :: Set (Path Abs Dir)
+  { choicesSet :: Map (Path Abs Dir) Word64
   }
   deriving (Show)
 
 makeChoices :: [Path Abs Dir] -> Choices
-makeChoices = Choices . S.fromList
+makeChoices = Choices . countMap
+
+countMap :: Ord a => [a] -> Map a Word64
+countMap = foldl' go M.empty
+  where
+    go m a = M.alter go' a m
+    go' = \case
+      Nothing -> Just 1
+      Just n -> Just $ succ n
 
 instance Semigroup Choices where
-  (<>) (Choices c1) (Choices c2) = Choices $ S.union c1 c2
+  (<>) (Choices c1) (Choices c2) = Choices $ M.unionWith (+) c1 c2
 
 instance Monoid Choices where
-  mempty = Choices S.empty
+  mempty = Choices M.empty
   mappend = (<>)
 
 data ResourceName = SearchBox
@@ -123,7 +137,10 @@ drawTui State {..} =
       [ padTop Max $ case stateOptions of
           Nothing -> str "Empty"
           Just dirs ->
-            let goDir = str . fromAbsDir
+            let Choices m = stateChoices
+                goDir p =
+                  let score = fromMaybe 0 $ M.lookup p m
+                   in hBox [str $ printf "%10d" score, str " ", str $ fromAbsDir p]
              in nonEmptyCursorWidget
                   ( \befores current afters ->
                       vBox $
@@ -210,7 +227,7 @@ tuiWorker reqChan respChan = forever $
 refreshOptions :: Choices -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
 refreshOptions (Choices dirs) search =
   let query = rebuildTextCursor search
-      newOptions = S.toList $ S.filter (fuzzySearch query) dirs
+      newOptions = filter (fuzzySearch query) $ map fst $ sortOn (Ord.Down . snd) $ M.toList dirs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions
 
 fuzzySearch :: Text -> Path Abs Dir -> Bool
