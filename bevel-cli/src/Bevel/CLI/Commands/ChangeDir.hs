@@ -166,6 +166,7 @@ tuiWorker reqChan respChan = forever $
               clientCommand <- from $ table @ClientCommand
               where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
               where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
+              orderBy [desc $ clientCommand ^. ClientCommandBegin]
               pure (clientCommand ^. ClientCommandWorkdir)
         pool <- asks workerEnvConnectionPool
         flip runSqlPool pool $
