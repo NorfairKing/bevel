@@ -1,10 +1,9 @@
-name:                bevel-api-server
-version:             0.0.0.0
-github:              "NorfairKing/bevel"
-license:             AllRightsReserved
-author:              "Tom Sydney Kerckhove"
-maintainer:          "syd@cs-syd.eu"
-copyright:           "Copyright (c) 2020-2022 Tom Sydney Kerckhove"
+name: bevel-api-server
+version: 0.0.0.0
+github: "NorfairKing/bevel"
+license: AllRightsReserved
+author: "Tom Sydney Kerckhove"
+maintainer: "syd@cs-syd.eu"
 
 dependencies:
 - base >= 4.7 && < 5
