@@ -28,6 +28,7 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Database.Esqueleto.Experimental
+import qualified Database.Persist.Sql as DB
 import Graphics.Vty (defaultConfig, mkVty, outputFd)
 import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
@@ -39,13 +40,14 @@ import System.Posix.User (UserEntry (..), getRealUserID, getUserEntryForID)
 changeDir :: C ()
 changeDir = do
   initialState <- buildInitialState
+  workerEnvConnectionPool <- asks envConnectionPool
   liftIO $ do
     reqChan <- newBChan 1000
     respChan <- newBChan 1000
     let vtyBuilder = mkVty $ defaultConfig {outputFd = Just stdError}
     firstVty <- vtyBuilder
     let runTui = customMain firstVty vtyBuilder (Just respChan) (tuiApp reqChan) initialState
-    let workerEnv = WorkerEnv
+    let workerEnv = WorkerEnv {..}
     let runWorker = runReaderT (tuiWorker reqChan respChan) workerEnv
     -- Left always works because the worker runs forever
     Left endState <- race runTui runWorker
@@ -58,7 +60,9 @@ tuiApp chan =
     { appDraw = drawTui,
       appChooseCursor = showFirstCursor,
       appHandleEvent = handleTuiEvent chan,
-      appStartEvent = pure,
+      appStartEvent = \s -> do
+        liftIO $ writeBChan chan RequestLoad
+        pure s,
       appAttrMap = buildAttrMap
     }
 
@@ -74,17 +78,9 @@ data ResourceName = SearchBox
 
 buildInitialState :: C State
 buildInitialState = do
-  hostname <- liftIO getHostName
-  username <- liftIO $ userName <$> (getRealUserID >>= getUserEntryForID)
-  let query = select $ do
-        clientCommand <- from $ table @ClientCommand
-        where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
-        where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
-        pure (clientCommand ^. ClientCommandWorkdir)
-  dirs <- runDB $ S.fromList . map (\(Value workdir) -> workdir) <$> query
-  let stateDirs = dirs
-  let stateOptions = makeNonEmptyCursor <$> NE.nonEmpty (S.toList dirs)
+  let stateDirs = S.empty
   let stateSearch = emptyTextCursor
+  let stateOptions = refreshOptions stateDirs stateSearch
   pure State {..}
 
 buildAttrMap :: State -> AttrMap
@@ -116,15 +112,6 @@ drawTui State {..} =
       ]
   ]
 
-fuzzySearch :: Text -> Path Abs Dir -> Bool
-fuzzySearch query path = null $ T.foldl' go (T.unpack (T.toCaseFold query)) (T.toCaseFold (T.pack (fromAbsDir path)))
-  where
-    go :: [Char] -> Char -> [Char]
-    go [] _ = []
-    go q@(qc : rest) dc
-      | qc == dc = rest
-      | otherwise = q
-
 handleTuiEvent :: BChan Request -> State -> BrickEvent n Response -> EventM n (Next State)
 handleTuiEvent _ s e =
   case e of
@@ -133,10 +120,7 @@ handleTuiEvent _ s e =
           modMOptions mFunc = modOptions $ \nec -> fromMaybe nec $ mFunc nec
           modSearch func = do
             let newSearch = func $ stateSearch s
-            let query = rebuildTextCursor newSearch
-            let newOptions = S.toList $ S.filter (fuzzySearch query) (stateDirs s)
-            let newOptionsCursor = makeNonEmptyCursor <$> NE.nonEmpty newOptions
-            continue $ s {stateSearch = newSearch, stateOptions = newOptionsCursor}
+            continue $ s {stateSearch = newSearch, stateOptions = refreshOptions (stateDirs s) newSearch}
           modMSearch mFunc = modSearch $ \tc -> fromMaybe tc $ mFunc tc
        in case vtye of
             EvKey KEnter [] -> halt s
@@ -149,22 +133,47 @@ handleTuiEvent _ s e =
             EvKey KRight [] -> modMSearch textCursorSelectNext
             _ -> continue s
     AppEvent resp -> case resp of
-      Response -> continue s
+      ResponseLoaded newDirs -> continue $ s {stateDirs = newDirs, stateOptions = refreshOptions newDirs (stateSearch s)}
     _ -> continue s
 
 data WorkerEnv = WorkerEnv
-  {
+  { workerEnvConnectionPool :: DB.ConnectionPool
   }
 
 type W = ReaderT WorkerEnv IO
 
-data Request = Request
+data Request = RequestLoad
 
-data Response = Response
+data Response = ResponseLoaded (Set (Path Abs Dir))
 
 tuiWorker :: BChan Request -> BChan Response -> W ()
 tuiWorker reqChan respChan = forever $ do
   req <- liftIO $ readBChan reqChan
   resp <- case req of
-    Request -> pure Response
+    RequestLoad -> do
+      hostname <- liftIO getHostName
+      username <- liftIO $ userName <$> (getRealUserID >>= getUserEntryForID)
+      let query = select $ do
+            clientCommand <- from $ table @ClientCommand
+            where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
+            where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
+            pure (clientCommand ^. ClientCommandWorkdir)
+      pool <- asks workerEnvConnectionPool
+      dirs <- flip runSqlPool pool $ S.fromList . map (\(Value workdir) -> workdir) <$> query
+      pure $ ResponseLoaded dirs
   liftIO $ writeBChan respChan resp
+
+refreshOptions :: Set (Path Abs Dir) -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
+refreshOptions dirs search =
+  let query = rebuildTextCursor search
+      newOptions = S.toList $ S.filter (fuzzySearch query) dirs
+   in makeNonEmptyCursor <$> NE.nonEmpty newOptions
+
+fuzzySearch :: Text -> Path Abs Dir -> Bool
+fuzzySearch query path = null $ T.foldl' go (T.unpack (T.toCaseFold query)) (T.toCaseFold (T.pack (fromAbsDir path)))
+  where
+    go :: [Char] -> Char -> [Char]
+    go [] _ = []
+    go q@(qc : rest) dc
+      | qc == dc = rest
+      | otherwise = q
