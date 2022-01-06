@@ -67,6 +67,7 @@ library
     , servant-auth-client
     , servant-client
     , text
+    , time
     , unix
     , vty
     , yaml

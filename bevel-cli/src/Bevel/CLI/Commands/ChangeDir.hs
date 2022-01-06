@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Bevel.CLI.Commands.ChangeDir (changeDir) where
@@ -24,6 +25,7 @@ import Cursor.Text
 import Cursor.Types
 import qualified Data.Conduit.Combinators as C
 import qualified Data.Conduit.List as CL
+import Data.Fixed
 import Data.Foldable
 import Data.List
 import qualified Data.List.NonEmpty as NE
@@ -33,6 +35,8 @@ import Data.Maybe
 import Data.Ord as Ord
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Time
+import Data.Time.Clock.POSIX
 import Data.Word
 import Database.Esqueleto.Experimental
 import qualified Database.Persist.Sql as DB
@@ -44,7 +48,6 @@ import Path
 import System.Exit
 import System.Posix.IO.ByteString (stdError)
 import System.Posix.User (UserEntry (..), getRealUserID, getUserEntryForID)
-import Text.Printf
 
 changeDir :: C ()
 changeDir = do
@@ -79,7 +82,7 @@ tuiApp chan =
     }
 
 data State = State
-  { stateChoices :: Choices,
+  { stateChoices :: !Choices,
     stateOptions :: !(Maybe (NonEmptyCursor (Path Abs Dir))),
     stateSearch :: !TextCursor,
     stateDone :: !Bool
@@ -87,20 +90,28 @@ data State = State
   deriving (Show)
 
 newtype Choices = Choices
-  { choicesSet :: Map (Path Abs Dir) Word64
+  { choicesSet :: Map (Path Abs Dir) Double
   }
   deriving (Show)
 
-makeChoices :: [Path Abs Dir] -> Choices
-makeChoices = Choices . countMap
+makeChoices :: UTCTime -> [(Word64, Path Abs Dir)] -> Choices
+makeChoices now = Choices . scoreMap now
 
-countMap :: Ord a => [a] -> Map a Word64
-countMap = foldl' go M.empty
+scoreMap :: forall a. Ord a => UTCTime -> [(Word64, a)] -> Map a Double
+scoreMap now = foldl' go M.empty
   where
-    go m a = M.alter go' a m
-    go' = \case
-      Nothing -> Just 1
-      Just n -> Just $ succ n
+    go :: Map a Double -> (Word64, a) -> Map a Double
+    go m (time, a) = M.alter go' a m
+      where
+        picoSeconds = MkFixed $ fromIntegral time * 1000 :: Pico
+        epochDiffTime = secondsToNominalDiffTime picoSeconds :: NominalDiffTime
+        nowInDiffTime = utcTimeToPOSIXSeconds now :: NominalDiffTime
+        timediff = nowInDiffTime - epochDiffTime :: NominalDiffTime
+        additionalScore = realToFrac $ nominalDay / timediff
+        go' :: Maybe Double -> Maybe Double
+        go' = \case
+          Nothing -> Just additionalScore
+          Just n -> Just (n + additionalScore)
 
 instance Semigroup Choices where
   (<>) (Choices c1) (Choices c2) = Choices $ M.unionWith (+) c1 c2
@@ -137,10 +148,7 @@ drawTui State {..} =
       [ padTop Max $ case stateOptions of
           Nothing -> str "Empty"
           Just dirs ->
-            let Choices m = stateChoices
-                goDir p =
-                  let score = fromMaybe 0 $ M.lookup p m
-                   in hBox [str $ printf "%10d" score, str " ", str $ fromAbsDir p]
+            let goDir = str . fromAbsDir
              in nonEmptyCursorWidget
                   ( \befores current afters ->
                       vBox $
@@ -203,6 +211,7 @@ tuiWorker reqChan respChan = forever $
     req <- liftIO $ readBChan reqChan
     case req of
       RequestLoad -> do
+        now <- liftIO getCurrentTime
         hostname <- liftIO getHostName
         username <- liftIO $ userName <$> (getRealUserID >>= getUserEntryForID)
         let source = selectSource $ do
@@ -210,14 +219,14 @@ tuiWorker reqChan respChan = forever $
               where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
               where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
               orderBy [desc $ clientCommand ^. ClientCommandBegin]
-              pure (clientCommand ^. ClientCommandWorkdir)
+              pure (clientCommand ^. ClientCommandBegin, clientCommand ^. ClientCommandWorkdir)
         pool <- asks workerEnvConnectionPool
         flip runSqlPool pool $
           runConduit $
             source
-              .| C.map (\(Value d) -> d)
+              .| C.map (\(Value time, Value dir) -> (time, dir))
               .| CL.chunksOf 1024
-              .| C.map makeChoices
+              .| C.map (makeChoices now)
               .| C.mapM_
                 ( \s ->
                     liftIO $
