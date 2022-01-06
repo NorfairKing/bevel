@@ -36,6 +36,7 @@ import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
 import Network.HostName (getHostName)
 import Path
+import System.Exit
 import System.Posix.IO.ByteString (stdError)
 import System.Posix.User (UserEntry (..), getRealUserID, getUserEntryForID)
 
@@ -53,8 +54,11 @@ changeDir = do
     let runWorker = runReaderT (tuiWorker reqChan respChan) workerEnv
     -- Left always works because the worker runs forever
     Left endState <- race runTui runWorker
-    forM_ (stateOptions endState) $ \nec ->
-      putStrLn $ fromAbsDir $ nonEmptyCursorCurrent nec
+    if stateDone endState
+      then do
+        forM_ (stateOptions endState) $ \nec ->
+          putStrLn $ fromAbsDir $ nonEmptyCursorCurrent nec
+      else exitFailure
 
 tuiApp :: BChan Request -> App State Response ResourceName
 tuiApp chan =
@@ -71,7 +75,8 @@ tuiApp chan =
 data State = State
   { stateDirs :: Set (Path Abs Dir),
     stateOptions :: !(Maybe (NonEmptyCursor (Path Abs Dir))),
-    stateSearch :: !TextCursor
+    stateSearch :: !TextCursor,
+    stateDone :: !Bool
   }
   deriving (Show)
 
@@ -83,6 +88,7 @@ buildInitialState = do
   let stateDirs = S.empty
   let stateSearch = emptyTextCursor
   let stateOptions = refreshOptions stateDirs stateSearch
+  let stateDone = False
   pure State {..}
 
 buildAttrMap :: State -> AttrMap
@@ -125,7 +131,8 @@ handleTuiEvent _ s e =
             continue $ s {stateSearch = newSearch, stateOptions = refreshOptions (stateDirs s) newSearch}
           modMSearch mFunc = modSearch $ \tc -> fromMaybe tc $ mFunc tc
        in case vtye of
-            EvKey KEnter [] -> halt s
+            EvKey KEnter [] -> halt s {stateDone = True}
+            EvKey KEsc [] -> halt s {stateDone = False}
             EvKey KDown [] -> modMOptions nonEmptyCursorSelectPrev
             EvKey KUp [] -> modMOptions nonEmptyCursorSelectNext
             EvKey (KChar c) [] -> modMSearch $ textCursorInsert c
