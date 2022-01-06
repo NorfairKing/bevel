@@ -50,7 +50,9 @@ library
     , cursor
     , cursor-brick
     , envparse
+    , esqueleto
     , filelock
+    , hostname
     , http-client
     , http-client-tls
     , monad-logger

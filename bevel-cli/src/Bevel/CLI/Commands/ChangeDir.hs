@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Bevel.CLI.Commands.ChangeDir (changeDir) where
 
@@ -26,12 +27,14 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
-import Database.Persist
+import Database.Esqueleto.Experimental
 import Graphics.Vty (defaultConfig, mkVty, outputFd)
 import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
+import Network.HostName (getHostName)
 import Path
 import System.Posix.IO.ByteString (stdError)
+import System.Posix.User (UserEntry (..), getRealUserID, getUserEntryForID)
 
 changeDir :: C ()
 changeDir = do
@@ -71,7 +74,14 @@ data ResourceName = SearchBox
 
 buildInitialState :: C State
 buildInitialState = do
-  dirs <- runDB $ S.fromList . map (\(Entity _ ClientCommand {..}) -> clientCommandWorkdir) <$> selectList [] []
+  hostname <- liftIO getHostName
+  username <- liftIO $ userName <$> (getRealUserID >>= getUserEntryForID)
+  let query = select $ do
+        clientCommand <- from $ table @ClientCommand
+        where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
+        where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
+        pure (clientCommand ^. ClientCommandWorkdir)
+  dirs <- runDB $ S.fromList . map (\(Value workdir) -> workdir) <$> query
   let stateDirs = dirs
   let stateOptions = makeNonEmptyCursor <$> NE.nonEmpty (S.toList dirs)
   let stateSearch = emptyTextCursor

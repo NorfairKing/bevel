@@ -9,6 +9,20 @@ TODO
 
 See ./bevel-gather
 
+## Usage
+
+You can use the database however you like, but `bevel` includes some nice general tools:
+
+### Directory switching
+
+Using the `cd` command, you can switch to a previously visited directory quickly:
+
+```
+cd $(bevel cd)
+```
+
+TODO nice screencast
+
 ## Synchronisation
 
 TODO
