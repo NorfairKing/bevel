@@ -13,6 +13,7 @@ library:
   dependencies:
   - appendful
   - appendful-persistent
+  - async
   - autodocodec
   - autodocodec-yaml
   - bevel-api
@@ -20,7 +21,11 @@ library:
   - bevel-client
   - bevel-client-data
   - bevel-data
+  - brick
+  - containers
   - cookie
+  - cursor
+  - cursor-brick
   - envparse
   - filelock
   - http-client
@@ -36,6 +41,8 @@ library:
   - servant-auth-client
   - servant-client
   - text
+  - unix
+  - vty
   - yaml
 
 executables:

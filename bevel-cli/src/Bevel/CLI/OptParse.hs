@@ -63,6 +63,7 @@ data Dispatch
   = DispatchRegister
   | DispatchLogin
   | DispatchSync
+  | DispatchChangeDir
   deriving (Show, Eq, Generic)
 
 combineToInstructions :: Arguments -> Environment -> Maybe Configuration -> IO Instructions
@@ -85,6 +86,7 @@ combineToInstructions (Arguments cmd Flags {..}) Environment {..} mConf = do
       CommandRegister -> pure DispatchRegister
       CommandLogin -> pure DispatchLogin
       CommandSync -> pure DispatchSync
+      CommandChangeDir -> pure DispatchChangeDir
   pure $ Instructions disp sets
   where
     mc :: (Configuration -> Maybe a) -> Maybe a
@@ -217,6 +219,7 @@ data Command
   = CommandRegister
   | CommandLogin
   | CommandSync
+  | CommandChangeDir
   deriving (Show, Eq, Generic)
 
 parseCommand :: OptParse.Parser Command
@@ -225,7 +228,8 @@ parseCommand =
     mconcat
       [ OptParse.command "register" parseCommandRegister,
         OptParse.command "login" parseCommandLogin,
-        OptParse.command "sync" parseCommandSync
+        OptParse.command "sync" parseCommandSync,
+        OptParse.command "cd" parseCommandChangeDir
       ]
 
 parseCommandRegister :: OptParse.ParserInfo Command
@@ -245,6 +249,12 @@ parseCommandSync = OptParse.info parser modifier
   where
     modifier = OptParse.fullDesc <> OptParse.progDesc "Synchronise the thing database"
     parser = pure CommandSync
+
+parseCommandChangeDir :: OptParse.ParserInfo Command
+parseCommandChangeDir = OptParse.info parser modifier
+  where
+    modifier = OptParse.fullDesc <> OptParse.progDesc "Change directory"
+    parser = pure CommandChangeDir
 
 -- | The flags that are common across commands.
 data Flags = Flags
