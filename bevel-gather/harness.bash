@@ -21,3 +21,11 @@ _bevel_precmd() {
 
 preexec_functions+=(_bevel_preexec)
 precmd_functions+=(_bevel_precmd)
+
+_bevel_cd() {
+	tput rmkx
+  cd $(bevel cd)
+  tput smkx
+}
+
+bind -x '"\C-p": _bevel_cd'
