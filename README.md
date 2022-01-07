@@ -2,10 +2,9 @@
 
 Under construction.
 
+## How it works
 
 ## Harness
-
-TODO
 
 See ./bevel-gather
 
@@ -29,13 +28,78 @@ TODO
 
 Run `bevel sync`
 
-## Nix
+## Installation
 
-### Home manager integration
+### Without Nix
+
+1. Compile the gather tool. See `bevel-gather`.
+2. Install the harness. See `bevel-harness`.
+3. Install the CLI. `stack install bevel-cli`.
+4. Optional: Install the server: `stack install bevel-api-server`.
+
+### With Nix
+
+#### Home manager integration
+
+``` nix
+{ pkgs, lib, ... }:
+with lib;
+let
+  bevelModule =
+    builtins.fetchGit {
+      url = "https://github.com/NorfairKing/bevel";
+      rev = "0000000000000000000000000000000000000000"; # Put a recent commit hash here.
+      ref = "master";
+    } + "/nix/home-manager-module.nix";
+in
+{
+  imports = [
+    bevelModule
+    # [...]
+  ];
+  programs.bevel = {
+    enable = true;
+  };
+}
+```
 
 See `nix/home-manager-module.nix`.
 
 
-### NixOS integration
+#### NixOS integration to run the server
+
+``` nix
+{ lib, pkgs, config, ... }:
+let
+  bevel-production = (
+    import (
+      builtins.fetchGit {
+        url = "https://github.com/NorfairKing/bevel";
+        rev = "0000000000000000000000000000000000000000"; # Put a recent commit hash here.
+        ref = "master";
+      } + "/nix/nixos-module.nix"
+    ) { envname = "production"; }
+  );
+in
+{
+  imports = [
+    bevel-production
+  ];
+  config = {
+    services.bevel.production.api-server = {
+      enable = true;
+      api-server = {
+        enable = true;
+        log-level = "Warn";
+        hosts = [ "api.bevel.mydomain.com" ];
+        port = 8402;
+        local-backup = {
+          enable = true;
+        };
+      };
+    };
+  };
+}
+```
 
 See `nix/nixos-module.nix`.
