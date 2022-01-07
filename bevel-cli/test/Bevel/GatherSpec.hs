@@ -32,7 +32,7 @@ spec = tempDirSpec "bevel" $ do
             pure ()
 
         let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
-        let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-before" [T.unpack text]
+        let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather" [T.unpack text]
         ec <- runProcess pc
         ec `shouldBe` ExitSuccess
 
@@ -60,7 +60,7 @@ spec = tempDirSpec "bevel" $ do
               pure ()
 
           let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
-          let pc = setStdout closed $ setStderr closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-before" [T.unpack text]
+          let pc = setStdout closed $ setStderr closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather" [T.unpack text]
           replicateConcurrently_ 10 $ runProcess pc
 
           commands <- runNoLoggingT $
@@ -93,7 +93,7 @@ spec = tempDirSpec "bevel" $ do
                           }
 
                   let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
-                  let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-after" [show (fromSqlKey cid), show exitCode]
+                  let pc = setStdout closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather" [show (fromSqlKey cid), show exitCode]
                   ec <- runProcess pc
                   ec `shouldBe` ExitSuccess
 
@@ -140,7 +140,7 @@ spec = tempDirSpec "bevel" $ do
                             }
 
                     let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
-                    let pc = setStdout closed $ setStderr closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather-after" [show (fromSqlKey cid), show (exitCode :: Int8)]
+                    let pc = setStdout closed $ setStderr closed $ setEnv env $ setWorkingDir (fromAbsDir tdir) $ proc "bevel-gather" [show (fromSqlKey cid), show (exitCode :: Int8)]
                     replicateConcurrently_ 10 $ runProcess pc
 
                     commands <- runNoLoggingT $

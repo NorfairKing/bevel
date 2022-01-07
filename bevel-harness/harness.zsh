@@ -6,7 +6,7 @@ export BEVEL_HISTORY_ID=""
 # Executed before the command
 _bevel_preexec(){
   # I don't know why, but $1 contains the whole command.
-  local command_id=$(bevel-gather-before "$1")
+  local command_id=$(bevel-gather "$1")
   export BEVEL_HISTORY_ID="$command_id"
 }
 
@@ -17,7 +17,7 @@ _bevel_precmd(){
   then
     return
   fi
-  bevel-gather-after "${BEVEL_HISTORY_ID}" "${EXIT}"
+  bevel-gather "${BEVEL_HISTORY_ID}" "${EXIT}"
 }
 
 add-zsh-hook preexec _bevel_preexec

@@ -21,8 +21,7 @@ sqlite3_int64 getTime() {
   return nanos;
 }
 
-int main(int argc, char **argv) {
-
+char *getDbFile() {
   char *bevel_db_file = getenv("BEVEL_DATABASE");
   if (bevel_db_file == NULL) {
     char *data_dir = getenv("XDG_DATA_HOME");
@@ -35,6 +34,11 @@ int main(int argc, char **argv) {
     }
     bevel_db_file = strcat(data_dir, "/bevel/history.sqlite3");
   }
+  return bevel_db_file;
+}
+
+int before(char **argv) {
+  char *bevel_db_file = getDbFile();
 
   sqlite3 *db;
   int opened = sqlite3_open(bevel_db_file, &db);
@@ -57,12 +61,7 @@ int main(int argc, char **argv) {
   // We need these things for a "command has started" insertion:
   //
   // 1. Text of the command
-  char *text;
-  if (argc < 2) {
-    text = "";
-  } else {
-    text = argv[1];
-  }
+  char *text = argv[1];
   // 2. Begin time
   sqlite3_int64 begin = getTime();
   // 3. Workdir
@@ -100,5 +99,76 @@ sqlite_error:
   fprintf(stderr, "Failed to insert command: %s\n", sqlite3_errmsg(db));
   sqlite3_close(db);
 
+  return 1;
+}
+
+int after(char **argv) {
+
+  char *bevel_db_file = getDbFile();
+
+  sqlite3 *db;
+
+  int opened = sqlite3_open(bevel_db_file, &db);
+
+  if (opened != SQLITE_OK) {
+    goto sqlite_error;
+  }
+
+  sqlite3_stmt *stmt;
+  int prepared = sqlite3_prepare_v2(
+      db, "UPDATE command SET end = ?, exit = ? where id = ?", -1, &stmt, NULL);
+
+  if (prepared != SQLITE_OK) {
+    goto sqlite_error;
+  }
+
+  // We need these things to finish up a command row:
+  //
+  // 1. End time
+  sqlite3_int64 end = getTime();
+  // 2. Exit code (second command-line argument)
+  int exit = atoi(argv[2]);
+  // 3. Command id (first command-line argument)
+  sqlite3_int64 command_id = atoi(argv[1]);
+
+  sqlite3_bind_int64(stmt, 1, end);
+  sqlite3_bind_int(stmt, 2, exit);
+  sqlite3_bind_int64(stmt, 3, command_id);
+
+  int inserted = sqlite3_step(stmt);
+
+  if (inserted != SQLITE_DONE) {
+    goto sqlite_error;
+  }
+
+  sqlite3_finalize(stmt);
+  sqlite3_close(db);
+
+  return 0;
+
+sqlite_error:
+  fprintf(stderr, "Failed to complete command: %s\n", sqlite3_errmsg(db));
+  sqlite3_close(db);
+
+  return 1;
+}
+
+int main(int argc, char **argv) {
+  switch (argc) {
+  case 0:
+    goto arg_error;
+  case 1:
+    goto arg_error;
+  case 2:
+    return before(argv);
+  case 3:
+    return after(argv);
+  default:
+    goto arg_error;
+  }
+
+arg_error:
+  fprintf(stderr, "Before: HISTORY_ID=$(bevel-gather <COMMAND>)\n"
+                  "After:  bevel-gather <HISTORY_ID> <EXIT_CODE>\n");
   return 1;
 }
