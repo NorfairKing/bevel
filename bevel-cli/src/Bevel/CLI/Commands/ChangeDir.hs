@@ -101,7 +101,7 @@ instance Monoid Choices where
   mempty = Choices M.empty
   mappend = (<>)
 
-data ResourceName = SearchBox
+data ResourceName = SearchBox | OptionsViewport
   deriving (Show, Eq, Ord)
 
 buildInitialState :: C State
@@ -125,20 +125,23 @@ selectedAttr = "selected"
 
 drawTui :: State -> [Widget ResourceName]
 drawTui State {..} =
-  [ vBox
-      [ padTop Max $ case stateOptions of
-          Nothing -> str "Empty"
-          Just dirs ->
-            let goDir = str . fromAbsDir
-             in nonEmptyCursorWidget
-                  ( \befores current afters ->
-                      vBox $
-                        reverse $
-                          concat [map goDir befores, [withAttr selectedAttr $ goDir current], map goDir afters]
-                  )
-                  dirs,
-        visible $ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch
-      ]
+  [ padLeftRight 1 $
+      vBox
+        [ viewport OptionsViewport Vertical $
+            vLimit 1024 $ -- Arbitrary "big" limit to make the widget fixed-size (somehow that's faster)
+              padTop Max $ case stateOptions of
+                Nothing -> str "Empty"
+                Just dirs ->
+                  let goDir = str . fromAbsDir
+                   in nonEmptyCursorWidget
+                        ( \befores current afters ->
+                            vBox $
+                              reverse $
+                                concat [map goDir befores, [visible $ withAttr selectedAttr $ goDir current], map goDir afters]
+                        )
+                        dirs,
+          vLimit 1 $ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch
+        ]
   ]
 
 handleTuiEvent :: BChan Request -> State -> BrickEvent n Response -> EventM n (Next State)
