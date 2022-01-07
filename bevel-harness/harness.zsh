@@ -55,7 +55,5 @@ function _bevel_repeat {
 
 zle -N _bevel_repeat_widget _bevel_repeat
 bindkey '^r' _bevel_repeat_widget
-bindkey '^[[A' _bevel_repeat_widget
-bindkey '^[OA' _bevel_repeat_widget
 
 

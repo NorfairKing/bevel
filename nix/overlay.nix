@@ -4,6 +4,7 @@ with final.haskell.lib;
 
 {
   bevel-gather = final.callPackage ../bevel-gather/default.nix { };
+  bevel-harness = final.callPackage ../bevel-harness/default.nix { };
   bevelHaskellPackages =
     let
       bevelPkg = name:
@@ -64,7 +65,9 @@ with final.haskell.lib;
     };
 
   bevelReleasePackages = mapAttrs (_: pkg: justStaticExecutables (doCheck pkg)) final.bevelHaskellPackages // {
-    inherit (final) bevel-gather;
+    inherit (final)
+      bevel-gather
+      bevel-harness;
   };
   bevelRelease =
     final.symlinkJoin {

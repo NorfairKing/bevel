@@ -152,11 +152,11 @@ in
 
       programs.bash.initExtra = mkIf (cfg.harness.enableBashIntegration) ''
         source "${pkgs.bash-preexec}/share/bash/bash-preexec.sh"
-        source "${cfg.bevelReleasePackages.bevel-gather}/share/harness.bash"
+        source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.bash"
       '';
 
       programs.zsh.initExtra = mkIf (cfg.harness.enableZshIntegration) ''
-        source "${cfg.bevelReleasePackages.bevel-gather}/share/harness.zsh"
+        source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.zsh"
       '';
     };
 }

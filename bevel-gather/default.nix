@@ -33,9 +33,5 @@ stdenv.mkDerivation {
     ldd $out/bin/bevel-gather-after || true
     du -h $out/bin/bevel-gather-before
     du -h $out/bin/bevel-gather-after
-
-    mkdir -p $out/share
-    ln -s $src/harness.bash $out/share/
-    ln -s $src/harness.zsh $out/share
   '';
 }
