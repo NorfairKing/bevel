@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Bevel.CLI.Commands.ChangeDir (changeDir) where
+module Bevel.CLI.Commands.RepeatCommand (repeatCommand) where
 
 import Bevel.CLI.Env
 import Bevel.CLI.Score
@@ -32,6 +32,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Ord as Ord
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time
 import Data.Word
@@ -41,13 +42,12 @@ import Graphics.Vty (defaultConfig, mkVty, outputFd)
 import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
 import Network.HostName (getHostName)
-import Path
 import System.Exit
 import System.Posix.IO.ByteString (stdError)
 import System.Posix.User (UserEntry (..), getRealUserID, getUserEntryForID)
 
-changeDir :: C ()
-changeDir = do
+repeatCommand :: C ()
+repeatCommand = do
   initialState <- buildInitialState
   workerEnvConnectionPool <- asks envConnectionPool
   liftIO $ do
@@ -63,7 +63,7 @@ changeDir = do
     if stateDone endState
       then do
         forM_ (stateOptions endState) $ \nec ->
-          putStrLn $ fromAbsDir $ nonEmptyCursorCurrent nec
+          putStrLn $ T.unpack $ nonEmptyCursorCurrent nec
       else exitFailure
 
 tuiApp :: BChan Request -> App State Response ResourceName
@@ -80,18 +80,18 @@ tuiApp chan =
 
 data State = State
   { stateChoices :: !Choices,
-    stateOptions :: !(Maybe (NonEmptyCursor (Path Abs Dir))),
+    stateOptions :: !(Maybe (NonEmptyCursor Text)),
     stateSearch :: !TextCursor,
     stateDone :: !Bool
   }
   deriving (Show)
 
 newtype Choices = Choices
-  { choicesSet :: Map (Path Abs Dir) Double
+  { choicesSet :: Map Text Double
   }
   deriving (Show)
 
-makeChoices :: UTCTime -> [(Word64, Path Abs Dir)] -> Choices
+makeChoices :: UTCTime -> [(Word64, Text)] -> Choices
 makeChoices now = Choices . scoreMap now
 
 instance Semigroup Choices where
@@ -129,12 +129,12 @@ drawTui State {..} =
       [ padTop Max $ case stateOptions of
           Nothing -> str "Empty"
           Just dirs ->
-            let goDir = str . fromAbsDir
+            let goCommand = txt
              in nonEmptyCursorWidget
                   ( \befores current afters ->
                       vBox $
                         reverse $
-                          concat [map goDir befores, [withAttr selectedAttr $ goDir current], map goDir afters]
+                          concat [map goCommand befores, [withAttr selectedAttr $ goCommand current], map goCommand afters]
                   )
                   dirs,
         visible $ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch
@@ -200,7 +200,7 @@ tuiWorker reqChan respChan = forever $
               where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
               where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
               orderBy [desc $ clientCommand ^. ClientCommandBegin]
-              pure (clientCommand ^. ClientCommandBegin, clientCommand ^. ClientCommandWorkdir)
+              pure (clientCommand ^. ClientCommandBegin, clientCommand ^. ClientCommandText)
         pool <- asks workerEnvConnectionPool
         flip runSqlPool pool $
           runConduit $
@@ -214,8 +214,8 @@ tuiWorker reqChan respChan = forever $
                       writeBChan respChan $ ResponsePartialLoad s
                 )
 
-refreshOptions :: Choices -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
+refreshOptions :: Choices -> TextCursor -> Maybe (NonEmptyCursor Text)
 refreshOptions (Choices dirs) search =
   let query = rebuildTextCursor search
-      newOptions = filter (\path -> fuzzySearch query (T.pack (fromAbsDir path))) $ map fst $ sortOn (Ord.Down . snd) $ M.toList dirs
+      newOptions = filter (fuzzySearch query) $ map fst $ sortOn (Ord.Down . snd) $ M.toList dirs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions

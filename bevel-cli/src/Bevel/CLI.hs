@@ -45,3 +45,4 @@ dispatch = \case
   DispatchLogin -> Commands.login
   DispatchSync -> Commands.sync
   DispatchChangeDir -> Commands.changeDir
+  DispatchRepeat -> Commands.repeatCommand

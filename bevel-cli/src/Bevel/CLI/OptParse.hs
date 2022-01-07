@@ -64,6 +64,7 @@ data Dispatch
   | DispatchLogin
   | DispatchSync
   | DispatchChangeDir
+  | DispatchRepeat
   deriving (Show, Eq, Generic)
 
 combineToInstructions :: Arguments -> Environment -> Maybe Configuration -> IO Instructions
@@ -87,6 +88,7 @@ combineToInstructions (Arguments cmd Flags {..}) Environment {..} mConf = do
       CommandLogin -> pure DispatchLogin
       CommandSync -> pure DispatchSync
       CommandChangeDir -> pure DispatchChangeDir
+      CommandRepeat -> pure DispatchRepeat
   pure $ Instructions disp sets
   where
     mc :: (Configuration -> Maybe a) -> Maybe a
@@ -110,8 +112,7 @@ data Configuration = Configuration
     configUsername :: !(Maybe Username),
     configPassword :: !(Maybe Text),
     configDbFile :: !(Maybe FilePath),
-    configLogLevel :: !(Maybe LogLevel),
-    configSpecifications :: ![FilePath]
+    configLogLevel :: !(Maybe LogLevel)
   }
   deriving (Show, Eq, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec Configuration)
@@ -125,7 +126,6 @@ instance HasCodec Configuration where
         <*> optionalField "password" "Server account password" .= configPassword
         <*> optionalField "database" "The path to the database" .= configDbFile
         <*> optionalField "log-level" "The minimal severity for log messages" .= configLogLevel
-        <*> optionalFieldWithDefault "specs" [] "The files and directories containing specifications" .= configSpecifications
 
 instance HasCodec LogLevel where
   codec =
@@ -220,6 +220,7 @@ data Command
   | CommandLogin
   | CommandSync
   | CommandChangeDir
+  | CommandRepeat
   deriving (Show, Eq, Generic)
 
 parseCommand :: OptParse.Parser Command
@@ -229,7 +230,8 @@ parseCommand =
       [ OptParse.command "register" parseCommandRegister,
         OptParse.command "login" parseCommandLogin,
         OptParse.command "sync" parseCommandSync,
-        OptParse.command "cd" parseCommandChangeDir
+        OptParse.command "cd" parseCommandChangeDir,
+        OptParse.command "repeat" parseCommandRepeat
       ]
 
 parseCommandRegister :: OptParse.ParserInfo Command
@@ -253,8 +255,14 @@ parseCommandSync = OptParse.info parser modifier
 parseCommandChangeDir :: OptParse.ParserInfo Command
 parseCommandChangeDir = OptParse.info parser modifier
   where
-    modifier = OptParse.fullDesc <> OptParse.progDesc "Change directory"
+    modifier = OptParse.fullDesc <> OptParse.progDesc "Select a directory to change to, based on terminal history"
     parser = pure CommandChangeDir
+
+parseCommandRepeat :: OptParse.ParserInfo Command
+parseCommandRepeat = OptParse.info parser modifier
+  where
+    modifier = OptParse.fullDesc <> OptParse.progDesc "Select a command to run again"
+    parser = pure CommandRepeat
 
 -- | The flags that are common across commands.
 data Flags = Flags
