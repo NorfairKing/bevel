@@ -5,10 +5,8 @@ Under construction.
 ## How it works
 
 * All terminal command history is saved using the `bevel` harness and saved in a local SQLite database.
-
-## Harness
-
-See ./bevel-gather
+* Use this history for advanced terminal usage using the `bevel` CLI.
+* Synchronise your command history across devices using `bevel sync`.
 
 ## Usage
 
@@ -19,18 +17,20 @@ You can use the database however you like, but `bevel` includes some nice genera
 Using the `cd` command, you can switch to a previously visited directory quickly:
 
 ```
-cd $(bevel cd)
+cd $(bevel cd) # Or use the C-p binding
 ```
 
 TODO nice screencast
 
-## Synchronisation
+### Command repetition
 
-TODO
+Bevel offers a replacement for the `C-r` functionality of your shell.
 
-Run `bevel sync`
+```
+$(bevel repeat) # Or use the C-r binding
+```
 
-## Installation
+TODO nice screencast
 
 ### Building from source, without Nix
 
@@ -46,10 +46,19 @@ Run `bevel sync`
      -o $out/bin/bevel-gather
    ```
 
-   See `bevel-gather/default.nix`.
-
 2. Install the harness.
-   See `bevel-harness`.
+
+   For `bash`, add this line to the end of your `~/.bashrc`:
+
+   ```
+   source /path/to/bevel/bevel-harness/harness.bash
+   ```
+
+   For `zsh`, add this line to the end of your `~/.zshrc`:
+
+   ```
+   source /path/to/bevel/bevel-harness/harness.zsh
+   ```
 
 3. Make sure you have Haskell's [stack](https://docs.haskellstack.org/en/stable/README/).
 
@@ -60,7 +69,21 @@ Run `bevel sync`
    stack install bevel-cli
    ```
 
-4. Optional: Install the server: `stack install bevel-api-server`.
+5. Install the bindings.
+
+   For `bash`, add this line to the end of your `~/.bashrc`:
+
+   ```
+   source /path/to/bevel/bevel-harness/bindings.bash
+   ```
+
+   For `zsh`, add this line to the end of your `~/.zshrc`:
+
+   ```
+   source /path/to/bevel/bevel-harness/bindings.zsh
+   ```
+
+6. Optional: Install the server: `stack install bevel-api-server`.
 
    ``` shell
    stack install bevel-api-server
