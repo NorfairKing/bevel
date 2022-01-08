@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -138,7 +139,11 @@ drawTui State {..} =
                           ( \befores current afters ->
                               vBox $
                                 reverse $
-                                  concat [map goCommand befores, [visible $ withAttr selectedAttr $ goCommand current], map goCommand afters]
+                                  concat
+                                    [ map goCommand befores,
+                                      [visible $ withAttr selectedAttr $ goCommand current],
+                                      map goCommand afters
+                                    ]
                           )
                           dirs,
           vLimit 1 $ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch
@@ -221,5 +226,11 @@ tuiWorker reqChan respChan = forever $
 refreshOptions :: Choices -> TextCursor -> Maybe (NonEmptyCursor Text)
 refreshOptions (Choices dirs) search =
   let query = rebuildTextCursor search
-      newOptions = filter (fuzzySearch query) $ map fst $ sortOn (Ord.Down . snd) $ M.toList dirs
+      newOptions =
+        map (snd . fst)
+          . sortOn (\((fuzziness, _), score) -> Ord.Down (fuzziness, score))
+          . filter ((> 0) . fst . fst)
+          . map (\(command, score) -> ((fuzzySearch query command, command), score))
+          . sortOn (Ord.Down . snd)
+          $ M.toList dirs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions
