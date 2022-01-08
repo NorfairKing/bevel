@@ -80,6 +80,7 @@ tests:
     - bevel-client-data-gen
     - genvalidity
     - genvalidity-sydtest
+    - genvalidity-text
     - genvalidity-time
     - monad-logger
     - path

@@ -93,6 +93,7 @@ test-suite bevel-cli-test
   main-is: Spec.hs
   other-modules:
       Bevel.CLI.ScoreSpec
+      Bevel.CLI.SearchSpec
       Bevel.CLISpec
       Bevel.GatherSpec
       Paths_bevel_cli
@@ -113,6 +114,7 @@ test-suite bevel-cli-test
     , bevel-client-data-gen
     , genvalidity
     , genvalidity-sydtest
+    , genvalidity-text
     , genvalidity-time
     , monad-logger
     , path
