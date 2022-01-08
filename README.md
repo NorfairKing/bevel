@@ -8,6 +8,7 @@ Pronounced "bəvɛl".
 * Use this history for advanced terminal usage using the `bevel` CLI.
 * Synchronise your command history across devices using `bevel sync`.
 
+
 ## Usage
 
 You can use the database however you like, but `bevel` includes some nice general tools:
@@ -27,6 +28,13 @@ Bevel offers a replacement for the `C-r` functionality of your shell.
 ```
 $(bevel repeat) # Or use the C-r binding
 ```
+
+## Comparison to similar projects
+
+* [Atuin](https://github.com/ellie/atuin): Atuin is a rust version of this idea, but with various [issues](https://github.com/ellie/atuin/issues).
+* [Hastory](https://github.com/NorfairKing/hastory): Bevel is Hastory's successor.
+
+## Installation
 
 ### Building from source, without Nix
 
