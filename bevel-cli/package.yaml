@@ -70,6 +70,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - QuickCheck
     - async
     - bevel-api
     - bevel-api-server-data
@@ -79,6 +80,7 @@ tests:
     - bevel-client-data-gen
     - genvalidity
     - genvalidity-sydtest
+    - genvalidity-time
     - monad-logger
     - path
     - path-io
