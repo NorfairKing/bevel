@@ -8,7 +8,12 @@ import Test.Syd.Validity
 
 spec :: Spec
 spec =
-  describe "scoreFor" $
+  describe "scoreFor" $ do
+    it "gives a positive score" $
+      forAllValid $ \now ->
+        forAllValid $ \time ->
+          let score = scoreFor now time
+           in score >= 0
     it "gives a higher score to more recent times" $
       forAllValid $ \now ->
         forAllValid $ \time1 ->
