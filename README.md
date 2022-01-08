@@ -20,8 +20,6 @@ Using the `cd` command, you can switch to a previously visited directory quickly
 cd $(bevel cd) # Or use the C-p binding
 ```
 
-TODO nice screencast
-
 ### Command repetition
 
 Bevel offers a replacement for the `C-r` functionality of your shell.
@@ -30,11 +28,9 @@ Bevel offers a replacement for the `C-r` functionality of your shell.
 $(bevel repeat) # Or use the C-r binding
 ```
 
-TODO nice screencast
-
 ### Building from source, without Nix
 
-0. Get yourself a copy of the Sqlite source code: `sqlite3.c`
+0. Get yourself [a copy of the Sqlite source code: `sqlite3.c`](https://sqlite.org/src/doc/trunk/README.md).
 1. Compile the `bevel-gather` utility and put it on your path.
 
    ``` shell
@@ -70,6 +66,7 @@ TODO nice screencast
    ```
 
 5. Install the bindings.
+   These bind `C-p` to `cd $(bevel cd)` and `C-r` to `$(bevel repeat)`.
 
    For `bash`, add this line to the end of your `~/.bashrc`:
 
