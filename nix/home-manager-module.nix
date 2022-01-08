@@ -27,8 +27,14 @@ in
               default = { };
             };
           harness = {
-            enableBashIntegration = mkEnableOption "Bevel Harnass for bash";
-            enableZshIntegration = mkEnableOption "Bevel Harnass for zsh";
+            bash = {
+              enable = mkEnableOption "Bevel Harness for bash";
+              bindings = mkEnableOption "Bevel keybindings for bash";
+            };
+            zsh = {
+              enable = mkEnableOption "Bevel Harness for zsh";
+              bindings = mkEnableOption "Bevel keybindings for zsh";
+            };
           };
           sync =
             mkOption {
@@ -150,13 +156,15 @@ in
         };
       home.packages = packages;
 
-      programs.bash.initExtra = mkIf (cfg.harness.enableBashIntegration) ''
+      programs.bash.initExtra = mkIf (cfg.harness.bash.enable) ''
         source "${pkgs.bash-preexec}/share/bash/bash-preexec.sh"
         source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.bash"
+        ${optionalString cfg.harness.bash.bindings "${cfg.bevelReleasePackages.bevel-harness}/share/bindings.bash"}
       '';
 
-      programs.zsh.initExtra = mkIf (cfg.harness.enableZshIntegration) ''
+      programs.zsh.initExtra = mkIf (cfg.harness.zsh.enable) ''
         source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.zsh"
+        ${optionalString cfg.harness.zsh.bindings "${cfg.bevelReleasePackages.bevel-harness}/share/bindings.zsh"}
       '';
     };
 }

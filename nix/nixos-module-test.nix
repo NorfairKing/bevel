@@ -46,8 +46,14 @@ pkgs.nixosTest (
               enable = true;
               bevelReleasePackages = pkgs.bevelReleasePackages;
               harness = {
-                enableBashIntegration = true;
-                enableZshIntegration = true;
+                bash = {
+                  enable = true;
+                  bindings = true;
+                };
+                zsh = {
+                  enable = true;
+                  bindings = true;
+                };
               };
               sync = {
                 enable = true;

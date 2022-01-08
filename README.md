@@ -88,6 +88,16 @@ in
   ];
   programs.bevel = {
     enable = true;
+    harness = {
+      bash = {
+        enable = true;
+        bindings = true;
+      };
+      zsh = {
+        enable = true;
+        bindings = true;
+      };
+    };
   };
 }
 ```
