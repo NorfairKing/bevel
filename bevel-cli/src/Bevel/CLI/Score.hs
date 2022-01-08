@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Bevel.CLI.Score where
@@ -14,19 +15,22 @@ import Data.Word
 scoreMap :: forall a. Ord a => UTCTime -> [(Word64, a)] -> Map a Double
 scoreMap now = foldl' go M.empty
   where
+    nowNanos = utcTimeToNanos now :: Word64
     go :: Map a Double -> (Word64, a) -> Map a Double
     go m (time, a) = M.alter go' a m
       where
-        additionalScore = scoreFor now time
+        additionalScore = scoreFor nowNanos time
         go' :: Maybe Double -> Maybe Double
         go' = \case
           Nothing -> Just additionalScore
           Just n -> Just (n + additionalScore)
 
-scoreFor :: UTCTime -> Word64 -> Double
-scoreFor now time = realToFrac $ nominalDay / timediff
+utcTimeToNanos :: UTCTime -> Word64
+utcTimeToNanos u =
+  let MkFixed i = nominalDiffTimeToSeconds $ utcTimeToPOSIXSeconds u
+   in fromIntegral $ i `div` 1000
+
+scoreFor :: Word64 -> Word64 -> Double
+scoreFor nowNanos time = 86400_000_000_000 / realToFrac timediff
   where
-    picoSeconds = MkFixed $ fromIntegral time * 1000 :: Pico
-    epochDiffTime = secondsToNominalDiffTime picoSeconds :: NominalDiffTime
-    nowInDiffTime = utcTimeToPOSIXSeconds now :: NominalDiffTime
-    timediff = max 1 $ nowInDiffTime - epochDiffTime :: NominalDiffTime
+    timediff = max 1 $ nowNanos - time

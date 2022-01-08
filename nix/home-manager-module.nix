@@ -159,12 +159,12 @@ in
       programs.bash.initExtra = mkIf (cfg.harness.bash.enable) ''
         source "${pkgs.bash-preexec}/share/bash/bash-preexec.sh"
         source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.bash"
-        ${optionalString cfg.harness.bash.bindings "${cfg.bevelReleasePackages.bevel-harness}/share/bindings.bash"}
+        ${optionalString cfg.harness.bash.bindings "source ${cfg.bevelReleasePackages.bevel-harness}/share/bindings.bash"}
       '';
 
       programs.zsh.initExtra = mkIf (cfg.harness.zsh.enable) ''
         source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.zsh"
-        ${optionalString cfg.harness.zsh.bindings "${cfg.bevelReleasePackages.bevel-harness}/share/bindings.zsh"}
+        ${optionalString cfg.harness.zsh.bindings "source ${cfg.bevelReleasePackages.bevel-harness}/share/bindings.zsh"}
       '';
     };
 }
