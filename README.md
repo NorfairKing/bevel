@@ -1,6 +1,6 @@
-# Bevel: Synchronised command line history in an SQLite database
+# Bevel: Command line history in an SQLite database for effective re-use
 
-Under construction.
+Pronounced "bəvɛl".
 
 ## How it works
 
@@ -107,16 +107,22 @@ in
     # [...]
   ];
   programs.bevel = {
-    enable = true;
+    enable = true; # Make the CLI available
     harness = {
       bash = {
-        enable = true;
-        bindings = true;
+        enable = true; # Gather history from bash
+        bindings = true; # Bind C-p and C-r
       };
       zsh = {
-        enable = true;
-        bindings = true;
+        enable = true; # Gather history from zsh
+        bindings = true; # Bind C-p and C-r
       };
+    };
+    sync = {
+      enable = true;
+      server-url = "YOURSERVERHERE";
+      username = "YOURUSERNAMEHERE";
+      password = "YOURPASSWORDHERE";
     };
   };
 }
