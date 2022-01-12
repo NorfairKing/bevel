@@ -11,8 +11,8 @@ function _bevel_cd {
 
 	zle reset-prompt # Re-expand prompt
 }
-zle -N _bevel_cd_widget _bevel_cd
 
+zle -N _bevel_cd_widget _bevel_cd
 bindkey '^p' _bevel_cd_widget
 
 function _bevel_repeat {
@@ -31,4 +31,6 @@ function _bevel_repeat {
 zle -N _bevel_repeat_widget _bevel_repeat
 bindkey '^r' _bevel_repeat_widget
 
-
+function _bevel_last {
+  cd $(bevel last)
+}

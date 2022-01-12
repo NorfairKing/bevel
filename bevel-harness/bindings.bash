@@ -1,4 +1,4 @@
-_bevel_cd() {
+_bevel_cd () {
 	tput rmkx
   cd $(bevel cd)
   tput smkx
@@ -6,8 +6,8 @@ _bevel_cd() {
 
 bind -x '"\C-p": _bevel_cd'
 
-_bevel_repeat ()
-{
+
+_bevel_repeat () {
 	tput rmkx
   command="$(bevel repeat)"
 	tput smkx
@@ -18,3 +18,6 @@ _bevel_repeat ()
 
 bind -x '"\C-r": _bevel_repeat'
 
+_bevel_last () {
+  cd $(bevel last)
+}

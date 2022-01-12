@@ -46,3 +46,4 @@ dispatch = \case
   DispatchSync -> Commands.sync
   DispatchChangeDir -> Commands.changeDir
   DispatchRepeat -> Commands.repeatCommand
+  DispatchLast -> Commands.lastDir

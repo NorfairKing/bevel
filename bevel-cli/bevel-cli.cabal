@@ -23,6 +23,7 @@ library
       Bevel.CLI.Commands
       Bevel.CLI.Commands.ChangeDir
       Bevel.CLI.Commands.Import
+      Bevel.CLI.Commands.LastDir
       Bevel.CLI.Commands.Login
       Bevel.CLI.Commands.Register
       Bevel.CLI.Commands.RepeatCommand

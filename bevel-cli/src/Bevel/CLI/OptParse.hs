@@ -65,6 +65,7 @@ data Dispatch
   | DispatchSync
   | DispatchChangeDir
   | DispatchRepeat
+  | DispatchLast
   deriving (Show, Eq, Generic)
 
 combineToInstructions :: Arguments -> Environment -> Maybe Configuration -> IO Instructions
@@ -89,6 +90,7 @@ combineToInstructions (Arguments cmd Flags {..}) Environment {..} mConf = do
       CommandSync -> pure DispatchSync
       CommandChangeDir -> pure DispatchChangeDir
       CommandRepeat -> pure DispatchRepeat
+      CommandLast -> pure DispatchLast
   pure $ Instructions disp sets
   where
     mc :: (Configuration -> Maybe a) -> Maybe a
@@ -221,6 +223,7 @@ data Command
   | CommandSync
   | CommandChangeDir
   | CommandRepeat
+  | CommandLast
   deriving (Show, Eq, Generic)
 
 parseCommand :: OptParse.Parser Command
@@ -231,7 +234,8 @@ parseCommand =
         OptParse.command "login" parseCommandLogin,
         OptParse.command "sync" parseCommandSync,
         OptParse.command "cd" parseCommandChangeDir,
-        OptParse.command "repeat" parseCommandRepeat
+        OptParse.command "repeat" parseCommandRepeat,
+        OptParse.command "last" parseCommandLast
       ]
 
 parseCommandRegister :: OptParse.ParserInfo Command
@@ -263,6 +267,12 @@ parseCommandRepeat = OptParse.info parser modifier
   where
     modifier = OptParse.fullDesc <> OptParse.progDesc "Select a command to run again"
     parser = pure CommandRepeat
+
+parseCommandLast :: OptParse.ParserInfo Command
+parseCommandLast = OptParse.info parser modifier
+  where
+    modifier = OptParse.fullDesc <> OptParse.progDesc "Print the last-visited directory"
+    parser = pure CommandLast
 
 -- | The flags that are common across commands.
 data Flags = Flags
