@@ -42,10 +42,8 @@ import qualified Database.Persist.Sql as DB
 import Graphics.Vty (defaultConfig, mkVty, outputFd)
 import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
-import Network.HostName (getHostName)
 import System.Exit
 import System.Posix.IO.ByteString (stdError)
-import System.Posix.User (UserEntry (..), getRealUserID, getUserEntryForID)
 
 repeatCommand :: C ()
 repeatCommand = do
@@ -202,12 +200,8 @@ tuiWorker reqChan respChan = forever $
     case req of
       RequestLoad -> do
         now <- liftIO getCurrentTime
-        hostname <- liftIO getHostName
-        username <- liftIO $ userName <$> (getRealUserID >>= getUserEntryForID)
         let source = selectSource $ do
               clientCommand <- from $ table @ClientCommand
-              where_ $ clientCommand ^. ClientCommandHost ==. val (T.pack hostname)
-              where_ $ clientCommand ^. ClientCommandUser ==. val (T.pack username)
               orderBy [desc $ clientCommand ^. ClientCommandBegin]
               pure (clientCommand ^. ClientCommandBegin, clientCommand ^. ClientCommandText)
         pool <- asks workerEnvConnectionPool
