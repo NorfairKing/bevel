@@ -5,8 +5,8 @@
 
 module Bevel.CLI.Commands.ChangeDir (changeDir) where
 
+import Bevel.CLI.Choices
 import Bevel.CLI.Env
-import Bevel.CLI.Score
 import Bevel.CLI.Search
 import Bevel.Client.Data
 import Brick.AttrMap
@@ -28,13 +28,11 @@ import qualified Data.Conduit.Combinators as C
 import qualified Data.Conduit.List as CL
 import Data.List
 import qualified Data.List.NonEmpty as NE
-import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Ord as Ord
 import qualified Data.Text as T
 import Data.Time
-import Data.Word
 import Database.Esqueleto.Experimental
 import qualified Database.Persist.Sql as DB
 import Graphics.Vty (defaultConfig, mkVty, outputFd)
@@ -79,27 +77,12 @@ tuiApp chan =
     }
 
 data State = State
-  { stateChoices :: !Choices,
+  { stateChoices :: !(Choices (Path Abs Dir)),
     stateOptions :: !(Maybe (NonEmptyCursor (Path Abs Dir))),
     stateSearch :: !TextCursor,
     stateDone :: !Bool
   }
   deriving (Show)
-
-newtype Choices = Choices
-  { choicesSet :: Map (Path Abs Dir) Double
-  }
-  deriving (Show)
-
-makeChoices :: UTCTime -> [(Word64, Path Abs Dir)] -> Choices
-makeChoices now = Choices . scoreMap now
-
-instance Semigroup Choices where
-  (<>) (Choices c1) (Choices c2) = Choices $ M.unionWith (+) c1 c2
-
-instance Monoid Choices where
-  mempty = Choices M.empty
-  mappend = (<>)
 
 data ResourceName = SearchBox | OptionsViewport
   deriving (Show, Eq, Ord)
@@ -187,7 +170,7 @@ type W = ReaderT WorkerEnv IO
 
 data Request = RequestLoad
 
-data Response = ResponsePartialLoad !Choices
+data Response = ResponsePartialLoad !(Choices (Path Abs Dir))
 
 tuiWorker :: BChan Request -> BChan Response -> W ()
 tuiWorker reqChan respChan = forever $
@@ -217,7 +200,7 @@ tuiWorker reqChan respChan = forever $
                       writeBChan respChan $ ResponsePartialLoad s
                 )
 
-refreshOptions :: Choices -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
+refreshOptions :: Choices (Path Abs Dir) -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
 refreshOptions (Choices dirs) search =
   let query = rebuildTextCursor search
       newOptions =
