@@ -13,20 +13,33 @@ import Data.Maybe
 import Data.Time
 import Data.Word
 
-newtype Choices a = Choices
-  { choicesMap :: Map a Double
+data Choices a = Choices
+  { choicesTotal :: !Word64,
+    choicesMap :: !(Map a Double)
   }
   deriving (Show)
 
 makeChoices :: Ord a => UTCTime -> [(Word64, a)] -> Choices a
-makeChoices now = Choices . scoreMap now
+makeChoices now cs =
+  Choices
+    { choicesTotal = fromIntegral $ length cs,
+      choicesMap = scoreMap now cs
+    }
 
 lookupChoiceScore :: Ord a => Choices a -> a -> Double
 lookupChoiceScore Choices {..} a = fromMaybe 0 $ M.lookup a choicesMap
 
 instance Ord a => Semigroup (Choices a) where
-  (<>) (Choices c1) (Choices c2) = Choices $ M.unionWith (+) c1 c2
+  (<>) c1 c2 =
+    Choices
+      { choicesTotal = choicesTotal c1 + choicesTotal c2,
+        choicesMap = M.unionWith (+) (choicesMap c1) (choicesMap c2)
+      }
 
 instance Ord a => Monoid (Choices a) where
-  mempty = Choices M.empty
+  mempty =
+    Choices
+      { choicesTotal = 0,
+        choicesMap = M.empty
+      }
   mappend = (<>)

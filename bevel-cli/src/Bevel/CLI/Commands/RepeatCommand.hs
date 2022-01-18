@@ -15,6 +15,7 @@ import Brick.BChan
 import Brick.Main
 import Brick.Types
 import Brick.Util
+import Brick.Widgets.Center
 import Brick.Widgets.Core
 import Conduit
 import Control.Concurrent.Async
@@ -35,6 +36,7 @@ import Data.Ord as Ord
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time
+import Data.Word
 import Database.Esqueleto.Experimental
 import qualified Database.Persist.Sql as DB
 import Graphics.Vty (defaultConfig, mkVty, outputFd)
@@ -42,6 +44,7 @@ import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
 import System.Exit
 import System.Posix.IO.ByteString (stdError)
+import Text.Printf
 
 repeatCommand :: C ()
 repeatCommand = do
@@ -76,7 +79,8 @@ tuiApp chan =
     }
 
 data State = State
-  { stateChoices :: !(Choices Text),
+  { stateTotal :: !Word64,
+    stateChoices :: !(Choices Text),
     stateOptions :: !(Maybe (NonEmptyCursor Text)),
     stateSearch :: !TextCursor,
     stateDone :: !Bool
@@ -88,6 +92,11 @@ data ResourceName = SearchBox | OptionsViewport
 
 buildInitialState :: C State
 buildInitialState = do
+  stateTotal <- fmap (maybe 0 unValue) $
+    runDB $
+      selectOne $ do
+        _ <- from $ table @ClientCommand
+        pure countRows
   let stateChoices = mempty
   let stateSearch = emptyTextCursor
   let stateOptions = refreshOptions stateChoices stateSearch
@@ -99,7 +108,8 @@ buildAttrMap =
   const $
     attrMap
       defAttr
-      [ (selectedAttr, fg white)
+      [ (selectedAttr, fg white),
+        ("test", bg red)
       ]
 
 selectedAttr :: AttrName
@@ -109,25 +119,48 @@ drawTui :: State -> [Widget ResourceName]
 drawTui State {..} =
   [ padLeftRight 1 $
       vBox
-        [ viewport OptionsViewport Vertical $
-            vLimit 1024 $ -- Arbitrary "big" limit to make the widget fixed-size (somehow that's faster)
-              padTop Max $
-                case stateOptions of
+        [ vCenterLayer $
+            let maxChoices = 10
+             in case stateOptions of
                   Nothing -> str "Empty"
                   Just dirs ->
-                    let goCommand = txt
+                    let goCommand c =
+                          vLimit 1 $
+                            hBox
+                              [ txt c,
+                                padLeft Max $ str $ printf "%6.0f" $ lookupChoiceScore stateChoices c
+                              ]
                      in nonEmptyCursorWidget
                           ( \befores current afters ->
-                              vBox $
-                                reverse $
-                                  concat
-                                    [ map goCommand befores,
-                                      [visible $ withAttr selectedAttr $ goCommand current],
-                                      map goCommand afters
-                                    ]
+                              let afters' = take (maxChoices - length befores - 1) afters
+                                  currentChoices = min maxChoices (length befores + 1 + length afters')
+                               in padTop Max
+                                    . vLimit currentChoices
+                                    . viewport OptionsViewport Vertical
+                                    . vBox
+                                    . reverse
+                                    . concat
+                                    $ [ map goCommand befores,
+                                        [visible $ withAttr selectedAttr $ goCommand current],
+                                        map goCommand afters'
+                                      ]
                           )
                           dirs,
-          vLimit 1 $ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch
+          vLimit 1 $
+            hBox
+              [ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch,
+                padLeft Max $
+                  let totalDigits :: Int
+                      totalDigits = ceiling $ (logBase 10 $ fromIntegral stateTotal :: Double)
+                      formatStr :: String
+                      formatStr = "%" <> show totalDigits <> "d"
+                   in str $
+                        unwords
+                          [ printf formatStr $ choicesTotal stateChoices,
+                            "/",
+                            printf formatStr stateTotal
+                          ]
+              ]
         ]
   ]
 
@@ -185,6 +218,7 @@ tuiWorker reqChan respChan = forever $
         now <- liftIO getCurrentTime
         let source = selectSource $ do
               clientCommand <- from $ table @ClientCommand
+              -- New to old
               orderBy [desc $ clientCommand ^. ClientCommandBegin]
               pure (clientCommand ^. ClientCommandBegin, clientCommand ^. ClientCommandText)
         pool <- asks workerEnvConnectionPool
@@ -201,7 +235,7 @@ tuiWorker reqChan respChan = forever $
                 )
 
 refreshOptions :: Choices Text -> TextCursor -> Maybe (NonEmptyCursor Text)
-refreshOptions (Choices dirs) search =
+refreshOptions cs search =
   let query = rebuildTextCursor search
       newOptions =
         map (snd . fst)
@@ -209,5 +243,5 @@ refreshOptions (Choices dirs) search =
           . filter ((> 0) . fst . fst)
           . map (\(command, score) -> ((fuzzySearch query command, command), score))
           . sortOn (Ord.Down . snd)
-          $ M.toList dirs
+          $ M.toList $ choicesMap cs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions

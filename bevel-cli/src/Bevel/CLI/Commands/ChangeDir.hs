@@ -201,7 +201,7 @@ tuiWorker reqChan respChan = forever $
                 )
 
 refreshOptions :: Choices (Path Abs Dir) -> TextCursor -> Maybe (NonEmptyCursor (Path Abs Dir))
-refreshOptions (Choices dirs) search =
+refreshOptions cs search =
   let query = rebuildTextCursor search
       newOptions =
         map (snd . fst)
@@ -209,5 +209,5 @@ refreshOptions (Choices dirs) search =
           . filter ((> 0) . fst . fst)
           . map (\(dir, score) -> ((fuzzySearch query (T.pack (fromAbsDir dir)), dir), score))
           . sortOn (Ord.Down . snd)
-          $ M.toList dirs
+          $ M.toList $ choicesMap cs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions
