@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -19,31 +18,30 @@ import System.FileLock
 
 bevelCLI :: IO ()
 bevelCLI = do
-  Instructions disp Settings {..} <- getInstructions
+  Instructions dispatch Settings {..} <- getInstructions
   mCenv <- forM settingBaseUrl $ \burl -> do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     pure $ mkClientEnv man burl
   ensureDir $ parent settingDbFile
-  -- Block until locking succeeds
-  withFileLock (fromAbsFile settingDbFile ++ ".lock") Exclusive $ \_ ->
-    runStderrLoggingT $
-      filterLogger (\_ ll -> ll >= settingLogLevel) $
-        withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 $ \pool -> do
-          _ <- runSqlPool (runMigrationQuiet clientMigration) pool
-          let env =
-                Env
-                  { envClientEnv = mCenv,
-                    envUsername = settingUsername,
-                    envPassword = settingPassword,
-                    envConnectionPool = pool
-                  }
-          liftIO $ runReaderT (dispatch disp) env
-
-dispatch :: Dispatch -> C ()
-dispatch = \case
-  DispatchRegister -> Commands.register
-  DispatchLogin -> Commands.login
-  DispatchSync -> Commands.sync
-  DispatchChangeDir -> Commands.changeDir
-  DispatchRepeat -> Commands.repeatCommand
-  DispatchLast -> Commands.lastDir
+  let runC lockType func = do
+        -- Block until locking succeeds
+        withFileLock (fromAbsFile settingDbFile ++ ".lock") lockType $ \_ ->
+          runStderrLoggingT $
+            filterLogger (\_ ll -> ll >= settingLogLevel) $
+              withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 $ \pool -> do
+                _ <- runSqlPool (runMigrationQuiet clientMigration) pool
+                let env =
+                      Env
+                        { envClientEnv = mCenv,
+                          envUsername = settingUsername,
+                          envPassword = settingPassword,
+                          envConnectionPool = pool
+                        }
+                liftIO $ runReaderT func env
+  case dispatch of
+    DispatchRegister -> runC Shared Commands.register
+    DispatchLogin -> runC Shared Commands.login
+    DispatchSync -> runC Exclusive Commands.sync
+    DispatchChangeDir -> runC Shared Commands.changeDir
+    DispatchRepeat -> runC Shared Commands.repeatCommand
+    DispatchLast -> runC Shared Commands.lastDir
