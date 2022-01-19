@@ -17,7 +17,6 @@ import Brick.BChan
 import Brick.Main
 import Brick.Types
 import Brick.Util
-import Brick.Widgets.Center
 import Brick.Widgets.Core
 import Conduit
 import Control.Concurrent.Async
@@ -112,68 +111,86 @@ buildAttrMap :: State -> AttrMap
 buildAttrMap =
   const $
     attrMap
-      defAttr
+      (fg yellow)
       [ (selectedAttr, fg white),
-        ("test", bg red)
+        (loadedAttr, fg green),
+        (unloadedAttr, fg red)
       ]
 
 selectedAttr :: AttrName
 selectedAttr = "selected"
 
+loadedAttr :: AttrName
+loadedAttr = "loaded"
+
+unloadedAttr :: AttrName
+unloadedAttr = "unloaded"
+
 drawTui :: State -> [Widget ResourceName]
 drawTui State {..} =
-  [ padLeftRight 1 $
-      vBox
-        [ vCenterLayer $
-            let maxChoices = 10
-             in case stateOptions of
-                  Nothing -> str "Empty"
-                  Just dirs ->
-                    let goCommand c =
-                          vLimit 1
-                            . ( if stateDebug
-                                  then
-                                    ( \w ->
-                                        hBox
-                                          [ w,
-                                            padLeft Max $ str $ printf "%6.0f" $ lookupChoiceScore stateChoices c
+  [ let maxChoices = 25
+     in case stateOptions of
+          Nothing -> str "Empty"
+          Just dirs ->
+            let goCommand selected command =
+                  vLimit 1
+                    . ( if stateDebug
+                          then
+                            ( \w ->
+                                hBox
+                                  [ w,
+                                    padLeft Max $ str $ printf "%6.0f" $ lookupChoiceScore stateChoices command
+                                  ]
+                            )
+                          else id
+                      )
+                    $ hBox
+                      [ str $
+                          if selected
+                            then "❯ "
+                            else "  ",
+                        txt command
+                      ]
+             in nonEmptyCursorWidget
+                  ( \befores current afters ->
+                      padLeftRight 1 $
+                        vBox
+                          [ let afters' = take (maxChoices - length befores - 1) afters
+                                currentChoices = min maxChoices (length befores + 1 + length afters')
+                             in padTop Max
+                                  . vLimit currentChoices
+                                  . viewport OptionsViewport Vertical
+                                  . vBox
+                                  . reverse
+                                  . concat
+                                  $ [ map (goCommand False) befores,
+                                      [visible $ withAttr selectedAttr $ goCommand True current],
+                                      map (goCommand False) afters'
+                                    ],
+                            vLimit 1 $
+                              hBox
+                                [ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch,
+                                  padLeft Max $
+                                    let currentProcessed = choicesTotal stateChoices
+                                        totalDigits :: Int
+                                        totalDigits = ceiling (logBase 10 $ fromIntegral stateTotal :: Double)
+                                        formatStr :: String
+                                        formatStr = "%" <> show totalDigits <> "d"
+                                     in hBox
+                                          [ withAttr
+                                              ( if currentProcessed < stateTotal
+                                                  then unloadedAttr
+                                                  else loadedAttr
+                                              )
+                                              . str
+                                              $ printf formatStr currentProcessed,
+                                            str " / ",
+                                            withAttr loadedAttr $ str $ printf formatStr stateTotal
                                           ]
-                                    )
-                                  else id
-                              )
-                            $ txt c
-                     in nonEmptyCursorWidget
-                          ( \befores current afters ->
-                              let afters' = take (maxChoices - length befores - 1) afters
-                                  currentChoices = min maxChoices (length befores + 1 + length afters')
-                               in padTop Max
-                                    . vLimit currentChoices
-                                    . viewport OptionsViewport Vertical
-                                    . vBox
-                                    . reverse
-                                    . concat
-                                    $ [ map goCommand befores,
-                                        [visible $ withAttr selectedAttr $ goCommand current],
-                                        map goCommand afters'
-                                      ]
-                          )
-                          dirs,
-          vLimit 1 $
-            hBox
-              [ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch,
-                padLeft Max $
-                  let totalDigits :: Int
-                      totalDigits = ceiling (logBase 10 $ fromIntegral stateTotal :: Double)
-                      formatStr :: String
-                      formatStr = "%" <> show totalDigits <> "d"
-                   in str $
-                        unwords
-                          [ printf formatStr $ choicesTotal stateChoices,
-                            "/",
-                            printf formatStr stateTotal
+                                ]
                           ]
-              ]
-        ]
+                  )
+                  dirs
   ]
 
 handleTuiEvent :: BChan Request -> State -> BrickEvent n Response -> EventM n (Next State)
