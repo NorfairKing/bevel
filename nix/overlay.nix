@@ -10,7 +10,7 @@ with final.haskell.lib;
       bevelPkg = name:
         overrideCabal
           (
-            final.haskellPackages.callCabal2nixWithOptions name (final.gitignoreSource (../. + "/${name}"))
+            final.haskellPackages.callCabal2nixWithOptions name (final.gitignoreSource (../${name}))
               "--no-hpack"
               { }
           )

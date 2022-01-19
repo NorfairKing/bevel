@@ -27,7 +27,7 @@ import qualified Data.Text as T
 import Data.Validity
 import Data.Validity.Persist ()
 import Data.Word
-import Database.Persist.Sqlite
+import Database.Esqueleto.Experimental as E
 import Database.Persist.TH
 import GHC.Generics (Generic)
 import Path
@@ -84,6 +84,8 @@ instance PersistField (Path Abs Dir) where
 
 instance PersistFieldSql (Path Abs Dir) where
   sqlType Proxy = sqlType (Proxy :: Proxy String)
+
+instance E.SqlString (Path Abs Dir)
 
 serverMakeCommand :: ServerCommand -> Command
 serverMakeCommand ServerCommand {..} = Command {..}

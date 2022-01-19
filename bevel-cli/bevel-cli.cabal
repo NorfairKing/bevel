@@ -33,6 +33,7 @@ library
       Bevel.CLI.OptParse
       Bevel.CLI.Score
       Bevel.CLI.Search
+      Bevel.CLI.Select
   other-modules:
       Paths_bevel_cli
   hs-source-dirs:
