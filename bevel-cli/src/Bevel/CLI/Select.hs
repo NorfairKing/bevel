@@ -90,6 +90,7 @@ data State = State
     stateChoices :: !Choices,
     stateOptions :: !(Maybe (NonEmptyCursor Text)),
     stateSearch :: !TextCursor,
+    stateDebug :: !Bool,
     stateDone :: !Bool
   }
   deriving (Show)
@@ -103,6 +104,7 @@ buildInitialState SelectAppSettings {..} = do
   let stateChoices = mempty
   let stateSearch = emptyTextCursor
   let stateOptions = refreshOptions stateChoices stateSearch
+  let stateDebug = False
   let stateDone = False
   pure State {..}
 
@@ -128,11 +130,18 @@ drawTui State {..} =
                   Nothing -> str "Empty"
                   Just dirs ->
                     let goCommand c =
-                          vLimit 1 $
-                            hBox
-                              [ txt c,
-                                padLeft Max $ str $ printf "%6.0f" $ lookupChoiceScore stateChoices c
-                              ]
+                          vLimit 1
+                            . ( if stateDebug
+                                  then
+                                    ( \w ->
+                                        hBox
+                                          [ w,
+                                            padLeft Max $ str $ printf "%6.0f" $ lookupChoiceScore stateChoices c
+                                          ]
+                                    )
+                                  else id
+                              )
+                            $ txt c
                      in nonEmptyCursorWidget
                           ( \befores current afters ->
                               let afters' = take (maxChoices - length befores - 1) afters
@@ -187,6 +196,7 @@ handleTuiEvent _ s e =
             EvKey KDown [] -> modMOptions nonEmptyCursorSelectPrev
             EvKey KUp [] -> modMOptions nonEmptyCursorSelectNext
             EvKey (KChar c) [] -> modMSearch $ textCursorInsert c
+            EvKey (KChar 'd') [MMeta] -> continue s {stateDebug = not $ stateDebug s}
             EvKey KBS [] -> modMSearch $ dullMDelete . textCursorRemove
             EvKey KDel [] -> modMSearch $ dullMDelete . textCursorDelete
             EvKey KLeft [] -> modMSearch textCursorSelectPrev
