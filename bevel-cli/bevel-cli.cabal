@@ -39,7 +39,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      appendful
+      aeson-pretty
+    , appendful
     , appendful-persistent
     , async
     , autodocodec
@@ -51,6 +52,7 @@ library
     , bevel-client-data
     , bevel-data
     , brick
+    , bytestring
     , conduit
     , containers
     , cookie

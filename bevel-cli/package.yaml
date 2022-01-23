@@ -11,6 +11,7 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
+  - aeson-pretty
   - appendful
   - appendful-persistent
   - async
@@ -22,6 +23,7 @@ library:
   - bevel-client-data
   - bevel-data
   - brick
+  - bytestring
   - conduit
   - containers
   - cookie

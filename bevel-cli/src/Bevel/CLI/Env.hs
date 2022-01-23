@@ -8,6 +8,7 @@ import Bevel.API
 import Bevel.API.Data
 import Bevel.API.Server.Data
 import Bevel.Client
+import Control.Monad.Logger
 import Control.Monad.Reader
 import Data.List
 import Data.Text (Text)
@@ -17,7 +18,7 @@ import Database.Persist.Sql
 import System.Exit
 import Web.Cookie
 
-type C a = ReaderT Env IO a
+type C a = ReaderT Env (LoggingT IO) a
 
 data Env = Env
   { envClientEnv :: !(Maybe ClientEnv),

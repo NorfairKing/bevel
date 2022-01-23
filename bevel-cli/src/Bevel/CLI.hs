@@ -7,7 +7,6 @@ module Bevel.CLI
 where
 
 import Bevel.CLI.Commands as Commands
-import Control.Monad.Logger
 import qualified Data.Text as T
 import Database.Persist.Sqlite
 import Network.HTTP.Client as HTTP
@@ -37,7 +36,7 @@ bevelCLI = do
                           envPassword = settingPassword,
                           envConnectionPool = pool
                         }
-                liftIO $ runReaderT func env
+                runReaderT func env
   case dispatch of
     DispatchRegister -> runC Shared Commands.register
     DispatchLogin -> runC Shared Commands.login
