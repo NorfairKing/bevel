@@ -116,7 +116,8 @@ int after(char **argv) {
 
   sqlite3_stmt *stmt;
   int prepared = sqlite3_prepare_v2(
-      db, "UPDATE command SET end = ?, exit = ? where id = ?", -1, &stmt, NULL);
+      db, "UPDATE command SET end = ?, exit = ?, workdir = ? where id = ?", -1,
+      &stmt, NULL);
 
   if (prepared != SQLITE_OK) {
     goto sqlite_error;
@@ -128,12 +129,16 @@ int after(char **argv) {
   sqlite3_int64 end = getTime();
   // 2. Exit code (second command-line argument)
   int exit = atoi(argv[2]);
-  // 3. Command id (first command-line argument)
+  // 3. Workdir again, in case the command was 'cd'
+  char workdir[PATH_MAX];
+  getcwd(workdir, sizeof(workdir));
+  // 4. Command id (first command-line argument)
   sqlite3_int64 command_id = atoi(argv[1]);
 
   sqlite3_bind_int64(stmt, 1, end);
   sqlite3_bind_int(stmt, 2, exit);
-  sqlite3_bind_int64(stmt, 3, command_id);
+  sqlite3_bind_text(stmt, 3, workdir, -1, NULL);
+  sqlite3_bind_int64(stmt, 4, command_id);
 
   int inserted = sqlite3_step(stmt);
 

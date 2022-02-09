@@ -108,7 +108,7 @@ spec = tempDirSpec "bevel" $ do
                       clientCommandText `shouldBe` text
                       clientCommandBegin `shouldBe` begin
                       clientCommandEnd `shouldSatisfy` isJust
-                      clientCommandWorkdir `shouldBe` workdir
+                      clientCommandWorkdir `shouldBe` tdir
                       clientCommandUser `shouldBe` user
                       clientCommandHost `shouldBe` host
                       clientCommandExit `shouldBe` Just exitCode
@@ -154,7 +154,7 @@ spec = tempDirSpec "bevel" $ do
                         clientCommandText `shouldBe` text
                         clientCommandBegin `shouldBe` begin
                         clientCommandEnd `shouldSatisfy` isJust
-                        clientCommandWorkdir `shouldBe` workdir
+                        clientCommandWorkdir `shouldBe` tdir
                         clientCommandUser `shouldBe` user
                         clientCommandHost `shouldBe` host
                         clientCommandExit `shouldBe` Just exitCode
