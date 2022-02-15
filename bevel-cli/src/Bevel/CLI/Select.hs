@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -256,24 +257,27 @@ data Response
     ResponsePartialLoad !Text !Choices
 
 tuiWorker :: SelectAppSettings -> BChan Request -> BChan Response -> W ()
-tuiWorker SelectAppSettings {..} reqChan respChan = forever $
-  runResourceT $ do
-    req <- liftIO $ readBChan reqChan
-    case req of
-      RequestLoad query -> do
-        now <- liftIO getCurrentTime
-        pool <- asks workerEnvConnectionPool
-        flip runSqlPool pool $
-          runConduit $
-            selectAppSettingLoadSource
-              .| C.map (\(Value time, Value dir) -> (time, dir))
-              .| CL.chunksOf 10 -- TODO 24
-              .| C.map (makeChoices now query)
-              .| C.mapM_
-                ( \s ->
-                    liftIO $
-                      writeBChan respChan $ ResponsePartialLoad query s
-                )
+tuiWorker SelectAppSettings {..} reqChan respChan = do
+  forever $
+    runResourceT $ do
+      req <- liftIO $ readBChan reqChan
+      case req of
+        RequestLoad query -> do
+          now <- liftIO getCurrentTime
+          pool <- asks workerEnvConnectionPool
+          flip runSqlPool pool $
+            runConduit $
+              selectAppSettingLoadSource
+                .| C.map (\(Value time, Value dir) -> (time, dir))
+                .| CL.chunksOf 10 -- TODO 24
+                .| C.map (makeChoices now query)
+                .| C.mapM_
+                  ( \s -> do
+                      -- Fully evaluate the response first
+                      let !load = ResponsePartialLoad query s
+                      -- Then send it to the UI
+                      liftIO $ writeBChan respChan load
+                  )
 
 refreshOptions :: Choices -> Maybe (NonEmptyCursor Text)
 refreshOptions cs =
