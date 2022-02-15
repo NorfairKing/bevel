@@ -12,18 +12,18 @@ import Data.Time
 import Data.Time.Clock.POSIX
 import Data.Word
 
-scoreMap :: forall a. Ord a => UTCTime -> [(Word64, a)] -> Map a Double
+scoreMap :: forall a b. Ord a => UTCTime -> [(Word64, a, b)] -> Map a (b, Double)
 scoreMap now = foldl' go M.empty
   where
     nowNanos = utcTimeToNanos now :: Word64
-    go :: Map a Double -> (Word64, a) -> Map a Double
-    go m (time, a) = M.alter go' a m
+    go :: Map a (b, Double) -> (Word64, a, b) -> Map a (b, Double)
+    go m (time, a, b) = M.alter go' a m
       where
         additionalScore = scoreFor nowNanos time
-        go' :: Maybe Double -> Maybe Double
+        go' :: Maybe (b, Double) -> Maybe (b, Double)
         go' = \case
-          Nothing -> Just additionalScore
-          Just n -> Just (n + additionalScore)
+          Nothing -> Just (b, additionalScore)
+          Just (_, n) -> Just (b, n + additionalScore)
 
 utcTimeToNanos :: UTCTime -> Word64
 utcTimeToNanos u =

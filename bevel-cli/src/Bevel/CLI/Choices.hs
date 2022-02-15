@@ -24,7 +24,14 @@ makeChoices :: UTCTime -> Text -> [(Word64, Text)] -> Choices
 makeChoices now query cs =
   Choices
     { choicesTotal = fromIntegral $ length cs,
-      choicesMap = M.mapWithKey (\option score -> (fuzzySearch query option, score)) (scoreMap now cs)
+      choicesMap =
+        scoreMap now $
+          mapMaybe
+            ( \(time, option) ->
+                let fuzziness = fuzzySearch query option
+                 in if fuzziness > 0 then Just (time, option, fuzziness) else Nothing
+            )
+            cs
     }
 
 lookupChoiceScore :: Choices -> Text -> (Double, Double)

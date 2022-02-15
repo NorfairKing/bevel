@@ -280,7 +280,7 @@ filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
     runConduit $
       selectAppSettingLoadSource
         .| C.map (\(Value time, Value dir) -> (time, dir))
-        .| CL.chunksOf 1024
+        .| CL.chunksOf 10 -- TODO 24
         .| C.map (makeChoices now query)
         .| C.mapM_
           ( \s -> do
@@ -295,6 +295,5 @@ refreshOptions cs =
   let newOptions =
         map fst
           . sortOn (\(_, (fuzziness, score)) -> Ord.Down (fuzziness, score))
-          . filter (\(_, (fuzziness, _)) -> fuzziness > 0)
           $ M.toList $ choicesMap cs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions
