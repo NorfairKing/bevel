@@ -48,6 +48,7 @@ library:
   - text
   - time
   - unix
+  - unliftio
   - vty
   - yaml
 

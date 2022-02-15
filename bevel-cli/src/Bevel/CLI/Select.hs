@@ -19,8 +19,6 @@ import Brick.Types
 import Brick.Util
 import Brick.Widgets.Core
 import Conduit
-import Control.Concurrent
-import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.Reader
 import Cursor.Brick.List.NonEmpty
@@ -47,6 +45,7 @@ import Graphics.Vty.Input.Events
 import System.Exit
 import System.Posix.IO.ByteString (stdError)
 import Text.Printf
+import UnliftIO
 
 data SelectAppSettings = SelectAppSettings
   { selectAppSettingCount :: !(SqlPersistT IO Word64),
@@ -131,7 +130,7 @@ drawTui :: State -> [Widget ResourceName]
 drawTui State {..} =
   [ let maxChoices = 25
      in case stateOptions of
-          Nothing -> str "Empty"
+          Nothing -> emptyWidget
           Just dirs ->
             let goCommand selected command =
                   vLimit 1
@@ -260,11 +259,18 @@ data Response
 tuiWorker :: SelectAppSettings -> BChan Request -> BChan Response -> W ()
 tuiWorker sets@SelectAppSettings {..} reqChan respChan = do
   -- A variable that holds the filterer thread, so we can reset it asap.
-  filtererVar <- liftIO newEmptyMVar
+  filtererVar <- newEmptyMVar
   forever $ do
     req <- liftIO $ readBChan reqChan
     case req of
-      RequestLoad query -> filtererJob sets respChan query
+      RequestLoad query -> do
+        -- Stop the current filterer job, if there is one.
+        mFiltererJob <- tryTakeMVar filtererVar
+        mapM_ cancel mFiltererJob
+        -- Start a new filterer job
+        filtererJob <- async $ filtererJob sets respChan query
+        putMVar filtererVar filtererJob
+        pure () :: W ()
 
 filtererJob :: SelectAppSettings -> BChan Response -> Text -> W ()
 filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
@@ -274,7 +280,7 @@ filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
     runConduit $
       selectAppSettingLoadSource
         .| C.map (\(Value time, Value dir) -> (time, dir))
-        .| CL.chunksOf 10 -- TODO 24
+        .| CL.chunksOf 1024
         .| C.map (makeChoices now query)
         .| C.mapM_
           ( \s -> do
