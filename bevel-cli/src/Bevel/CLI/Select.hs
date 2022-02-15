@@ -257,7 +257,7 @@ data Response
     ResponsePartialLoad !Text !Choices
 
 tuiWorker :: SelectAppSettings -> BChan Request -> BChan Response -> W ()
-tuiWorker sets@SelectAppSettings {..} reqChan respChan = do
+tuiWorker sets reqChan respChan = do
   -- A variable that holds the filterer thread, so we can reset it asap.
   filtererVar <- newEmptyMVar
   forever $ do
@@ -268,8 +268,8 @@ tuiWorker sets@SelectAppSettings {..} reqChan respChan = do
         mFiltererJob <- tryTakeMVar filtererVar
         mapM_ cancel mFiltererJob
         -- Start a new filterer job
-        filtererJob <- async $ filtererJob sets respChan query
-        putMVar filtererVar filtererJob
+        filtererAsync <- async $ filtererJob sets respChan query
+        putMVar filtererVar filtererAsync
         pure () :: W ()
 
 filtererJob :: SelectAppSettings -> BChan Response -> Text -> W ()
@@ -280,7 +280,7 @@ filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
     runConduit $
       selectAppSettingLoadSource
         .| C.map (\(Value time, Value dir) -> (time, dir))
-        .| CL.chunksOf 10 -- TODO 24
+        .| CL.chunksOf 1024
         .| C.map (makeChoices now query)
         .| C.mapM_
           ( \s -> do
