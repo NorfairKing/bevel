@@ -11,7 +11,6 @@ where
 
 import Bevel.CLI.Choices
 import Bevel.CLI.Env
-import Bevel.CLI.Search
 import Brick.AttrMap
 import Brick.BChan
 import Brick.Main
@@ -79,7 +78,7 @@ tuiApp chan =
       appChooseCursor = showFirstCursor,
       appHandleEvent = handleTuiEvent chan,
       appStartEvent = \s -> do
-        liftIO $ writeBChan chan RequestLoad
+        liftIO $ writeBChan chan $ RequestLoad T.empty -- Empty query
         pure s,
       appAttrMap = buildAttrMap
     }
@@ -102,7 +101,7 @@ buildInitialState SelectAppSettings {..} = do
   stateTotal <- runDB selectAppSettingCount
   let stateChoices = mempty
   let stateSearch = emptyTextCursor
-  let stateOptions = refreshOptions stateChoices stateSearch
+  let stateOptions = Nothing
   let stateDebug = False
   let stateDone = False
   pure State {..}
@@ -137,10 +136,12 @@ drawTui State {..} =
                     . ( if stateDebug
                           then
                             ( \w ->
-                                hBox
-                                  [ w,
-                                    padLeft Max $ str $ printf "%6.0f" $ lookupChoiceScore stateChoices command
-                                  ]
+                                let (fuzziness, score) = lookupChoiceScore stateChoices command
+                                 in hBox
+                                      [ w,
+                                        padLeft Max $ str $ printf "%6.0f" fuzziness,
+                                        padLeft Max $ str $ printf "%6.0f" score
+                                      ]
                             )
                           else id
                       )
@@ -194,17 +195,24 @@ drawTui State {..} =
   ]
 
 handleTuiEvent :: BChan Request -> State -> BrickEvent n Response -> EventM n (Next State)
-handleTuiEvent _ s e =
+handleTuiEvent chan s e =
   case e of
     VtyEvent vtye ->
       let modOptions func = continue $ s {stateOptions = func <$> stateOptions s}
           modMOptions mFunc = modOptions $ \nec -> fromMaybe nec $ mFunc nec
           modSearch func = do
+            -- Update the search bar
             let newSearch = func $ stateSearch s
+            -- Reset the choices
+            let newChoices = mempty
+            let newOptions = Nothing
+            liftIO $ writeBChan chan $ RequestLoad $ rebuildTextCursor newSearch
+            -- Update the state
             continue $
               s
                 { stateSearch = newSearch,
-                  stateOptions = refreshOptions (stateChoices s) newSearch
+                  stateChoices = newChoices,
+                  stateOptions = newOptions
                 }
           modMSearch mFunc = modSearch $ \tc -> fromMaybe tc $ mFunc tc
        in case vtye of
@@ -220,13 +228,17 @@ handleTuiEvent _ s e =
             EvKey KRight [] -> modMSearch textCursorSelectNext
             _ -> continue s
     AppEvent resp -> case resp of
-      ResponsePartialLoad additionalChoices -> do
-        let newChoices = stateChoices s <> additionalChoices
-        continue $
-          s
-            { stateChoices = newChoices,
-              stateOptions = refreshOptions newChoices (stateSearch s)
-            }
+      ResponsePartialLoad queryAtTheTime additionalChoices ->
+        -- Ignore any loading for queries that aren't relevant anymore.
+        if queryAtTheTime == rebuildTextCursor (stateSearch s)
+          then do
+            let newChoices = stateChoices s <> additionalChoices
+            continue $
+              s
+                { stateChoices = newChoices,
+                  stateOptions = refreshOptions newChoices
+                }
+          else continue s
     _ -> continue s
 
 data WorkerEnv = WorkerEnv
@@ -235,38 +247,39 @@ data WorkerEnv = WorkerEnv
 
 type W = ReaderT WorkerEnv IO
 
-data Request = RequestLoad
+data Request
+  = -- | Request a reload with the current query
+    RequestLoad !Text
 
-data Response = ResponsePartialLoad !Choices
+data Response
+  = -- | A bunch of choices that were loaded for the given query
+    ResponsePartialLoad !Text !Choices
 
 tuiWorker :: SelectAppSettings -> BChan Request -> BChan Response -> W ()
 tuiWorker SelectAppSettings {..} reqChan respChan = forever $
   runResourceT $ do
     req <- liftIO $ readBChan reqChan
     case req of
-      RequestLoad -> do
+      RequestLoad query -> do
         now <- liftIO getCurrentTime
         pool <- asks workerEnvConnectionPool
         flip runSqlPool pool $
           runConduit $
             selectAppSettingLoadSource
               .| C.map (\(Value time, Value dir) -> (time, dir))
-              .| CL.chunksOf 1024
-              .| C.map (makeChoices now)
+              .| CL.chunksOf 10 -- TODO 24
+              .| C.map (makeChoices now query)
               .| C.mapM_
                 ( \s ->
                     liftIO $
-                      writeBChan respChan $ ResponsePartialLoad s
+                      writeBChan respChan $ ResponsePartialLoad query s
                 )
 
-refreshOptions :: Choices -> TextCursor -> Maybe (NonEmptyCursor Text)
-refreshOptions cs search =
-  let query = rebuildTextCursor search
-      newOptions =
-        map (snd . fst)
-          . sortOn (\((fuzziness, _), score) -> Ord.Down (fuzziness, score))
-          . filter ((> 0) . fst . fst)
-          . map (\(command, score) -> ((fuzzySearch query command, command), score))
-          . sortOn (Ord.Down . snd)
+refreshOptions :: Choices -> Maybe (NonEmptyCursor Text)
+refreshOptions cs =
+  let newOptions =
+        map fst
+          . sortOn (\(_, (fuzziness, score)) -> Ord.Down (fuzziness, score))
+          . filter (\(_, (fuzziness, _)) -> fuzziness > 0)
           $ M.toList $ choicesMap cs
    in makeNonEmptyCursor <$> NE.nonEmpty newOptions

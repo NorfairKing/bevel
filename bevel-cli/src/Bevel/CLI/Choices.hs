@@ -6,6 +6,7 @@
 module Bevel.CLI.Choices where
 
 import Bevel.CLI.Score
+import Bevel.CLI.Search
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe
@@ -15,25 +16,29 @@ import Data.Word
 
 data Choices = Choices
   { choicesTotal :: !Word64,
-    choicesMap :: !(Map Text Double)
+    choicesMap :: !(Map Text (Double, Double)) -- Fuzziness & score
   }
   deriving (Show)
 
-makeChoices :: UTCTime -> [(Word64, Text)] -> Choices
-makeChoices now cs =
+makeChoices :: UTCTime -> Text -> [(Word64, Text)] -> Choices
+makeChoices now query cs =
   Choices
     { choicesTotal = fromIntegral $ length cs,
-      choicesMap = scoreMap now cs
+      choicesMap = M.mapWithKey (\option score -> (fuzzySearch query option, score)) (scoreMap now cs)
     }
 
-lookupChoiceScore :: Choices -> Text -> Double
-lookupChoiceScore Choices {..} a = fromMaybe 0 $ M.lookup a choicesMap
+lookupChoiceScore :: Choices -> Text -> (Double, Double)
+lookupChoiceScore Choices {..} a = fromMaybe (0, 0) $ M.lookup a choicesMap
 
 instance Semigroup Choices where
   (<>) c1 c2 =
     Choices
       { choicesTotal = choicesTotal c1 + choicesTotal c2,
-        choicesMap = M.unionWith (+) (choicesMap c1) (choicesMap c2)
+        choicesMap =
+          M.unionWith
+            (\(f1, s1) (_, s2) -> (f1, s1 + s2)) -- Combine score but not fuzziness
+            (choicesMap c1)
+            (choicesMap c2)
       }
 
 instance Monoid Choices where
