@@ -13,7 +13,7 @@ spec =
       forAllValid $ \now ->
         forAllValid $ \time ->
           let score = scoreFor now time
-           in score >= 0
+           in score >= Score 0
     it "gives a higher score to more recent times" $
       forAllValid $ \now ->
         forAll (genValid `suchThat` (< now)) $ \time1 ->
