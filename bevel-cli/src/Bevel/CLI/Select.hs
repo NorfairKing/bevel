@@ -13,6 +13,7 @@ where
 import Bevel.CLI.Choices
 import Bevel.CLI.Env
 import Bevel.CLI.Score
+import Bevel.CLI.Search
 import Brick.AttrMap
 import Brick.BChan
 import Brick.Main
@@ -141,7 +142,7 @@ drawTui State {..} =
                                 let (fuzziness, score) = lookupChoice stateChoices command
                                  in hBox
                                       [ w,
-                                        padLeft Max $ str $ printf "%6.0f" fuzziness,
+                                        padLeft Max $ str $ printf "%6.0f" $ unFuzziness fuzziness,
                                         padLeft Max $ str $ printf "%6.0f" $ unScore score
                                       ]
                             )

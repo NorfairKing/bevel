@@ -13,11 +13,11 @@ spec = do
   describe "fuzzySearch" $ do
     it "matches everything using the empty text" $
       forAllValid $ \t ->
-        fuzzySearch "" t `shouldSatisfy` (>= 0)
+        fuzzySearch "" t `shouldSatisfy` (>= Fuzziness 0)
 
     it "matches exact matches" $
       forAllValid $ \t ->
-        fuzzySearch t t `shouldSatisfy` (>= 0)
+        fuzzySearch t t `shouldSatisfy` (>= Fuzziness 0)
 
     it "matches exact matches more than any other match" $
       forAllValid $ \t ->
@@ -27,32 +27,32 @@ spec = do
     it "matches prefixes" $
       forAllValid $ \t1 ->
         forAllValid $ \t2 ->
-          fuzzySearch t1 (t1 <> t2) `shouldSatisfy` (>= 0)
+          fuzzySearch t1 (t1 <> t2) `shouldSatisfy` (>= Fuzziness 0)
 
     it "matches suffixes" $
       forAllValid $ \t1 ->
         forAllValid $ \t2 ->
-          fuzzySearch t2 (t1 <> t2) `shouldSatisfy` (>= 0)
+          fuzzySearch t2 (t1 <> t2) `shouldSatisfy` (>= Fuzziness 0)
 
     it "matches infixes" $
       forAllValid $ \t1 ->
         forAllValid $ \t2 ->
           forAllValid $ \t3 ->
-            fuzzySearch t2 (t1 <> t2 <> t3) `shouldSatisfy` (>= 0)
+            fuzzySearch t2 (t1 <> t2 <> t3) `shouldSatisfy` (>= Fuzziness 0)
 
     it "matches infixes with something inbetween" $
       forAllValid $ \t1 ->
         forAllValid $ \t2 ->
           forAllValid $ \t3 ->
             forAllValid $ \t4 ->
-              fuzzySearch t2 (t1 <> T.take 2 t2 <> t3 <> T.drop 2 t2 <> t4) `shouldSatisfy` (>= 0)
+              fuzzySearch t2 (t1 <> T.take 2 t2 <> t3 <> T.drop 2 t2 <> t4) `shouldSatisfy` (>= Fuzziness 0)
 
     it "does not care about cases" $ do
-      fuzzySearch "abc" "ABC" `shouldSatisfy` (>= 0)
+      fuzzySearch "abc" "ABC" `shouldSatisfy` (>= Fuzziness 0)
 
     it "does not match these examples" $ do
-      fuzzySearch "abc" "def" `shouldSatisfy` (<= 0)
-      fuzzySearch "abcdef" "ghijkl" `shouldSatisfy` (<= 0)
+      fuzzySearch "abc" "def" `shouldSatisfy` (<= Fuzziness 0)
+      fuzzySearch "abcdef" "ghijkl" `shouldSatisfy` (<= Fuzziness 0)
 
     it "matches this longer match more" $ do
       fuzzySearch "abc" "bcd" `shouldSatisfy` (>= fuzzySearch "abc" "cde")

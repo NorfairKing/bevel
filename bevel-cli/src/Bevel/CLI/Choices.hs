@@ -16,7 +16,7 @@ import Data.Word
 
 data Choices = Choices
   { choicesTotal :: !Word64,
-    choicesMap :: !(Map Text (Double, Score)) -- Fuzziness & score
+    choicesMap :: !(Map Text (Fuzziness, Score))
   }
   deriving (Show)
 
@@ -29,13 +29,15 @@ makeChoices now query cs =
           mapMaybe
             ( \(time, option) ->
                 let fuzziness = fuzzySearch query option
-                 in if fuzziness > 0 then Just (time, option, fuzziness) else Nothing
+                 in if fuzziness > Fuzziness 0
+                      then Just (time, option, fuzziness)
+                      else Nothing
             )
             cs
     }
 
-lookupChoice :: Choices -> Text -> (Double, Score)
-lookupChoice Choices {..} a = fromMaybe (0, mempty) $ M.lookup a choicesMap
+lookupChoice :: Choices -> Text -> (Fuzziness, Score)
+lookupChoice Choices {..} a = fromMaybe (Fuzziness 0, mempty) $ M.lookup a choicesMap
 
 instance Semigroup Choices where
   (<>) c1 c2 =
