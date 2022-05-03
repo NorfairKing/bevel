@@ -1,0 +1,11 @@
+version: 2.0.0
+value:
+- entry: Bevel
+  forest:
+  - See if we have to use something other than appendful for syncing
+  - Do the filtering in a request, so it doesn't take ages on many long messages while
+    making the UI unresponsive
+  - Only sync commands that are finished or old
+  - Consider exit code zero more important
+  - show multi-line commands
+  - Optimise for "maximum 20 options" and rebuild
