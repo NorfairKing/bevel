@@ -134,71 +134,66 @@ unloadedAttr = "unloaded"
 
 drawTui :: State -> [Widget ResourceName]
 drawTui State {..} =
-  [ let maxChoices = 25
-     in case stateOptions of
-          Nothing -> emptyWidget
-          Just dirs ->
-            let goCommand selected command =
-                  vLimit 1
-                    . ( if stateDebug
-                          then
-                            ( \w ->
-                                let (fuzziness, score) = lookupChoice stateChoices command
+  [ case stateOptions of
+      Nothing -> emptyWidget
+      Just dirs ->
+        let goCommand selected command =
+              ( if stateDebug
+                  then
+                    ( \w ->
+                        let (fuzziness, score) = lookupChoice stateChoices command
+                         in hBox
+                              [ w,
+                                padLeft Max $ str $ printf "%6.0f" $ unFuzziness fuzziness,
+                                padLeft Max $ str $ printf "%6.0f" $ unScore score
+                              ]
+                    )
+                  else id
+              )
+                $ hBox
+                  [ str $
+                      if selected
+                        then "❯ "
+                        else "  ",
+                    txt command
+                  ]
+         in nonEmptyCursorWidget
+              ( \befores current afters ->
+                  padLeftRight 1 $
+                    vBox
+                      [ padTop Max
+                          . viewport OptionsViewport Vertical
+                          . vBox
+                          . reverse
+                          . concat
+                          $ [ map (goCommand False) befores,
+                              [visible $ withAttr selectedAttr $ goCommand True current],
+                              map (goCommand False) afters
+                            ],
+                        vLimit 1 $
+                          hBox
+                            [ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch,
+                              padLeft Max $
+                                let currentProcessed = choicesTotal stateChoices
+                                    totalDigits :: Int
+                                    totalDigits = ceiling (logBase 10 $ fromIntegral stateTotal :: Double)
+                                    formatStr :: String
+                                    formatStr = "%" <> show totalDigits <> "d"
                                  in hBox
-                                      [ w,
-                                        padLeft Max $ str $ printf "%6.0f" $ unFuzziness fuzziness,
-                                        padLeft Max $ str $ printf "%6.0f" $ unScore score
+                                      [ withAttr
+                                          ( if currentProcessed < stateTotal
+                                              then unloadedAttr
+                                              else loadedAttr
+                                          )
+                                          . str
+                                          $ printf formatStr currentProcessed,
+                                        str " / ",
+                                        withAttr loadedAttr $ str $ printf formatStr stateTotal
                                       ]
-                            )
-                          else id
-                      )
-                    $ hBox
-                      [ str $
-                          if selected
-                            then "❯ "
-                            else "  ",
-                        txt command
+                            ]
                       ]
-             in nonEmptyCursorWidget
-                  ( \befores current afters ->
-                      padLeftRight 1 $
-                        vBox
-                          [ let afters' = take (maxChoices - length befores - 1) afters
-                                currentChoices = min maxChoices (length befores + 1 + length afters')
-                             in padTop Max
-                                  . vLimit currentChoices
-                                  . viewport OptionsViewport Vertical
-                                  . vBox
-                                  . reverse
-                                  . concat
-                                  $ [ map (goCommand False) befores,
-                                      [visible $ withAttr selectedAttr $ goCommand True current],
-                                      map (goCommand False) afters'
-                                    ],
-                            vLimit 1 $
-                              hBox
-                                [ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch,
-                                  padLeft Max $
-                                    let currentProcessed = choicesTotal stateChoices
-                                        totalDigits :: Int
-                                        totalDigits = ceiling (logBase 10 $ fromIntegral stateTotal :: Double)
-                                        formatStr :: String
-                                        formatStr = "%" <> show totalDigits <> "d"
-                                     in hBox
-                                          [ withAttr
-                                              ( if currentProcessed < stateTotal
-                                                  then unloadedAttr
-                                                  else loadedAttr
-                                              )
-                                              . str
-                                              $ printf formatStr currentProcessed,
-                                            str " / ",
-                                            withAttr loadedAttr $ str $ printf formatStr stateTotal
-                                          ]
-                                ]
-                          ]
-                  )
-                  dirs
+              )
+              dirs
   ]
 
 handleTuiEvent :: BChan Request -> State -> BrickEvent n Response -> EventM n (Next State)
@@ -243,7 +238,7 @@ handleTuiEvent chan s e =
             continue $
               s
                 { stateChoices = newChoices,
-                  stateOptions = refreshOptions newChoices
+                  stateOptions = refreshOptions (stateOptions s) newChoices
                 }
           else continue s
     _ -> continue s
@@ -302,10 +297,19 @@ loadChoices loadSource now query =
     .| CL.chunksOf 1024
     .| C.map (makeChoices now query)
 
-refreshOptions :: Choices -> Maybe (NonEmptyCursor Text)
-refreshOptions cs =
+refreshOptions :: Maybe (NonEmptyCursor Text) -> Choices -> Maybe (NonEmptyCursor Text)
+refreshOptions oldOptions cs =
   let newOptions =
-        map fst
+        take maxOptions
+          . map fst
           . sortOn (\(_, (fuzziness, score)) -> Ord.Down (fuzziness, score))
           $ M.toList $ choicesMap cs
-   in makeNonEmptyCursor <$> NE.nonEmpty newOptions
+   in maybe id (tryToReselect . nonEmptyCursorCurrent) oldOptions
+        . makeNonEmptyCursor
+        <$> NE.nonEmpty newOptions
+
+tryToReselect :: Eq a => a -> NonEmptyCursor a -> NonEmptyCursor a
+tryToReselect oldSelection nec = fromMaybe nec $ nonEmptyCursorSearch (== oldSelection) nec
+
+maxOptions :: Int
+maxOptions = 10
