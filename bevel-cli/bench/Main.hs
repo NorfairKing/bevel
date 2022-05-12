@@ -10,15 +10,17 @@ import Bevel.Client.Data
 import Bevel.Client.Data.Gen ()
 import Conduit
 import Control.Monad
-import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Criterion.Main as Criterion
 import qualified Data.Conduit.Combinators as C
 import Data.GenValidity
 import Data.Text
+import qualified Data.Text as T
 import Data.Time
 import Database.Persist
 import Database.Persist.Sqlite
+import Path
+import Path.IO
 import Test.QuickCheck.Gen
 import Test.QuickCheck.Random
 
@@ -60,7 +62,10 @@ main = do
 
 makeDatabase :: IO ConnectionPool
 makeDatabase = do
-  pool <- runNoLoggingT $ createSqlitePool "bench-database.sqlite3" 1
+  let name = "bench-database.sqlite"
+  dbFile <- resolveFile' name
+  ignoringAbsence $ removeFile dbFile
+  pool <- runNoLoggingT $ createSqlitePool (T.pack (fromAbsFile dbFile)) 1
   _ <- runSqlPool (runMigrationQuiet clientMigration) pool
   pure pool
 
@@ -72,6 +77,7 @@ setupDatabase pool =
     let genCommand :: Gen ClientCommand
         genCommand = do
           command <- genValid
+          -- We benchmark with all commands being on the same host
           let command' =
                 command
                   { clientCommandHost = benchHostname,

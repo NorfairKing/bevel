@@ -151,6 +151,8 @@ benchmark bevel-cli-bench
     , criterion
     , genvalidity
     , monad-logger
+    , path
+    , path-io
     , persistent
     , persistent-sqlite
     , text
