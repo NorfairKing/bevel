@@ -6,6 +6,7 @@
 
 module Bevel.CLI.Select
   ( SelectAppSettings (..),
+    LoadSource,
     selectApp,
   )
 where
@@ -51,8 +52,10 @@ import UnliftIO
 
 data SelectAppSettings = SelectAppSettings
   { selectAppSettingCount :: !(SqlPersistT IO Word64),
-    selectAppSettingLoadSource :: !(ConduitT () (Value Word64, Value Text) (SqlPersistT (ResourceT (ReaderT WorkerEnv IO))) ())
+    selectAppSettingLoadSource :: !LoadSource
   }
+
+type LoadSource = ConduitT () (Value Word64, Value Text) (SqlPersistT (ResourceT (ReaderT WorkerEnv IO))) ()
 
 selectApp :: SelectAppSettings -> C ()
 selectApp settings = do
@@ -280,10 +283,7 @@ filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
   pool <- asks workerEnvConnectionPool
   flip runSqlPool pool $
     runConduit $
-      selectAppSettingLoadSource
-        .| C.map (\(Value time, Value dir) -> (time, dir))
-        .| CL.chunksOf 1024
-        .| C.map (makeChoices now query)
+      loadChoices selectAppSettingLoadSource now query
         .| C.mapM_
           ( \s -> do
               -- Fully evaluate the response first
@@ -291,6 +291,13 @@ filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
               -- Then send it to the UI
               liftIO $ writeBChan respChan load
           )
+
+loadChoices :: LoadSource -> UTCTime -> Text -> ConduitT () Choices (SqlPersistT (ResourceT W)) ()
+loadChoices loadSource now query =
+  loadSource
+    .| C.map (\(Value time, Value dir) -> (time, dir))
+    .| CL.chunksOf 1024
+    .| C.map (makeChoices now query)
 
 refreshOptions :: Choices -> Maybe (NonEmptyCursor Text)
 refreshOptions cs =
