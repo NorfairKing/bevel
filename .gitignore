@@ -3,7 +3,7 @@
 stack.yaml.lock
 .pre-commit-config.yaml
 result*
-*.sqlite3*
+*.sqlite*
 signing-key.json
 *.dat
 .direnv/

@@ -8,6 +8,7 @@ module Bevel.CLI.Select
   ( SelectAppSettings (..),
     LoadSource,
     selectApp,
+    loadChoices,
   )
 where
 
@@ -55,7 +56,7 @@ data SelectAppSettings = SelectAppSettings
     selectAppSettingLoadSource :: !LoadSource
   }
 
-type LoadSource = ConduitT () (Value Word64, Value Text) (SqlPersistT (ResourceT (ReaderT WorkerEnv IO))) ()
+type LoadSource = ConduitT () (Value Word64, Value Text) (SqlPersistT (ResourceT IO)) ()
 
 selectApp :: SelectAppSettings -> C ()
 selectApp settings = do
@@ -281,18 +282,20 @@ filtererJob :: SelectAppSettings -> BChan Response -> Text -> W ()
 filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
   now <- liftIO getCurrentTime
   pool <- asks workerEnvConnectionPool
-  flip runSqlPool pool $
-    runConduit $
-      loadChoices selectAppSettingLoadSource now query
-        .| C.mapM_
-          ( \s -> do
-              -- Fully evaluate the response first
-              let !load = ResponsePartialLoad query s
-              -- Then send it to the UI
-              liftIO $ writeBChan respChan load
-          )
+  liftIO $
+    runResourceT $
+      flip runSqlPool pool $
+        runConduit $
+          loadChoices selectAppSettingLoadSource now query
+            .| C.mapM_
+              ( \s -> do
+                  -- Fully evaluate the response first
+                  let !load = ResponsePartialLoad query s
+                  -- Then send it to the UI
+                  liftIO $ writeBChan respChan load
+              )
 
-loadChoices :: LoadSource -> UTCTime -> Text -> ConduitT () Choices (SqlPersistT (ResourceT W)) ()
+loadChoices :: LoadSource -> UTCTime -> Text -> ConduitT () Choices (SqlPersistT (ResourceT IO)) ()
 loadChoices loadSource now query =
   loadSource
     .| C.map (\(Value time, Value dir) -> (time, dir))

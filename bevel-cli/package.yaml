@@ -72,7 +72,19 @@ benchmarks:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - QuickCheck
+    - bevel-cli
+    - bevel-client-data
+    - bevel-client-data-gen
+    - bevel-data
+    - conduit
     - criterion
+    - genvalidity
+    - monad-logger
+    - persistent
+    - persistent-sqlite
+    - text
+    - time
 
 tests:
   bevel-cli-test:

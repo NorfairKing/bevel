@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeApplications #-}
 
-module Bevel.CLI.Commands.RepeatCommand (repeatCommand) where
+module Bevel.CLI.Commands.RepeatCommand (repeatCommand, repeatCommandLoadSource) where
 
 import Bevel.CLI.Env
 import Bevel.CLI.Select
