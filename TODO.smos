@@ -7,6 +7,5 @@ value:
     making the UI unresponsive
   - Only sync commands that are finished or old
   - Consider exit code zero more important
-  - show multi-line commands
-  - Optimise for "maximum 20 options" and rebuild
-  - directory-local repeating commands
+  - Show multi-line commands
+  - Session ID so we can reproduce sessions

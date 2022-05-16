@@ -43,4 +43,5 @@ bevelCLI = do
     DispatchSync -> runC Exclusive Commands.sync
     DispatchChangeDir -> runC Shared Commands.changeDir
     DispatchRepeat -> runC Shared Commands.repeatCommand
+    DispatchRepeatLocal -> runC Shared Commands.repeatLocalCommand
     DispatchLast -> runC Shared Commands.lastDir

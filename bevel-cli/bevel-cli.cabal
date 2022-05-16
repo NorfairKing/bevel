@@ -28,6 +28,7 @@ library
       Bevel.CLI.Commands.Login
       Bevel.CLI.Commands.Register
       Bevel.CLI.Commands.RepeatCommand
+      Bevel.CLI.Commands.RepeatLocalCommand
       Bevel.CLI.Commands.Sync
       Bevel.CLI.Env
       Bevel.CLI.OptParse
