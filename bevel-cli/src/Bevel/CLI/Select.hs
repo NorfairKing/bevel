@@ -298,18 +298,22 @@ loadChoices loadSource now query =
     .| C.map (makeChoices now query)
 
 refreshOptions :: Maybe (NonEmptyCursor Text) -> Choices -> Maybe (NonEmptyCursor Text)
-refreshOptions oldOptions cs =
+refreshOptions mOldOptions cs = do
   let newOptions =
         take maxOptions
           . map fst
           . sortOn (\(_, (fuzziness, score)) -> Ord.Down (fuzziness, score))
           $ M.toList $ choicesMap cs
-   in maybe id (tryToReselect . nonEmptyCursorCurrent) oldOptions
-        . makeNonEmptyCursor
-        <$> NE.nonEmpty newOptions
-
-tryToReselect :: Eq a => a -> NonEmptyCursor a -> NonEmptyCursor a
-tryToReselect oldSelection nec = fromMaybe nec $ nonEmptyCursorSearch (== oldSelection) nec
+  nec <- NE.nonEmpty newOptions
+  pure $ case mOldOptions of
+    -- If we didn't have any options before, just make a selection.
+    Nothing -> makeNonEmptyCursor nec
+    Just oldOptions -> do
+      -- If we did have options before, try to reuse the same selection
+      case makeNonEmptyCursorWithSelection (nonEmptyCursorSelection oldOptions) nec of
+        Just nec' -> nec'
+        -- If that doesn't work, just start over.
+        Nothing -> makeNonEmptyCursor nec
 
 maxOptions :: Int
 maxOptions = 10
