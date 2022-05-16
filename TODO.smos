@@ -9,3 +9,4 @@ value:
   - Consider exit code zero more important
   - show multi-line commands
   - Optimise for "maximum 20 options" and rebuild
+  - directory-local repeating commands
