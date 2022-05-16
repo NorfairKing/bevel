@@ -31,6 +31,23 @@ function _bevel_repeat {
 zle -N _bevel_repeat_widget _bevel_repeat
 bindkey '^r' _bevel_repeat_widget
 
+function _bevel_repeat_local {
+  zle -I # Invalidate current display
+
+  # See [Note: stdin zle widgets]
+  command=$(bevel repeat-local </dev/tty)
+
+	if [[ -n $command ]] ; then
+		LBUFFER=$command
+	fi
+
+	zle reset-prompt
+}
+
+zle -N _bevel_repeat_local_widget _bevel_repeat_local
+bindkey '^h' _bevel_repeat_local_widget
+
+
 function _bevel_last {
   cd $(bevel last)
 }
