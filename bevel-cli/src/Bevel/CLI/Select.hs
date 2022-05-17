@@ -162,7 +162,6 @@ drawTui State {..} =
                   padLeftRight 1 $
                     vBox
                       [ padTop Max
-                          . viewport OptionsViewport Vertical
                           . vBox
                           . reverse
                           . concat
@@ -316,4 +315,4 @@ refreshOptions mOldOptions cs = do
         Nothing -> makeNonEmptyCursor nec
 
 maxOptions :: Int
-maxOptions = 10
+maxOptions = 25
