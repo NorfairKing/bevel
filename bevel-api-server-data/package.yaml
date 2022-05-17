@@ -12,19 +12,13 @@ library:
   source-dirs: src
   dependencies:
     - aeson
-    - appendful
-    - appendful-persistent
     - autodocodec
     - bevel-data
     - esqueleto
     - password
     - password-instances
-    - path
     - persistent
-    - persistent-sqlite
-    - persistent-template
     - text
-    - time
     - validity
     - validity-persistent
     - validity-text

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.6.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 
@@ -28,20 +28,14 @@ library
       src
   build-depends:
       aeson
-    , appendful
-    , appendful-persistent
     , autodocodec
     , base >=4.7 && <5
     , bevel-data
     , esqueleto
     , password
     , password-instances
-    , path
     , persistent
-    , persistent-sqlite
-    , persistent-template
     , text
-    , time
     , validity
     , validity-persistent
     , validity-text

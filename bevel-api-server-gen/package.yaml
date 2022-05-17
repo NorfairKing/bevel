@@ -12,28 +12,22 @@ library:
   source-dirs: src
   dependencies:
   - QuickCheck
-  - bytestring
   - cookie
   - genvalidity-sydtest
   - sydtest
   - http-client
   - http-types
   - monad-logger
-  - persistent
   - persistent-sqlite
   - servant
-  - servant-auth-client
   - servant-auth-server
-  - servant-client
   - bevel-api
   - bevel-api-gen
   - bevel-api-gen
   - bevel-api-server
   - bevel-client
-  - bevel-data
   - bevel-data-gen
   - bevel-api-server-data
-  - bevel-api-server-data-gen
   - text
   - warp
 
@@ -48,28 +42,22 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - QuickCheck
-    - bytestring
     - cookie
     - genvalidity-sydtest
     - sydtest
     - http-client
     - http-types
     - monad-logger
-    - persistent
     - persistent-sqlite
     - servant
-    - servant-auth-client
     - servant-auth-server
-    - servant-client
     - bevel-api
     - bevel-api-gen
     - bevel-api-gen
     - bevel-api-server
     - bevel-api-server-gen
     - bevel-client
-    - bevel-data
     - bevel-data-gen
     - bevel-api-server-data
-    - bevel-api-server-data-gen
     - text
     - warp

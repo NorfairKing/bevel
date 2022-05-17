@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.5.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 
@@ -29,25 +29,8 @@ library
       aeson
     , autodocodec
     , base >=4.7 && <5
-    , base16
-    , bytestring
-    , containers
-    , cryptohash-sha256
-    , directory
-    , filepath
-    , path
-    , path-io
-    , persistent
-    , random-shuffle
-    , safe
     , text
-    , time
     , validity
-    , validity-bytestring
-    , validity-containers
     , validity-path
     , validity-text
-    , validity-time
-    , yaml
-    , yamlparse-applicative
   default-language: Haskell2010

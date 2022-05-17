@@ -12,11 +12,7 @@ library:
   source-dirs: src
   dependencies:
     - servant
-    - servant-auth
     - servant-auth-client
     - servant-client
     - servant-client-core
-    - text
-    - validity
-    - validity-text
     - bevel-api

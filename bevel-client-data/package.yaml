@@ -13,12 +13,8 @@ library:
   dependencies:
   - bevel-api-server-data
   - bevel-data
-  - path
   - persistent
+  - persistent-sqlite
+  - text
   - validity
   - validity-text
-  - persistent-sqlite
-  - persistent-template
-  - safe
-  - text
-  - time

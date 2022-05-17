@@ -16,7 +16,6 @@ library:
     - bevel-api-server-data
     - bevel-client-data
     - bevel-data
-    - jose
     - persistent
     - servant
     - servant-auth

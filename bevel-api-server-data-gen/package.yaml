@@ -19,7 +19,6 @@ library:
     - genvalidity-persistent
     - genvalidity-text
     - password
-    - text
 
 tests:
   bevel-api-server-data-test:

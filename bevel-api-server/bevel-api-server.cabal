@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.5.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 
@@ -32,30 +32,24 @@ library
   hs-source-dirs:
       src
   build-depends:
-      aeson
-    , appendful
-    , appendful-persistent
+      appendful-persistent
     , base >=4.7 && <5
     , bevel-api
     , bevel-api-server-data
     , bevel-data
-    , bytestring
     , envparse
     , jose
     , monad-logger
     , mtl
     , optparse-applicative
     , password
-    , password-instances
     , path
     , path-io
     , persistent
     , persistent-sqlite
-    , persistent-template
     , servant-auth-server
     , servant-server
     , text
-    , time
     , wai
     , warp
     , yaml

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.5.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 
@@ -31,22 +31,16 @@ library
     , bevel-api-gen
     , bevel-api-server
     , bevel-api-server-data
-    , bevel-api-server-data-gen
     , bevel-client
-    , bevel-data
     , bevel-data-gen
-    , bytestring
     , cookie
     , genvalidity-sydtest
     , http-client
     , http-types
     , monad-logger
-    , persistent
     , persistent-sqlite
     , servant
-    , servant-auth-client
     , servant-auth-server
-    , servant-client
     , sydtest
     , text
     , warp
@@ -71,23 +65,17 @@ test-suite bevel-api-server-tests
     , bevel-api-gen
     , bevel-api-server
     , bevel-api-server-data
-    , bevel-api-server-data-gen
     , bevel-api-server-gen
     , bevel-client
-    , bevel-data
     , bevel-data-gen
-    , bytestring
     , cookie
     , genvalidity-sydtest
     , http-client
     , http-types
     , monad-logger
-    , persistent
     , persistent-sqlite
     , servant
-    , servant-auth-client
     , servant-auth-server
-    , servant-client
     , sydtest
     , text
     , warp

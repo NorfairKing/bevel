@@ -41,7 +41,6 @@ library
       src
   build-depends:
       aeson-pretty
-    , appendful
     , appendful-persistent
     , async
     , autodocodec
@@ -72,8 +71,6 @@ library
     , path-io
     , persistent
     , persistent-sqlite
-    , servant
-    , servant-auth-client
     , servant-client
     , text
     , time
@@ -119,7 +116,6 @@ test-suite bevel-cli-test
     , bevel-cli
     , bevel-client-data
     , bevel-client-data-gen
-    , genvalidity
     , genvalidity-sydtest
     , genvalidity-text
     , genvalidity-time

@@ -11,15 +11,11 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
-    - QuickCheck
-    - bytestring
     - bevel-client-data
     - bevel-data-gen
     - genvalidity
     - genvalidity-persistent
     - genvalidity-text
-    - password
-    - text
 
 tests:
   bevel-client-data-test:

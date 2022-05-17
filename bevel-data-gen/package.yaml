@@ -12,13 +12,9 @@ library:
   source-dirs: src
   dependencies:
     - genvalidity
-    - genvalidity-bytestring
-    - genvalidity-containers
     - genvalidity-path
     - genvalidity-text
-    - genvalidity-time
     - bevel-data
-    - text
 
 tests:
   bevel-data-test:
@@ -32,10 +28,6 @@ tests:
     dependencies:
     - genvalidity-sydtest
     - genvalidity-sydtest-aeson
-    - genvalidity-sydtest-persistent
     - sydtest
-    - path
-    - path-io
     - bevel-data
     - bevel-data-gen
-    - yamlparse-applicative

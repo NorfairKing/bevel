@@ -16,7 +16,6 @@ library:
     - genvalidity-text
     - bevel-api
     - bevel-api-server-data-gen
-    - text
 
 tests:
   bevel-api-test:

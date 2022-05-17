@@ -11,29 +11,23 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
-    - aeson
-    - appendful
     - appendful-persistent
     - bevel-api
     - bevel-api-server-data
     - bevel-data
-    - bytestring
     - envparse
     - jose
     - monad-logger
     - mtl
     - optparse-applicative
     - password
-    - password-instances
     - path
     - path-io
     - persistent
     - persistent-sqlite
-    - persistent-template
     - servant-auth-server
     - servant-server
     - text
-    - time
     - wai
     - warp
     - yaml
