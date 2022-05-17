@@ -9,6 +9,8 @@ where
 import Bevel.CLI.Env
 import Bevel.CLI.Select
 import Bevel.Client.Data
+import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Word
 import Database.Esqueleto.Experimental
 import Path
@@ -16,21 +18,21 @@ import Path.IO
 
 repeatLocalCommand :: C ()
 repeatLocalCommand = do
-  here <- getCurrentDir
+  here <- T.pack . fromAbsDir <$> getCurrentDir
   selectApp
     SelectAppSettings
       { selectAppSettingCount = repeatLocalCommandCount here,
         selectAppSettingLoadSource = repeatLocalCommandLoadSource here
       }
 
-repeatLocalCommandCount :: Path Abs Dir -> SqlPersistT IO Word64
+repeatLocalCommandCount :: Text -> SqlPersistT IO Word64
 repeatLocalCommandCount here = fmap (maybe 0 unValue) $
   selectOne $ do
     clientCommand <- from $ table @ClientCommand
     repeatLocalWhereClauses here clientCommand
     pure countRows
 
-repeatLocalCommandLoadSource :: Path Abs Dir -> LoadSource
+repeatLocalCommandLoadSource :: Text -> LoadSource
 repeatLocalCommandLoadSource here = selectSource $ do
   clientCommand <- from $ table @ClientCommand
   repeatLocalWhereClauses here clientCommand
@@ -38,6 +40,6 @@ repeatLocalCommandLoadSource here = selectSource $ do
   orderBy [desc $ clientCommand ^. ClientCommandBegin]
   pure (clientCommand ^. ClientCommandBegin, clientCommand ^. ClientCommandText)
 
-repeatLocalWhereClauses :: Path Abs Dir -> SqlExpr (Entity ClientCommand) -> SqlQuery ()
+repeatLocalWhereClauses :: Text -> SqlExpr (Entity ClientCommand) -> SqlQuery ()
 repeatLocalWhereClauses here clientCommand =
   where_ $ clientCommand ^. ClientCommandWorkdir ==. val here

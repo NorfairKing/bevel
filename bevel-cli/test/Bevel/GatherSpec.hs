@@ -45,7 +45,7 @@ spec = tempDirSpec "bevel" $ do
             cid `shouldBe` toSqlKey 1
             let ClientCommand _ _ _ _ _ _ _ _ = undefined
             clientCommandText `shouldBe` text
-            clientCommandWorkdir `shouldBe` tdir
+            parseAbsDir (T.unpack clientCommandWorkdir) `shouldBe` Just tdir
             clientCommandExit `shouldBe` Nothing
             clientCommandServerId `shouldBe` Nothing
           _ -> expectationFailure "expected a single command"
@@ -108,7 +108,7 @@ spec = tempDirSpec "bevel" $ do
                       clientCommandText `shouldBe` text
                       clientCommandBegin `shouldBe` begin
                       clientCommandEnd `shouldSatisfy` isJust
-                      clientCommandWorkdir `shouldBe` tdir
+                      parseAbsDir (T.unpack clientCommandWorkdir) `shouldBe` Just tdir
                       clientCommandUser `shouldBe` user
                       clientCommandHost `shouldBe` host
                       clientCommandExit `shouldBe` Just exitCode
@@ -154,7 +154,7 @@ spec = tempDirSpec "bevel" $ do
                         clientCommandText `shouldBe` text
                         clientCommandBegin `shouldBe` begin
                         clientCommandEnd `shouldSatisfy` isJust
-                        clientCommandWorkdir `shouldBe` tdir
+                        parseAbsDir (T.unpack clientCommandWorkdir) `shouldBe` Just tdir
                         clientCommandUser `shouldBe` user
                         clientCommandHost `shouldBe` host
                         clientCommandExit `shouldBe` Just exitCode

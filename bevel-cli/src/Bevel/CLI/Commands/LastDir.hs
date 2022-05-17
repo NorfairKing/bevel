@@ -3,8 +3,8 @@
 module Bevel.CLI.Commands.LastDir where
 
 import Bevel.CLI.Commands.Import
+import qualified Data.Text as T
 import Database.Esqueleto.Experimental
-import Path
 
 lastDir :: C ()
 lastDir = do
@@ -15,4 +15,4 @@ lastDir = do
       orderBy [desc $ clientCommand ^. ClientCommandBegin]
       pure $ clientCommand ^. ClientCommandWorkdir
   forM_ mLastDir $ \(Value dir) ->
-    liftIO $ putStrLn $ fromAbsDir dir
+    liftIO $ putStrLn $ T.unpack dir

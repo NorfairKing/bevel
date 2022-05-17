@@ -17,20 +17,16 @@ module Bevel.API.Server.Data.DB where
 
 import Bevel.API.Server.Data.Username
 import Bevel.Data
-import Control.Arrow (left)
 import Data.Int
 import Data.Password.Bcrypt
 import Data.Password.Instances ()
-import Data.Proxy
 import Data.Text (Text)
-import qualified Data.Text as T
 import Data.Validity
 import Data.Validity.Persist ()
 import Data.Word
 import Database.Esqueleto.Experimental as E
 import Database.Persist.TH
 import GHC.Generics (Generic)
-import Path
 
 share
   [mkPersist sqlSettings, mkMigrate "serverMigration"]
@@ -51,7 +47,7 @@ ServerCommand sql=command
   text Text
   begin Word64
   end Word64 Maybe default=NULL
-  workdir (Path Abs Dir)
+  workdir Text
   user Text
   host Text
   exit Int8 Maybe default=NULL
@@ -75,17 +71,6 @@ instance Validity (PasswordHash a) where
 instance Validity User
 
 instance Validity ServerCommand
-
-instance PersistField (Path Abs Dir) where
-  toPersistValue = toPersistValue . fromAbsDir
-  fromPersistValue pv = do
-    s <- fromPersistValue pv
-    left (T.pack . show) $ parseAbsDir s
-
-instance PersistFieldSql (Path Abs Dir) where
-  sqlType Proxy = sqlType (Proxy :: Proxy String)
-
-instance E.SqlString (Path Abs Dir)
 
 serverMakeCommand :: ServerCommand -> Command
 serverMakeCommand ServerCommand {..} = Command {..}

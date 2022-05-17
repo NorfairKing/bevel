@@ -24,7 +24,6 @@ import Data.Word
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import GHC.Generics (Generic)
-import Path
 
 share
   [mkPersist sqlSettings, mkMigrate "clientMigration"]
@@ -34,7 +33,7 @@ ClientCommand sql=command
   text Text
   begin Word64
   end Word64 Maybe default=NULL
-  workdir (Path Abs Dir)
+  workdir Text
   user Text
   host Text
   exit Int8 Maybe default=NULL

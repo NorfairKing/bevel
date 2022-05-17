@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 
 module Main where
 
@@ -117,5 +116,5 @@ benchHostname = "bench-host"
 benchUsername :: Text
 benchUsername = "bench-user"
 
-benchWorkdir :: Path Abs Dir
-benchWorkdir = [absdir|/home/user|]
+benchWorkdir :: Text
+benchWorkdir = "/home/user"

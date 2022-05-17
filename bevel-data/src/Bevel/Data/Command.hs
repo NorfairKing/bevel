@@ -5,7 +5,6 @@
 module Bevel.Data.Command where
 
 import Autodocodec
-import Control.Arrow (left)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Int
 import Data.Text (Text)
@@ -14,13 +13,12 @@ import Data.Validity.Path ()
 import Data.Validity.Text ()
 import Data.Word
 import GHC.Generics (Generic)
-import Path
 
 data Command = Command
   { commandText :: !Text,
     commandBegin :: !Word64,
     commandEnd :: !(Maybe Word64),
-    commandWorkdir :: !(Path Abs Dir),
+    commandWorkdir :: !Text,
     commandUser :: !Text,
     commandHost :: !Text,
     commandExit :: !(Maybe Int8)
@@ -37,7 +35,7 @@ instance HasCodec Command where
         <$> requiredField "text" "the command itself" .= commandText
         <*> requiredField "begin" "start of execution (nanoseconds since 1970)" .= commandBegin
         <*> requiredField "end" "end of execution (nanoseconds since 1970)" .= commandEnd
-        <*> requiredFieldWith "workdir" (bimapCodec (left show . parseAbsDir) fromAbsDir codec) "working directory" .= commandWorkdir
+        <*> requiredField "workdir" "working directory" .= commandWorkdir
         <*> requiredField "user" "user that ran the command" .= commandUser
         <*> requiredField "host" "host on which the command was run" .= commandHost
         <*> requiredField "exit" "exit code" .= commandExit
