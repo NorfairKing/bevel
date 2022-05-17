@@ -34,6 +34,7 @@ bevelCLI = do
                         { envClientEnv = mCenv,
                           envUsername = settingUsername,
                           envPassword = settingPassword,
+                          envMaxOptions = settingMaxOptions,
                           envConnectionPool = pool
                         }
                 runReaderT func env

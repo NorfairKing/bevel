@@ -14,6 +14,7 @@ import Data.List
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import Data.Word
 import Database.Persist.Sql
 import System.Exit
 import Web.Cookie
@@ -24,6 +25,7 @@ data Env = Env
   { envClientEnv :: !(Maybe ClientEnv),
     envUsername :: !(Maybe Username),
     envPassword :: !(Maybe Text),
+    envMaxOptions :: !Word8,
     envConnectionPool :: !ConnectionPool
   }
 

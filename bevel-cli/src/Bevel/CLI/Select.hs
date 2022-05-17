@@ -62,12 +62,13 @@ selectApp :: SelectAppSettings -> C ()
 selectApp settings = do
   initialState <- buildInitialState settings
   workerEnvConnectionPool <- asks envConnectionPool
+  maxOptions <- asks envMaxOptions
   liftIO $ do
     reqChan <- newBChan 1000
     respChan <- newBChan 1000
     let vtyBuilder = mkVty $ defaultConfig {outputFd = Just stdError}
     firstVty <- vtyBuilder
-    let runTui = customMain firstVty vtyBuilder (Just respChan) (tuiApp reqChan) initialState
+    let runTui = customMain firstVty vtyBuilder (Just respChan) (tuiApp maxOptions reqChan) initialState
     let workerEnv = WorkerEnv {..}
     let runWorker = runReaderT (tuiWorker settings reqChan respChan) workerEnv
     -- Left always works because the worker runs forever
@@ -78,12 +79,12 @@ selectApp settings = do
           putStrLn $ T.unpack $ nonEmptyCursorCurrent nec
       else exitFailure
 
-tuiApp :: BChan Request -> App State Response ResourceName
-tuiApp chan =
+tuiApp :: Word8 -> BChan Request -> App State Response ResourceName
+tuiApp maxOptions chan =
   App
     { appDraw = drawTui,
       appChooseCursor = showFirstCursor,
-      appHandleEvent = handleTuiEvent chan,
+      appHandleEvent = handleTuiEvent maxOptions chan,
       appStartEvent = \s -> do
         liftIO $ writeBChan chan $ RequestLoad T.empty -- Empty query
         pure s,
@@ -195,8 +196,8 @@ drawTui State {..} =
               dirs
   ]
 
-handleTuiEvent :: BChan Request -> State -> BrickEvent n Response -> EventM n (Next State)
-handleTuiEvent chan s e =
+handleTuiEvent :: Word8 -> BChan Request -> State -> BrickEvent n Response -> EventM n (Next State)
+handleTuiEvent maxOptions chan s e =
   case e of
     VtyEvent vtye ->
       let modOptions func = continue $ s {stateOptions = func <$> stateOptions s}
@@ -237,7 +238,7 @@ handleTuiEvent chan s e =
             continue $
               s
                 { stateChoices = newChoices,
-                  stateOptions = refreshOptions (stateOptions s) newChoices
+                  stateOptions = refreshOptions maxOptions (stateOptions s) newChoices
                 }
           else continue s
     _ -> continue s
@@ -296,10 +297,10 @@ loadChoices loadSource now query =
     .| CL.chunksOf 1024
     .| C.map (makeChoices now query)
 
-refreshOptions :: Maybe (NonEmptyCursor Text) -> Choices -> Maybe (NonEmptyCursor Text)
-refreshOptions mOldOptions cs = do
+refreshOptions :: Word8 -> Maybe (NonEmptyCursor Text) -> Choices -> Maybe (NonEmptyCursor Text)
+refreshOptions maxOptions mOldOptions cs = do
   let newOptions =
-        take maxOptions
+        take ((fromIntegral :: Word8 -> Int) maxOptions)
           . map fst
           . sortOn (\(_, (fuzziness, score)) -> Ord.Down (fuzziness, score))
           $ M.toList $ choicesMap cs
@@ -313,6 +314,3 @@ refreshOptions mOldOptions cs = do
         Just nec' -> nec'
         -- If that doesn't work, just start over.
         Nothing -> makeNonEmptyCursor nec
-
-maxOptions :: Int
-maxOptions = 25
