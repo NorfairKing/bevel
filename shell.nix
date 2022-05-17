@@ -5,7 +5,7 @@
 pkgs.haskell.lib.buildStackProject {
   name = "bevel-nix-shell";
   buildInputs = with pkgs; [
-    (import sources.niv { inherit pkgs; }).niv
+    (import sources.niv { }).niv
     bevel-gather
     haskellPackages.autoexporter
     killall

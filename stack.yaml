@@ -14,11 +14,17 @@ packages:
 - bevel-data-gen
 extra-deps:
 - github: NorfairKing/autodocodec
-  commit: d269215812a8641f143ee96163b980db47a55c2c
+  commit: 38bd4865ff2dd40d342141b7fde9319f835d98c6
   subdirs:
   - autodocodec
   - autodocodec-schema
   - autodocodec-yaml
+- github: NorfairKing/safe-coloured-text
+  commit: 71c5940a3b84eeb498304d8e584e7638f875d51b
+  subdirs:
+  - safe-coloured-text
+  - safe-coloured-text-layout
+  - safe-coloured-text-terminfo
 - github: NorfairKing/sydtest
   commit: a446095558bc9f67bc3b8ca2e9ce230150c049ff
   subdirs:
@@ -34,13 +40,13 @@ extra-deps:
   - sydtest-wai
   - sydtest-yesod
 - github: NorfairKing/appendful
-  commit: c0d9116d70b9aaf8374b6f10dd8d17998d498981
+  commit: 2227532f27b8f7d9f53341aca643f1df8381f033
   subdirs:
   - appendful
   - appendful-persistent
   - genvalidity-appendful
 - github: NorfairKing/validity
-  commit: 466bb2f140e62cae0d4fe3770681c3d74e99cf40
+  commit: 160e846cc5de8e92e6758172da341f5d81fe0374
   subdirs:
   - validity
   - validity-aeson
