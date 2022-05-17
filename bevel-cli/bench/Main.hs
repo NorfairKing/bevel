@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Main where
 
 import Bevel.CLI.Choices
 import Bevel.CLI.Commands.ChangeDir (changeDirLoadSource)
 import Bevel.CLI.Commands.RepeatCommand (repeatCommandLoadSource)
+import Bevel.CLI.Commands.RepeatLocalCommand (repeatLocalCommandLoadSource)
 import Bevel.CLI.Select
 import Bevel.Client.Data
 import Bevel.Client.Data.Gen ()
@@ -45,6 +47,20 @@ main = do
               )
         ],
       bgroup
+        "RepeatLocalCommand"
+        [ bench "loadAllChoices" $
+            whnfIO
+              ( runResourceT
+                  ( runSqlPool
+                      ( loadAllChoices
+                          (repeatLocalCommandLoadSource benchWorkdir)
+                          now
+                      )
+                      pool
+                  )
+              )
+        ],
+      bgroup
         "ChangeDir"
         [ bench "loadAllChoices" $
             whnfIO
@@ -77,11 +93,15 @@ setupDatabase pool =
     let genCommand :: Gen ClientCommand
         genCommand = do
           command <- genValid
+          hostname <- frequency [(4, pure benchHostname), (1, genValid)]
+          username <- frequency [(4, pure benchUsername), (1, genValid)]
+          workdir <- frequency [(4, pure benchWorkdir), (1, genValid)]
           -- We benchmark with all commands being on the same host
           let command' =
                 command
-                  { clientCommandHost = benchHostname,
-                    clientCommandUser = benchUsername
+                  { clientCommandHost = hostname,
+                    clientCommandUser = username,
+                    clientCommandWorkdir = workdir
                   }
           pure command'
     let gen = replicateM numberOfCommands genCommand
@@ -96,3 +116,6 @@ benchHostname = "bench-host"
 
 benchUsername :: Text
 benchUsername = "bench-user"
+
+benchWorkdir :: Path Abs Dir
+benchWorkdir = [absdir|/home/user|]
