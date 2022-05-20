@@ -15,10 +15,11 @@ import Data.Word
 import Database.Esqueleto.Experimental
 import Path
 import Path.IO
+import qualified System.FilePath as FP
 
 repeatLocalCommand :: C ()
 repeatLocalCommand = do
-  here <- T.pack . fromAbsDir <$> getCurrentDir
+  here <- T.pack . FP.dropTrailingPathSeparator . fromAbsDir <$> getCurrentDir
   selectApp
     SelectAppSettings
       { selectAppSettingCount = repeatLocalCommandCount here,

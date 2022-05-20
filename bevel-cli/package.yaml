@@ -31,6 +31,7 @@ library:
   - envparse
   - esqueleto
   - filelock
+  - filepath
   - hostname
   - http-client
   - http-client-tls
