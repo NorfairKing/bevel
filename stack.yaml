@@ -1,4 +1,4 @@
-resolver: lts-18.16
+resolver: lts-19.6
 packages:
 - bevel-api
 - bevel-api-gen
@@ -14,19 +14,19 @@ packages:
 - bevel-data-gen
 extra-deps:
 - github: NorfairKing/autodocodec
-  commit: 38bd4865ff2dd40d342141b7fde9319f835d98c6
+  commit: 2b05f3a567511ba35d3c815436b267e4bfa2711d
   subdirs:
   - autodocodec
   - autodocodec-schema
   - autodocodec-yaml
 - github: NorfairKing/safe-coloured-text
-  commit: 71c5940a3b84eeb498304d8e584e7638f875d51b
+  commit: d1a727998fa58ecf38022906b552d33e57e3f308
   subdirs:
   - safe-coloured-text
   - safe-coloured-text-layout
   - safe-coloured-text-terminfo
 - github: NorfairKing/sydtest
-  commit: a446095558bc9f67bc3b8ca2e9ce230150c049ff
+  commit: cf1bb414f0c0ce7bbf64659da94b8cd890c9e536
   subdirs:
   - sydtest
   - sydtest-aeson
@@ -40,13 +40,13 @@ extra-deps:
   - sydtest-wai
   - sydtest-yesod
 - github: NorfairKing/appendful
-  commit: 2227532f27b8f7d9f53341aca643f1df8381f033
+  commit: fcaea3b910bdab241a8c47d2c56b3681df1e32f7
   subdirs:
   - appendful
   - appendful-persistent
   - genvalidity-appendful
 - github: NorfairKing/validity
-  commit: 160e846cc5de8e92e6758172da341f5d81fe0374
+  commit: d88be911a7e2a84f6c089e9269aaed8d10a74acd
   subdirs:
   - validity
   - validity-aeson

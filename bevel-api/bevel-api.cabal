@@ -28,6 +28,7 @@ library
   build-depends:
       aeson
     , appendful
+    , autodocodec
     , base >=4.7 && <5
     , bevel-api-server-data
     , bevel-client-data

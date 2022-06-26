@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -9,10 +10,11 @@
 
 module Bevel.API.Data where
 
+import Autodocodec
 import Bevel.API.Server.Data
 import Bevel.Client.Data
 import Bevel.Data
-import Data.Aeson
+import Data.Aeson (FromJSON, FromJSONKey (..), ToJSON, ToJSONKey (..))
 import qualified Data.Appendful as Appendful
 import Data.Functor.Contravariant
 import Data.Text (Text)
@@ -20,7 +22,7 @@ import qualified Data.Text as T
 import Data.Validity
 import Data.Validity.Text ()
 import Database.Persist
-import Database.Persist.Sql
+import Database.Persist.Sql as Sql
 import Servant.API.Generic
 import Servant.Auth.Server
 
@@ -28,7 +30,8 @@ data RegistrationForm = RegistrationForm
   { registrationFormUsername :: Username,
     registrationFormPassword :: Text
   }
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec RegistrationForm)
 
 instance Validity RegistrationForm where
   validate rf@RegistrationForm {..} =
@@ -37,36 +40,28 @@ instance Validity RegistrationForm where
         declare "The password is nonempty" $ not $ T.null registrationFormPassword
       ]
 
-instance ToJSON RegistrationForm where
-  toJSON RegistrationForm {..} =
-    object
-      [ "name" .= registrationFormUsername,
-        "password" .= registrationFormPassword
-      ]
-
-instance FromJSON RegistrationForm where
-  parseJSON =
-    withObject "RegistrationForm" $ \o ->
-      RegistrationForm <$> o .: "name" <*> o .: "password"
+instance HasCodec RegistrationForm where
+  codec =
+    object "RegistrationForm" $
+      RegistrationForm
+        <$> requiredField "username" "user name" .= registrationFormUsername
+        <*> requiredField "password" "password" .= registrationFormPassword
 
 data LoginForm = LoginForm
   { loginFormUsername :: Username,
     loginFormPassword :: Text
   }
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec LoginForm)
 
 instance Validity LoginForm
 
-instance FromJSON LoginForm where
-  parseJSON = withObject "LoginForm" $ \o ->
-    LoginForm <$> o .: "username" <*> o .: "password"
-
-instance ToJSON LoginForm where
-  toJSON LoginForm {..} =
-    object
-      [ "username" .= loginFormUsername,
-        "password" .= loginFormPassword
-      ]
+instance HasCodec LoginForm where
+  codec =
+    object "LoginForm" $
+      LoginForm
+        <$> requiredField "username" "user name" .= loginFormUsername
+        <*> requiredField "password" "password" .= loginFormPassword
 
 data AuthCookie = AuthCookie
   { authCookieUsername :: Username
@@ -84,41 +79,34 @@ instance ToJWT AuthCookie
 data SyncRequest = SyncRequest
   { syncRequestCommandSyncRequest :: Appendful.SyncRequest ClientCommandId ServerCommandId Command
   }
-  deriving (Show, Eq, Generic)
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec SyncRequest)
 
 instance Validity SyncRequest
 
-instance FromJSON SyncRequest where
-  parseJSON = withObject "SyncResponse" $ \o ->
-    SyncRequest
-      <$> o .: "commands"
-
-instance ToJSON SyncRequest where
-  toJSON SyncRequest {..} =
-    object
-      [ "commands" .= syncRequestCommandSyncRequest
-      ]
+instance HasCodec SyncRequest where
+  codec =
+    object "SyncRequest" $
+      SyncRequest <$> requiredField "command" "commands sync request" .= syncRequestCommandSyncRequest
 
 data SyncResponse = SyncResponse
   { syncResponseCommandSyncResponse :: Appendful.SyncResponse ClientCommandId ServerCommandId Command
   }
-  deriving (Show, Eq, Generic)
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec SyncResponse)
 
 instance Validity SyncResponse
 
-instance FromJSON SyncResponse where
-  parseJSON = withObject "SyncResponse" $ \o ->
-    SyncResponse
-      <$> o .: "commands"
+instance HasCodec SyncResponse where
+  codec =
+    object "SyncResponse" $
+      SyncResponse <$> requiredField "command" "commands sync response" .= syncResponseCommandSyncResponse
 
-instance ToJSON SyncResponse where
-  toJSON SyncResponse {..} =
-    object
-      [ "commands" .= syncResponseCommandSyncResponse
-      ]
+instance ToBackendKey SqlBackend a => HasCodec (Sql.Key a) where
+  codec = dimapCodec toSqlKey fromSqlKey codec
 
-instance (PersistEntity a, ToBackendKey SqlBackend a) => ToJSONKey (Key a) where
+instance (PersistEntity a, ToBackendKey SqlBackend a) => ToJSONKey (Sql.Key a) where
   toJSONKey = contramap fromSqlKey toJSONKey
 
-instance (PersistEntity a, ToBackendKey SqlBackend a) => FromJSONKey (Key a) where
+instance (PersistEntity a, ToBackendKey SqlBackend a) => FromJSONKey (Sql.Key a) where
   fromJSONKey = toSqlKey <$> fromJSONKey

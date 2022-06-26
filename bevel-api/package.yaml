@@ -13,6 +13,7 @@ library:
   dependencies:
     - aeson
     - appendful
+    - autodocodec
     - bevel-api-server-data
     - bevel-client-data
     - bevel-data

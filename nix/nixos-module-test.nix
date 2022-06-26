@@ -6,7 +6,7 @@ let
     envname = "production";
     bevelReleasePackages = pkgs.bevelReleasePackages;
   };
-  home-manager = import (sources.home-manager + "/nixos/default.nix");
+  home-manager = import (pkgs.home-manager.src + "/nixos/default.nix");
   port = 8001;
 in
 pkgs.nixosTest (
