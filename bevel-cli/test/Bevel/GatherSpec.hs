@@ -4,6 +4,7 @@
 
 module Bevel.GatherSpec (spec) where
 
+import Bevel.CLI
 import Bevel.Client.Data
 import Bevel.Client.Data.Gen ()
 import Control.Concurrent.Async
@@ -28,7 +29,7 @@ spec = tempDirSpec "bevel" $ do
         databaseFile <- resolveFile tdir "history.sqlite"
         runNoLoggingT $
           withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
-            _ <- runSqlPool (runMigrationQuiet clientMigration) pool
+            runSqlPool (completeCliMigrations True) pool
             pure ()
 
         let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
@@ -56,7 +57,7 @@ spec = tempDirSpec "bevel" $ do
           databaseFile <- resolveFile tdir "history.sqlite"
           runNoLoggingT $
             withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> do
-              _ <- runSqlPool (runMigrationQuiet clientMigration) pool
+              runSqlPool (completeCliMigrations True) pool
               pure ()
 
           let env = [("BEVEL_DATABASE", fromAbsFile databaseFile)]
@@ -79,7 +80,7 @@ spec = tempDirSpec "bevel" $ do
                   databaseFile <- resolveFile tdir "history.sqlite"
                   cid <- runNoLoggingT $
                     withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> flip runSqlPool pool $ do
-                      _ <- runMigrationQuiet clientMigration
+                      completeCliMigrations True
                       insert
                         ClientCommand
                           { clientCommandText = text,
@@ -126,7 +127,7 @@ spec = tempDirSpec "bevel" $ do
                     databaseFile <- resolveFile tdir "history.sqlite"
                     cid <- runNoLoggingT $
                       withSqlitePool (T.pack (fromAbsFile databaseFile)) 1 $ \pool -> flip runSqlPool pool $ do
-                        _ <- runMigrationQuiet clientMigration
+                        completeCliMigrations True
                         insert
                           ClientCommand
                             { clientCommandText = text,

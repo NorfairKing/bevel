@@ -2,6 +2,7 @@
 
 module Main where
 
+import Bevel.CLI
 import Bevel.CLI.Choices
 import Bevel.CLI.Commands.ChangeDir (changeDirLoadSource)
 import Bevel.CLI.Commands.RepeatCommand (repeatCommandLoadSource)
@@ -80,9 +81,10 @@ makeDatabase = do
   let name = "bench-database.sqlite"
   dbFile <- resolveFile' name
   ignoringAbsence $ removeFile dbFile
-  pool <- runNoLoggingT $ createSqlitePool (T.pack (fromAbsFile dbFile)) 1
-  _ <- runSqlPool (runMigrationQuiet clientMigration) pool
-  pure pool
+  runNoLoggingT $ do
+    pool <- createSqlitePool (T.pack (fromAbsFile dbFile)) 1
+    runSqlPool (completeCliMigrations True) pool
+    pure pool
 
 setupDatabase :: ConnectionPool -> IO ()
 setupDatabase pool =

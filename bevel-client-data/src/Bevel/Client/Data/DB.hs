@@ -26,7 +26,7 @@ import Database.Persist.TH
 import GHC.Generics (Generic)
 
 share
-  [mkPersist sqlSettings, mkMigrate "clientMigration"]
+  [mkPersist sqlSettings, mkMigrate "automaticClientMigrations"]
   [persistLowerCase|
 
 ClientCommand sql=command
