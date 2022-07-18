@@ -160,38 +160,41 @@ drawTui State {..} =
                   ]
          in nonEmptyCursorWidget
               ( \befores current afters ->
-                  padLeftRight 1 $
-                    vBox
-                      [ padTop Max
-                          . vBox
-                          . reverse
-                          . concat
-                          $ [ map (goCommand False) befores,
-                              [visible $ withAttr selectedAttr $ goCommand True current],
-                              map (goCommand False) afters
-                            ],
-                        vLimit 1 $
-                          hBox
-                            [ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch,
-                              padLeft Max $
-                                let currentProcessed = choicesTotal stateChoices
-                                    totalDigits :: Int
-                                    totalDigits = ceiling (logBase 10 $ fromIntegral stateTotal :: Double)
-                                    formatStr :: String
-                                    formatStr = "%" <> show totalDigits <> "d"
-                                 in hBox
-                                      [ withAttr
-                                          ( if currentProcessed < stateTotal
-                                              then unloadedAttr
-                                              else loadedAttr
-                                          )
-                                          . str
-                                          $ printf formatStr currentProcessed,
-                                        str " / ",
-                                        withAttr loadedAttr $ str $ printf formatStr stateTotal
-                                      ]
-                            ]
-                      ]
+                  let maxHeight = sum . map (length . T.lines) . concat $ [befores, [current], afters]
+                   in padLeftRight 1 $
+                        vBox
+                          [ padTop Max
+                              . vLimit maxHeight
+                              . viewport OptionsViewport Vertical
+                              . vBox
+                              . reverse
+                              . concat
+                              $ [ map (goCommand False) befores,
+                                  [visible $ withAttr selectedAttr $ goCommand True current],
+                                  map (goCommand False) afters
+                                ],
+                            vLimit 1 $
+                              hBox
+                                [ withAttr selectedAttr $ selectedTextCursorWidget SearchBox stateSearch,
+                                  padLeft Max $
+                                    let currentProcessed = choicesTotal stateChoices
+                                        totalDigits :: Int
+                                        totalDigits = ceiling (logBase 10 $ fromIntegral stateTotal :: Double)
+                                        formatStr :: String
+                                        formatStr = "%" <> show totalDigits <> "d"
+                                     in hBox
+                                          [ withAttr
+                                              ( if currentProcessed < stateTotal
+                                                  then unloadedAttr
+                                                  else loadedAttr
+                                              )
+                                              . str
+                                              $ printf formatStr currentProcessed,
+                                            str " / ",
+                                            withAttr loadedAttr $ str $ printf formatStr stateTotal
+                                          ]
+                                ]
+                          ]
               )
               dirs
   ]
