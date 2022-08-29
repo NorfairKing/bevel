@@ -6,9 +6,6 @@ let
   cfg = config.programs.bevel;
 
   mergeListRecursively = pkgs.callPackage ./merge-lists-recursively.nix { };
-
-  toYamlFile = pkgs.callPackage ./to-yaml.nix { };
-
 in
 {
   options =
@@ -123,7 +120,7 @@ in
 
       # Convert the config file to pretty yaml, for readability.
       # The keys will not be in the "right" order but that's fine.
-      bevelConfigFile = toYamlFile "bevel-config" bevelConfig;
+      bevelConfigFile = (pkgs.formats.yaml { }).generate "bevel-config.yaml" bevelConfig;
 
       services =
         (

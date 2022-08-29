@@ -8,9 +8,6 @@ let
   cfg = config.services.bevel."${envname}";
 
   mergeListRecursively = pkgs.callPackage ./merge-lists-recursively.nix { };
-
-  toYamlFile = pkgs.callPackage ./to-yaml.nix { };
-
 in
 {
   options.services.bevel."${envname}" =
@@ -78,7 +75,7 @@ in
         (attrOrNull "log-level" log-level)
         cfg.api-server.config
       ];
-      api-server-config-file = toYamlFile "bevel-api-server-config" api-server-config;
+      api-server-config-file = (pkgs.formats.yaml { }).generate "bevel-api-server-config.yaml" api-server-config;
       # The docs server
       api-server-working-dir = working-dir + "api-server/";
       api-server-database-file = api-server-working-dir + "bevel-server-database.sqlite3";
