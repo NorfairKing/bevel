@@ -206,19 +206,23 @@ handleTuiEvent maxOptions chan s e =
       let modOptions func = continue $ s {stateOptions = func <$> stateOptions s}
           modMOptions mFunc = modOptions $ \nec -> fromMaybe nec $ mFunc nec
           modSearch func = do
+            let oldSearch = stateSearch s
             -- Update the search bar
-            let newSearch = func $ stateSearch s
-            -- Reset the choices
-            let newChoices = mempty
-            let newOptions = Nothing
-            liftIO $ writeBChan chan $ RequestLoad $ rebuildTextCursor newSearch
-            -- Update the state
-            continue $
-              s
-                { stateSearch = newSearch,
-                  stateChoices = newChoices,
-                  stateOptions = newOptions
-                }
+            let newSearch = func oldSearch
+            if rebuildTextCursor newSearch == rebuildTextCursor oldSearch
+              then continue $ s {stateSearch = newSearch}
+              else do
+                -- Reset the choices
+                let newChoices = mempty
+                let newOptions = Nothing
+                liftIO $ writeBChan chan $ RequestLoad $ rebuildTextCursor newSearch
+                -- Update the state
+                continue $
+                  s
+                    { stateSearch = newSearch,
+                      stateChoices = newChoices,
+                      stateOptions = newOptions
+                    }
           modMSearch mFunc = modSearch $ \tc -> fromMaybe tc $ mFunc tc
        in case vtye of
             EvKey KEnter [] -> halt s {stateDone = True}
