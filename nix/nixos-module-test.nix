@@ -1,12 +1,11 @@
-{ sources ? import ./sources.nix
-, pkgs ? import ./pkgs.nix { inherit sources; }
+{ pkgs
+, home-manager
 }:
 let
   bevel-production = import (./nixos-module.nix) {
     envname = "production";
     bevelReleasePackages = pkgs.bevelReleasePackages;
   };
-  home-manager = import (pkgs.home-manager.src + "/nixos/default.nix");
   port = 8001;
 in
 pkgs.nixosTest (

@@ -7,3 +7,4 @@ result*
 signing-key.json
 *.dat
 .direnv/
+dist-newstyle/
