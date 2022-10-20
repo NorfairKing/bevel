@@ -4,53 +4,18 @@
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
     home-manager.url = "github:nix-community/home-manager?ref=release-22.05";
     flake-utils.url = "github:numtide/flake-utils";
+    get-flake.url = "github:ursi/get-flake";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
-    validity = {
-      url = "github:NorfairKing/validity?ref=flake";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        autodocodec.follows = "autodocodec";
-        sydtest.follows = "sydtest";
-        safe-coloured-text.follows = "safe-coloured-text";
-      };
-    };
-    autodocodec = {
-      url = "github:NorfairKing/autodocodec?ref=flake";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        validity.follows = "validity";
-        sydtest.follows = "sydtest";
-        safe-coloured-text.follows = "safe-coloured-text";
-      };
-    };
-    safe-coloured-text = {
-      url = "github:NorfairKing/safe-coloured-text?ref=flake";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        validity.follows = "validity";
-        autodocodec.follows = "autodocodec";
-        sydtest.follows = "sydtest";
-      };
-    };
-    sydtest = {
-      url = "github:NorfairKing/sydtest?ref=flake";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        validity.follows = "validity";
-        autodocodec.follows = "autodocodec";
-        safe-coloured-text.follows = "safe-coloured-text";
-      };
-    };
-    appendful = {
-      url = "github:NorfairKing/appendful?ref=flake";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        validity.follows = "validity";
-        autodocodec.follows = "autodocodec";
-        sydtest.follows = "sydtest";
-        safe-coloured-text.follows = "safe-coloured-text";
-      };
-    };
+    validity.url = "github:NorfairKing/validity?ref=flake";
+    validity.flake = false;
+    autodocodec.url = "github:NorfairKing/autodocodec?ref=flake";
+    autodocodec.flake = false;
+    safe-coloured-text.url = "github:NorfairKing/safe-coloured-text?ref=flake";
+    safe-coloured-text.flake = false;
+    sydtest.url = "github:NorfairKing/sydtest?ref=flake";
+    sydtest.flake = false;
+    appendful.url = "github:NorfairKing/appendful?ref=flake";
+    appendful.flake = false;
   };
 
   outputs =
@@ -58,6 +23,7 @@
     , nixpkgs
     , home-manager
     , flake-utils
+    , get-flake
     , pre-commit-hooks
     , validity
     , safe-coloured-text
@@ -73,11 +39,11 @@
           config.allowUnfree = true;
           overlays = [
             self.overlays.${system}
-            autodocodec.overlays.${system}
-            safe-coloured-text.overlays.${system}
-            sydtest.overlays.${system}
-            validity.overlays.${system}
-            appendful.overlays.${system}
+            (get-flake autodocodec).overlays.${system}
+            (get-flake safe-coloured-text).overlays.${system}
+            (get-flake sydtest).overlays.${system}
+            (get-flake validity).overlays.${system}
+            (get-flake appendful).overlays.${system}
           ];
         };
         pkgs = pkgsFor nixpkgs;
