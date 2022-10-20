@@ -145,18 +145,18 @@
                       bevelPkgWithOwnComp = name: bevelPkgWithComp name name;
 
                       bevelPackages = {
-                        "bevel-api" = bevelPkg "bevel-api";
-                        "bevel-api-gen" = bevelPkg "bevel-api-gen";
-                        "bevel-api-server" = bevelPkgWithOwnComp "bevel-api-server";
-                        "bevel-api-server-gen" = bevelPkg "bevel-api-server-gen";
-                        "bevel-api-server-data" = bevelPkg "bevel-api-server-data";
-                        "bevel-api-server-data-gen" = bevelPkg "bevel-api-server-data-gen";
-                        "bevel-cli" = addTestToolDepend (bevelPkgWithComp "bevel" "bevel-cli") final.bevel-gather;
-                        "bevel-client" = bevelPkg "bevel-client";
-                        "bevel-client-data" = bevelPkg "bevel-client-data";
-                        "bevel-client-data-gen" = bevelPkg "bevel-client-data-gen";
-                        "bevel-data" = bevelPkg "bevel-data";
-                        "bevel-data-gen" = bevelPkg "bevel-data-gen";
+                        bevel-api = bevelPkg "bevel-api";
+                        bevel-api-gen = bevelPkg "bevel-api-gen";
+                        bevel-api-server = bevelPkgWithOwnComp "bevel-api-server";
+                        bevel-api-server-gen = bevelPkg "bevel-api-server-gen";
+                        bevel-api-server-data = bevelPkg "bevel-api-server-data";
+                        bevel-api-server-data-gen = bevelPkg "bevel-api-server-data-gen";
+                        bevel-cli = addTestToolDepend (bevelPkgWithComp "bevel" "bevel-cli") final.bevel-gather;
+                        bevel-client = bevelPkg "bevel-client";
+                        bevel-client-data = bevelPkg "bevel-client-data";
+                        bevel-client-data-gen = bevelPkg "bevel-client-data-gen";
+                        bevel-data = bevelPkg "bevel-data";
+                        bevel-data-gen = bevelPkg "bevel-data-gen";
                       };
                     in
                     {
