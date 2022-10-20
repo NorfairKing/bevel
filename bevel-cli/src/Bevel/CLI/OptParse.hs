@@ -27,7 +27,7 @@ import Control.Monad.Logger
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import qualified Data.Text.IO as T
 import Data.Word
 import Data.Yaml (FromJSON, ToJSON)
 import qualified Env
@@ -79,7 +79,15 @@ combineToInstructions (Arguments cmd Flags {..}) Environment {..} mConf = do
   -- or default value if none of the those were supplied.
   let settingBaseUrl = flagBaseUrl <|> envBaseUrl <|> mc configBaseUrl
   let settingUsername = flagUsername <|> envUsername <|> mc configUsername
-  let settingPassword = flagPassword <|> envPassword <|> mc configPassword
+  let mPass mPassword mPasswordFile = case mPassword of
+        Just password -> pure $ Just password
+        Nothing -> case mPasswordFile of
+          Nothing -> pure Nothing
+          Just passwordFile -> Just . T.strip <$> T.readFile passwordFile
+  flagMPass <- mPass flagPassword flagPasswordFile
+  envMPass <- mPass envPassword envPasswordFile
+  confMPass <- mPass (mc configPassword) (mc configPasswordFile)
+  let settingPassword = flagMPass <|> envMPass <|> confMPass
   let settingMaxOptions = fromMaybe 15 $ flagMaxOptions <|> envMaxOptions <|> mc configMaxOptions
   settingDbFile <- case flagDbFile <|> envDbFile <|> mc configDbFile of
     Nothing -> getDefaultClientDatabase
@@ -118,6 +126,7 @@ data Configuration = Configuration
   { configBaseUrl :: !(Maybe BaseUrl),
     configUsername :: !(Maybe Username),
     configPassword :: !(Maybe Text),
+    configPasswordFile :: !(Maybe FilePath),
     configMaxOptions :: !(Maybe Word8),
     configDbFile :: !(Maybe FilePath),
     configLogLevel :: !(Maybe LogLevel)
@@ -129,12 +138,13 @@ instance HasCodec Configuration where
   codec =
     object "Configuration" $
       Configuration
-        <$> optionalFieldWith "server-url" (bimapCodec (left show . parseBaseUrl) showBaseUrl codec) "Server base url" .= configBaseUrl
-        <*> optionalField "username" "Server account username" .= configUsername
-        <*> optionalField "password" "Server account password" .= configPassword
-        <*> optionalField "max-options" "Maximum number of options to show when selecting a previous command or directory" .= configMaxOptions
-        <*> optionalField "database" "The path to the database" .= configDbFile
-        <*> optionalField "log-level" "The minimal severity for log messages" .= configLogLevel
+        <$> optionalFieldOrNullWith "server-url" (bimapCodec (left show . parseBaseUrl) showBaseUrl codec) "Server base url" .= configBaseUrl
+        <*> optionalFieldOrNull "username" "Server account username" .= configUsername
+        <*> optionalFieldOrNull "password" "Server account password" .= configPassword
+        <*> optionalFieldOrNull "password-file" "Server account password file" .= configPasswordFile
+        <*> optionalFieldOrNull "max-options" "Maximum number of options to show when selecting a previous command or directory" .= configMaxOptions
+        <*> optionalFieldOrNull "database" "The path to the database" .= configDbFile
+        <*> optionalFieldOrNull "log-level" "The minimal severity for log messages" .= configLogLevel
 
 instance HasCodec LogLevel where
   codec =
@@ -166,6 +176,7 @@ data Environment = Environment
     envBaseUrl :: !(Maybe BaseUrl),
     envUsername :: !(Maybe Username),
     envPassword :: !(Maybe Text),
+    envPasswordFile :: !(Maybe FilePath),
     envMaxOptions :: !(Maybe Word8),
     envDbFile :: !(Maybe FilePath),
     envLogLevel :: !(Maybe LogLevel)
@@ -184,6 +195,7 @@ environmentParser =
       <*> optional (Env.var (maybe (Left $ Env.unread "unable to parse base url") Right . parseBaseUrl) "SERVER_URL" (Env.help "Server base url"))
       <*> optional (Env.var (left Env.unread . parseUsernameOrErr . T.pack) "USERNAME" (Env.help "Server account username"))
       <*> optional (Env.var Env.str "PASSWORD" (Env.help "Server account password"))
+      <*> optional (Env.var Env.str "PASSWORD_FILE" (Env.help "Server account password file"))
       <*> optional (Env.var Env.auto "MAX_OPTIONS" (Env.help "Maximum number of options to show when selecting a previous command or directory"))
       <*> optional (Env.var Env.str "DATABASE" (Env.help "Path to the database"))
       <*> optional (Env.var Env.auto "LOG_LEVEL" (Env.help "Minimal severity for log messages"))
@@ -219,7 +231,7 @@ argParser =
         [ Env.helpDoc environmentParser,
           "",
           "Configuration file format:",
-          T.unpack (TE.decodeUtf8 (renderColouredSchemaViaCodec @Configuration))
+          T.unpack (renderColouredSchemaViaCodec @Configuration)
         ]
 
 parseArgs :: OptParse.Parser Arguments
@@ -297,6 +309,7 @@ data Flags = Flags
     flagBaseUrl :: !(Maybe BaseUrl),
     flagUsername :: !(Maybe Username),
     flagPassword :: !(Maybe Text),
+    flagPasswordFile :: !(Maybe FilePath),
     flagMaxOptions :: !(Maybe Word8),
     flagDbFile :: !(Maybe FilePath),
     flagLogLevel :: !(Maybe LogLevel)
@@ -341,6 +354,15 @@ parseFlags =
               [ long "password",
                 help "Server account password",
                 metavar "PASSWORD"
+              ]
+          )
+      )
+    <*> optional
+      ( strOption
+          ( mconcat
+              [ long "password-file",
+                help "Server account password file",
+                metavar "PASSWORD_FILE"
               ]
           )
       )

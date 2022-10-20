@@ -1,15 +1,15 @@
-{ sources ? import ./sources.nix
-, pkgs ? import ./pkgs.nix { inherit sources; }
+{ nixosTest
+, home-manager
+, bevel-nixos-module-factory
+, bevel-home-manager-module
 }:
 let
-  bevel-production = import (./nixos-module.nix) {
+  bevel-production = bevel-nixos-module-factory {
     envname = "production";
-    bevelReleasePackages = pkgs.bevelReleasePackages;
   };
-  home-manager = import (pkgs.home-manager.src + "/nixos/default.nix");
   port = 8001;
 in
-pkgs.nixosTest (
+nixosTest (
   { lib, pkgs, ... }: {
     name = "bevel-module-test";
     nodes = {
@@ -34,7 +34,7 @@ pkgs.nixosTest (
           useGlobalPkgs = true;
           users.testuser = { pkgs, ... }: {
             imports = [
-              ./home-manager-module.nix
+              bevel-home-manager-module
             ];
             home.packages = with pkgs; [
               sqlite

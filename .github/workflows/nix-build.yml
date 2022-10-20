@@ -2,42 +2,37 @@ name: "Nix Build"
 on:
   pull_request:
   push:
-    branches:
-      - development
-      - master
+    branches: [development, master]
 jobs:
-  hooks:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3.0.2
-    - uses: cachix/install-nix-action@v17
-    - uses: cachix/cachix-action@v10
-      with:
-        name: bevel
-        extraPullNames: validity,sydtest,appendful
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-    - run: nix-build ci.nix -A pre-commit-check
-
-  shell:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3.0.2
-    - uses: cachix/install-nix-action@v17
-    - uses: cachix/cachix-action@v10
-      with:
-        name: bevel
-        extraPullNames: validity,sydtest,appendful
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-    - run: nix-build ci.nix -A shell
-
   build:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.attribute }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        attribute:
+          - .#devShells.x86_64-linux.default
+          - .#packages.x86_64-linux.default
+          - .#checks.x86_64-linux.pre-commit
+          - .#checks.x86_64-linux.nixos-module-test
     steps:
-    - uses: actions/checkout@v3.0.2
-    - uses: cachix/install-nix-action@v17
-    - uses: cachix/cachix-action@v10
+    - uses: actions/checkout@v2.5.0
+    - uses: cachix/install-nix-action@v18
+      with:
+        extra_nix_config: |
+          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          system-features = nixos-test benchmark big-parallel kvm
+    - name: free disk space
+      run: |
+        if [[ "${{matrix.os}}" == "ubuntu-latest" ]]
+        then
+          sudo rm -rf /opt
+        fi
+    - uses: cachix/cachix-action@v11
       with:
         name: bevel
-        extraPullNames: validity,sydtest,appendful
+        extraPullNames: validity,safe-coloured-text,sydtest,autodocodec,appendful
         signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-    - run: nix-build ci.nix -A release
+    - run: nix build "${{matrix.attribute}}"

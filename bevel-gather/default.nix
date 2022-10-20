@@ -2,13 +2,12 @@
 , sqlite
 , gnutar
 , stdenv
-, gitignoreSource
 }:
 
 
 stdenv.mkDerivation {
   name = "bevel-gather";
-  src = gitignoreSource ./.;
+  src = ./.;
   buildInputs = [ musl gnutar ];
   nativeBuildInputs = [ sqlite.dev ];
   buildCommand = ''

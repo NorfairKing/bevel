@@ -38,7 +38,7 @@ scoreMap now = foldl' go M.empty
 utcTimeToNanos :: UTCTime -> Word64
 utcTimeToNanos u =
   let MkFixed i = nominalDiffTimeToSeconds $ utcTimeToPOSIXSeconds u
-   in fromIntegral $ i `div` 1000
+   in fromIntegral $ i `div` 1_000
 
 scoreFor :: Word64 -> Word64 -> Score
 scoreFor nowNanos time = Score $ 86400_000_000_000 / realToFrac timediff

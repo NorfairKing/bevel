@@ -7,6 +7,8 @@
 - ignore:
     name: "Use ++"
 - ignore:
+    name: "Use void"
+- ignore:
     name: "Use tuple-section"
 - ignore:
     name: "Use record patterns"
