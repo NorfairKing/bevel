@@ -1,8 +1,10 @@
 { pkgs
 , home-manager
+, bevel-nixos-module-factory
+, bevel-home-manager-module
 }:
 let
-  bevel-production = import (./nixos-module.nix) {
+  bevel-production = bevel-nixos-module-factory {
     envname = "production";
     bevelReleasePackages = pkgs.bevelReleasePackages;
   };
@@ -33,7 +35,7 @@ pkgs.nixosTest (
           useGlobalPkgs = true;
           users.testuser = { pkgs, ... }: {
             imports = [
-              ./home-manager-module.nix
+              bevel-home-manager-module
             ];
             home.packages = with pkgs; [
               sqlite

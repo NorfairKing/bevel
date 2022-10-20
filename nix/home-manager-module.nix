@@ -1,3 +1,4 @@
+{ bevelReleasePackages }:
 { lib, pkgs, config, ... }:
 
 with lib;
@@ -16,7 +17,7 @@ in
           bevelReleasePackages =
             mkOption {
               description = "The bevelPackages attribute defined in the nix/overlay.nix file in the bevel repository.";
-              default = (import ./pkgs.nix { }).bevelReleasePackages;
+              default = bevelReleasePackages;
             };
           config =
             mkOption {

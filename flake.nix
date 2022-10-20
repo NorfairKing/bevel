@@ -175,7 +175,12 @@
         packages.release = pkgs.bevelRelease;
         packages.default = self.packages.${system}.release;
         checks = {
-          nixos-module-test = import ./nix/nixos-module-test.nix { inherit pkgs; home-manager = home-manager.nixosModules.home-manager; };
+          nixos-module-test = import ./nix/nixos-module-test.nix {
+            inherit pkgs;
+            home-manager = home-manager.nixosModules.home-manager;
+            bevel-nixos-module-factory = self.nixosModuleFactories.${system}.default;
+            bevel-home-manager-module = self.homeManagerModules.${system}.default;
+          };
           pre-commit = pre-commit-hooks.lib.${system}.run {
             src = ./.;
             hooks = {
@@ -210,6 +215,6 @@
           shellHook = self.checks.${system}.pre-commit.shellHook;
         };
         nixosModuleFactories.default = import ./nix/nixos-module.nix;
-        homeManagerModules.default = import ./nix/home-manager-module.nix;
+        homeManagerModules.default = import ./nix/home-manager-module.nix { bevelReleasePackages = pkgs.bevelReleasePackages; };
       });
 }

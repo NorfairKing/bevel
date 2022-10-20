@@ -1,5 +1,5 @@
 { envname
-, bevelReleasePackages ? (import ./pkgs.nix { }).bevelReleasePackages
+, bevelReleasePackages
 }:
 { lib, pkgs, config, ... }:
 with lib;
