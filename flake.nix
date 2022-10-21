@@ -4,7 +4,6 @@
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
     home-manager.url = "github:nix-community/home-manager?ref=release-22.05";
     flake-utils.url = "github:numtide/flake-utils";
-    get-flake.url = "github:ursi/get-flake";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     validity.url = "github:NorfairKing/validity?ref=flake";
     validity.flake = false;
@@ -23,7 +22,6 @@
     , nixpkgs
     , home-manager
     , flake-utils
-    , get-flake
     , pre-commit-hooks
     , validity
     , safe-coloured-text
@@ -39,11 +37,11 @@
           config.allowUnfree = true;
           overlays = [
             self.overlays.${system}
-            (get-flake autodocodec).overlays.${system}
-            (get-flake safe-coloured-text).overlays.${system}
-            (get-flake sydtest).overlays.${system}
-            (get-flake validity).overlays.${system}
-            (get-flake appendful).overlays.${system}
+            (import (autodocodec + "/nix/overlay.nix"))
+            (import (safe-coloured-text + "/nix/overlay.nix"))
+            (import (sydtest + "/nix/overlay.nix"))
+            (import (appendful + "/nix/overlay.nix"))
+            (import (validity + "/nix/overlay.nix"))
           ];
         };
         pkgs = pkgsFor nixpkgs;
