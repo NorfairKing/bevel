@@ -1,5 +1,9 @@
 {
   description = "bevel";
+  nixConfig = {
+    extra-substituters = "https://bevel.cachix.org";
+    extra-trusted-public-keys = "bevel.cachix.org-1:LaYFysrJKkFZDRCWRsa95GC21eijfHh+IevNeZTqL00=";
+  };
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
     home-manager.url = "github:nix-community/home-manager?ref=release-22.05";
