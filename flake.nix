@@ -49,7 +49,7 @@
           ];
         };
         pkgs = pkgsFor nixpkgs;
-
+        mkNixosModule = import ./nix/nixos-module.nix { inherit (pkgs.bevelReleasePackages) bevel-api-server; };
       in
       {
         overlays = import ./nix/overlay.nix;
@@ -95,7 +95,8 @@
             ]);
           shellHook = self.checks.${system}.pre-commit.shellHook;
         };
-        nixosModuleFactories.default = import ./nix/nixos-module.nix;
+        nixosModules.default = mkNixosModule { envname = "production"; };
+        nixosModuleFactories.default = mkNixosModule;
         homeManagerModules.default = import ./nix/home-manager-module.nix { bevelReleasePackages = pkgs.bevelReleasePackages; };
       });
 }

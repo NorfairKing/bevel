@@ -6,7 +6,6 @@
 let
   bevel-production = bevel-nixos-module-factory {
     envname = "production";
-    bevelReleasePackages = pkgs.bevelReleasePackages;
   };
   port = 8001;
 in
