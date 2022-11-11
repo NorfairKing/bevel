@@ -21,4 +21,5 @@ mkDerivation {
   homepage = "https://github.com/NorfairKing/bevel#readme";
   license = lib.licenses.unfree;
   hydraPlatforms = lib.platforms.none;
+  mainProgram = "bevel-api-server";
 }
