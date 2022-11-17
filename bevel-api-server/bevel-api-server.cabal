@@ -33,6 +33,8 @@ library
       src
   build-depends:
       appendful-persistent
+    , autodocodec
+    , autodocodec-yaml
     , base >=4.7 && <5
     , bevel-api
     , bevel-api-server-data
@@ -53,7 +55,6 @@ library
     , wai
     , warp
     , yaml
-    , yamlparse-applicative
   default-language: Haskell2010
 
 executable bevel-api-server

@@ -1,8 +1,8 @@
-{ mkDerivation, appendful-persistent, base, bevel-api
-, bevel-api-server-data, bevel-data, envparse, jose, lib
-, monad-logger, mtl, optparse-applicative, password, path, path-io
-, persistent, persistent-sqlite, servant-auth-server
-, servant-server, text, wai, warp, yaml, yamlparse-applicative
+{ mkDerivation, appendful-persistent, autodocodec, autodocodec-yaml
+, base, bevel-api, bevel-api-server-data, bevel-data, envparse
+, jose, lib, monad-logger, mtl, optparse-applicative, password
+, path, path-io, persistent, persistent-sqlite, servant-auth-server
+, servant-server, text, wai, warp, yaml
 }:
 mkDerivation {
   pname = "bevel-api-server";
@@ -11,11 +11,11 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    appendful-persistent base bevel-api bevel-api-server-data
-    bevel-data envparse jose monad-logger mtl optparse-applicative
-    password path path-io persistent persistent-sqlite
-    servant-auth-server servant-server text wai warp yaml
-    yamlparse-applicative
+    appendful-persistent autodocodec autodocodec-yaml base bevel-api
+    bevel-api-server-data bevel-data envparse jose monad-logger mtl
+    optparse-applicative password path path-io persistent
+    persistent-sqlite servant-auth-server servant-server text wai warp
+    yaml
   ];
   executableHaskellDepends = [ base ];
   homepage = "https://github.com/NorfairKing/bevel#readme";

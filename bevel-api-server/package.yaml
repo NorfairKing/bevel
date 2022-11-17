@@ -12,6 +12,8 @@ library:
   source-dirs: src
   dependencies:
     - appendful-persistent
+    - autodocodec
+    - autodocodec-yaml
     - bevel-api
     - bevel-api-server-data
     - bevel-data
@@ -31,7 +33,6 @@ library:
     - wai
     - warp
     - yaml
-    - yamlparse-applicative
 
 executables:
   bevel-api-server:
