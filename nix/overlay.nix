@@ -42,7 +42,7 @@ with final.haskell.lib;
                 doHaddock = false;
                 doCoverage = false;
                 doHoogle = false;
-                doCheck = false; # Only check the release version.
+                doCheck = true;
                 hyperlinkSource = false;
                 enableLibraryProfiling = false;
                 enableExecutableProfiling = false;

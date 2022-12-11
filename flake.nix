@@ -18,6 +18,8 @@
     sydtest.flake = false;
     appendful.url = "github:NorfairKing/appendful?ref=flake";
     appendful.flake = false;
+    dekking.url = "github:NorfairKing/dekking";
+    dekking.flake = false;
   };
 
   outputs =
@@ -30,6 +32,7 @@
     , sydtest
     , autodocodec
     , appendful
+    , dekking
     }:
     let
       system = "x86_64-linux";
@@ -43,6 +46,7 @@
           (import (sydtest + "/nix/overlay.nix"))
           (import (appendful + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
+          (import (dekking + "/nix/overlay.nix"))
         ];
       };
       pkgs = pkgsFor nixpkgs;
@@ -59,6 +63,26 @@
           home-manager = home-manager.nixosModules.home-manager;
           bevel-nixos-module-factory = self.nixosModuleFactories.${system}.default;
           bevel-home-manager-module = self.homeManagerModules.${system}.default;
+        };
+        coverage-report = pkgs.dekking.makeCoverageReport {
+          name = "test-coverage-report";
+          packages = [
+            "bevel-api"
+            "bevel-api-server"
+            "bevel-client"
+            "bevel-client-data"
+            "bevel-data"
+            "bevel-api-gen"
+            "bevel-api-server-data"
+            "bevel-cli"
+            "bevel-api-server-data-gen"
+            "bevel-api-server-gen"
+            "bevel-client-data-gen"
+            "bevel-data-gen"
+          ];
+          # Not haskell packages:
+          # "bevel-gather"
+          # "bevel-harness"
         };
         pre-commit = pre-commit-hooks.lib.${system}.run {
           src = ./.;
