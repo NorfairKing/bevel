@@ -5,8 +5,8 @@
     extra-trusted-public-keys = "bevel.cachix.org-1:LaYFysrJKkFZDRCWRsa95GC21eijfHh+IevNeZTqL00=";
   };
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
-    home-manager.url = "github:nix-community/home-manager?ref=release-22.05";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.11";
+    home-manager.url = "github:nix-community/home-manager?ref=release-22.11";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     validity.url = "github:NorfairKing/validity?ref=flake";
     validity.flake = false;
@@ -98,16 +98,14 @@
       };
       devShells.${system}.default = pkgs.haskellPackages.shellFor {
         name = "bevel-shell";
-        packages = (p:
-          (builtins.attrValues p.bevelPackages)
-        );
+        packages = p: builtins.attrValues p.bevelPackages;
         withHoogle = true;
         doBenchmark = true;
-        buildInputs = with pkgs; [
+        buildInputs = (with pkgs; [
           niv
           zlib
           cabal-install
-        ] ++ (with pre-commit-hooks;
+        ]) ++ (with pre-commit-hooks.packages.${system};
           [
             hlint
             hpack

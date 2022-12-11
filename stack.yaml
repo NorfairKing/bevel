@@ -1,4 +1,4 @@
-resolver: lts-19.6
+resolver: lts-19.32
 packages:
 - bevel-api
 - bevel-api-gen

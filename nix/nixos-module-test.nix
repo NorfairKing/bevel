@@ -36,6 +36,7 @@ nixosTest (
             imports = [
               bevel-home-manager-module
             ];
+            home.stateVersion = "22.11";
             home.packages = with pkgs; [
               sqlite
             ];
