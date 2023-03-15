@@ -8,13 +8,13 @@
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.11";
     home-manager.url = "github:nix-community/home-manager?ref=release-22.11";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
-    validity.url = "github:NorfairKing/validity?ref=flake";
+    validity.url = "github:NorfairKing/validity";
     validity.flake = false;
-    autodocodec.url = "github:NorfairKing/autodocodec?ref=flake";
+    autodocodec.url = "github:NorfairKing/autodocodec";
     autodocodec.flake = false;
-    safe-coloured-text.url = "github:NorfairKing/safe-coloured-text?ref=flake";
+    safe-coloured-text.url = "github:NorfairKing/safe-coloured-text";
     safe-coloured-text.flake = false;
-    sydtest.url = "github:NorfairKing/sydtest?ref=flake";
+    sydtest.url = "github:NorfairKing/sydtest";
     sydtest.flake = false;
     appendful.url = "github:NorfairKing/appendful?ref=flake";
     appendful.flake = false;
