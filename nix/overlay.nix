@@ -42,7 +42,7 @@ with final.haskell.lib;
                 doHaddock = false;
                 doCoverage = false;
                 doHoogle = false;
-                doCheck = true;
+                doCheck = false; # Only for coverage
                 hyperlinkSource = false;
                 enableLibraryProfiling = false;
                 enableExecutableProfiling = false;

@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Bevel.CLI.Commands.RepeatCommand (repeatCommand, repeatCommandLoadSource) where
@@ -5,8 +6,11 @@ module Bevel.CLI.Commands.RepeatCommand (repeatCommand, repeatCommandLoadSource)
 import Bevel.CLI.Env
 import Bevel.CLI.Select
 import Bevel.Client.Data
+import Conduit
+import qualified Data.Conduit.Combinators as C
 import Data.Word
 import Database.Esqueleto.Experimental
+import Database.Esqueleto.Pagination
 
 repeatCommand :: C ()
 repeatCommand =
@@ -23,8 +27,6 @@ repeatCommandCount = fmap (maybe 0 unValue) $
     pure countRows
 
 repeatCommandLoadSource :: LoadSource
-repeatCommandLoadSource = selectSource $ do
-  clientCommand <- from $ table @ClientCommand
-  -- New to old, because newer ones are the most important according to our formula
-  orderBy [desc $ clientCommand ^. ClientCommandBegin]
-  pure (clientCommand ^. ClientCommandBegin, clientCommand ^. ClientCommandText)
+repeatCommandLoadSource =
+  streamEntities (\_ -> val True) ClientCommandBegin (PageSize 1024) Descend (Range Nothing Nothing)
+    .| C.map (\(Entity _ ClientCommand {..}) -> (clientCommandBegin, clientCommandText))

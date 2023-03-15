@@ -56,7 +56,7 @@ data SelectAppSettings = SelectAppSettings
     selectAppSettingLoadSource :: !LoadSource
   }
 
-type LoadSource = ConduitT () (Value Word64, Value Text) (SqlPersistT (ResourceT IO)) ()
+type LoadSource = ConduitT () (Word64, Text) (SqlPersistT (ResourceT IO)) ()
 
 selectApp :: SelectAppSettings -> C ()
 selectApp settings = do
@@ -300,7 +300,7 @@ filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
 loadChoices :: LoadSource -> UTCTime -> Text -> ConduitT () Choices (SqlPersistT (ResourceT IO)) ()
 loadChoices loadSource now query =
   loadSource
-    .| C.map (\(Value time, Value dir) -> (time, dir))
+    .| C.map (\(time, dir) -> (time, dir))
     .| CL.chunksOf 1024
     .| C.map (makeChoices now query)
 
