@@ -7,12 +7,13 @@ module Bevel.CLI.Choices where
 
 import Bevel.CLI.Score
 import Bevel.CLI.Search
-import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Text (Text)
 import Data.Time
 import Data.Word
+import Witherable as Filterable
 
 data Choices = Choices
   { choicesTotal :: !Word64,
@@ -20,13 +21,13 @@ data Choices = Choices
   }
   deriving (Show)
 
-makeChoices :: UTCTime -> Text -> [(Word64, Text)] -> Choices
+makeChoices :: (Foldable f, Filterable f) => UTCTime -> Text -> f (Word64, Text) -> Choices
 makeChoices now query cs =
   Choices
     { choicesTotal = fromIntegral $ length cs,
       choicesMap =
         scoreMap now $
-          mapMaybe
+          Filterable.mapMaybe
             ( \(time, option) ->
                 let fuzziness = fuzzySearch query option
                  in if fuzziness > Fuzziness 0

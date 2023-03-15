@@ -9,7 +9,7 @@
 , monad-logger, mtl, optparse-applicative, path, path-io
 , persistent, persistent-pagination, persistent-sqlite, QuickCheck
 , servant-client, sydtest, sydtest-discover, text, time
-, typed-process, unix, unliftio, vty, yaml
+, typed-process, unix, unliftio, vector, vty, witherable, yaml
 }:
 mkDerivation {
   pname = "bevel-cli";
@@ -24,7 +24,8 @@ mkDerivation {
     cookie cursor cursor-brick envparse esqueleto filelock filepath
     hostname http-client http-client-tls monad-logger mtl
     optparse-applicative path path-io persistent persistent-pagination
-    persistent-sqlite servant-client text time unix unliftio vty yaml
+    persistent-sqlite servant-client text time unix unliftio vector vty
+    witherable yaml
   ];
   executableHaskellDepends = [ base ];
   testHaskellDepends = [

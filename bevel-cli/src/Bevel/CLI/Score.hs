@@ -22,7 +22,12 @@ newtype Score = Score {unScore :: Double}
   deriving newtype (Eq, Ord)
   deriving (Semigroup, Monoid) via (Sum Double)
 
-scoreMap :: forall a b. Ord a => UTCTime -> [(Word64, a, b)] -> Map a (b, Score)
+scoreMap ::
+  forall a b f.
+  (Ord a, Foldable f) =>
+  UTCTime ->
+  f (Word64, a, b) ->
+  Map a (b, Score)
 scoreMap now = foldl' go M.empty
   where
     nowNanos = utcTimeToNanos now :: Word64

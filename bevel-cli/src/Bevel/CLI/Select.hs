@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Bevel.CLI.Select
   ( SelectAppSettings (..),
@@ -31,7 +32,6 @@ import Cursor.Simple.List.NonEmpty
 import Cursor.Text
 import Cursor.Types
 import qualified Data.Conduit.Combinators as C
-import qualified Data.Conduit.List as CL
 import Data.List
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
@@ -40,6 +40,7 @@ import Data.Ord as Ord
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time
+import Data.Vector (Vector)
 import Data.Word
 import Database.Esqueleto.Experimental
 import qualified Database.Persist.Sql as DB
@@ -300,9 +301,8 @@ filtererJob SelectAppSettings {..} respChan query = runResourceT $ do
 loadChoices :: LoadSource -> UTCTime -> Text -> ConduitT () Choices (SqlPersistT (ResourceT IO)) ()
 loadChoices loadSource now query =
   loadSource
-    .| C.map (\(time, dir) -> (time, dir))
-    .| CL.chunksOf 1024
-    .| C.map (makeChoices now query)
+    .| C.conduitVector 1024
+    .| C.map (makeChoices @Vector now query)
 
 refreshOptions :: Word8 -> Maybe (NonEmptyCursor Text) -> Choices -> Maybe (NonEmptyCursor Text)
 refreshOptions maxOptions mOldOptions cs = do

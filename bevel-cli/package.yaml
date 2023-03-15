@@ -48,7 +48,9 @@ library:
   - time
   - unix
   - unliftio
+  - vector
   - vty
+  - witherable
   - yaml
 
 executables:

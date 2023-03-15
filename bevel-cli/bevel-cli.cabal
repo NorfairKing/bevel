@@ -78,7 +78,9 @@ library
     , time
     , unix
     , unliftio
+    , vector
     , vty
+    , witherable
     , yaml
   default-language: Haskell2010
 
