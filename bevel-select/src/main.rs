@@ -9,6 +9,10 @@ use std::{
 };
 use tui::{
     backend::{Backend, CrosstermBackend},
+    layout::{Alignment, Constraint, Direction, Layout},
+    style::{Color, Style},
+    text::{Span, Spans},
+    widgets::Paragraph,
     Frame, Terminal,
 };
 
@@ -20,25 +24,16 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    //let open_flags = sqlite::OpenFlags::new().set_read_only();
+    let open_flags = sqlite::OpenFlags::new().set_read_only();
 
-    //let connection = sqlite::Connection::open_with_flags(
-    //    "/home/syd/.local/share/bevel/history.sqlite3",
-    //    open_flags,
-    //)
-    //.unwrap();
-    //let query = "SELECT workdir, begin FROM command LIMIT 100 OFFSET 1";
-    //connection
-    //    .iterate(query, |pairs| {
-    //        dbg!(pairs[0].1);
-    //        dbg!(pairs);
-    //        true // Continue
-    //    })
-    //    .unwrap();
+    let connection = sqlite::Connection::open_with_flags(
+        "/home/syd/.local/share/bevel/history.sqlite3",
+        open_flags,
+    )
+    .unwrap();
 
-    let tick_rate = Duration::from_millis(250);
-    let app = App::new();
-    let res = run_app(&mut terminal, app, tick_rate);
+    let app = App::new(connection);
+    let res = run_app(&mut terminal, app);
 
     // restore terminal
     disable_raw_mode()?;
@@ -49,14 +44,13 @@ fn main() -> Result<(), io::Error> {
     )?;
     terminal.show_cursor()?;
 
-    Ok(())
+    res
 }
 
-fn run_app<B: Backend>(
-    terminal: &mut Terminal<B>,
-    mut app: App,
-    tick_rate: Duration,
-) -> io::Result<()> {
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+    // 1000 milliseconds is a second.
+    let frames_per_second = 4;
+    let tick_rate = Duration::from_millis(1000 / frames_per_second);
     let mut last_tick = Instant::now();
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
@@ -72,22 +66,40 @@ fn run_app<B: Backend>(
                 }
             }
         }
+
+        if last_tick.elapsed() >= tick_rate {
+            last_tick = Instant::now();
+        }
     }
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
-    f.set_cursor(5, 6);
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(100)].as_ref())
+        .split(f.size());
+    let loaded_text = vec![Spans::from(vec![
+        Span::styled(format!("{}", app.loaded), Style::default().fg(Color::Red)),
+        Span::styled(" / ", Style::default().fg(Color::Yellow)),
+        Span::styled(format!("{}", app.total), Style::default().fg(Color::Green)),
+    ])];
+    let loaded_label = Paragraph::new(loaded_text).alignment(Alignment::Right);
+    f.render_widget(loaded_label, chunks[0]);
 }
 
 struct App {
     loaded: u64,
     total: u64,
 }
+const STARTING_COUNT_QUERY: &str = "SELECT COUNT(*) from command";
 impl App {
-    pub fn new() -> Self {
+    pub fn new(connection: sqlite::Connection) -> Self {
+        let mut statement = connection.prepare(STARTING_COUNT_QUERY).unwrap();
+        statement.next().unwrap();
+        let total = statement.read::<i64, _>("COUNT(*)").unwrap();
         App {
             loaded: 0,
-            total: 0,
+            total: total as u64,
         }
     }
 }
