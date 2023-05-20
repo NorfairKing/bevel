@@ -61,27 +61,40 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
 
-        // If there are still more rows to load.
-        if app.loaded < app.total {
-            // As long as we still have time within this tick, load some more rows
-            while last_tick.elapsed() <= tick_rate {
-                app.load_rows(256);
-            }
-        }
+        let more_rows_to_load = app.loaded < app.total;
 
+        // We want to check for the next event.
+        // If there are no more rows to load, then we can use the time that would normally spend in
+        // timeout on loading more rows.
+        //
+        //
         // Wait for an event, or until the tick ends.
-        let timeout = tick_rate
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
-        if crossterm::event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
+        let timeout = if more_rows_to_load {
+            Duration::ZERO
+        } else {
+            tick_rate
+                .checked_sub(last_tick.elapsed())
+                .unwrap_or_else(|| Duration::from_secs(0))
+        };
+
+        let event_available = crossterm::event::poll(timeout)?;
+        if event_available {
+            let event = event::read()?;
+            match event {
+                Event::Key(key) => match key.code {
                     KeyCode::Char('q') => return Ok(()),
                     KeyCode::Up => app.select_next(),
                     KeyCode::Down => app.select_previous(),
                     _ => {}
-                }
+                },
+                _ => (),
             }
+        }
+
+        // If there are more rows to load, we will try loading them
+        // as long as we still have time within this tick, load some more rows
+        while app.loaded < app.total && last_tick.elapsed() <= tick_rate {
+            app.load_rows(256);
         }
 
         if last_tick.elapsed() >= tick_rate {
