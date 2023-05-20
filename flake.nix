@@ -104,6 +104,7 @@
         buildInputs = (with pkgs; [
           cabal-install
           cargo
+          clippy
           pkg-config
           rustc
           rustfmt

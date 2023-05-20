@@ -103,7 +103,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
             // If there are more rows to load, we will try loading them
             // as long as we still have time within this tick, load some more rows
             while app.loaded < app.total && last_tick.elapsed() <= tick_rate {
-                app.load_rows(256);
+                app.load_rows(1024);
             }
         }
 
@@ -209,7 +209,8 @@ impl<'a> App<'a> {
     pub fn load_rows(&mut self, rows: u64) {
         let offset = self.loaded as i64;
         let limit = rows as i64;
-        const ROW_LOADING_QUERY: &str = "SELECT workdir, begin FROM command LIMIT ? OFFSET ?";
+        const ROW_LOADING_QUERY: &str =
+            "SELECT workdir, begin FROM command ORDER BY begin DESC LIMIT ? OFFSET ?";
         let mut statement = self.connection.prepare(ROW_LOADING_QUERY).unwrap();
         statement.bind((1, limit)).unwrap();
         statement.bind((2, offset)).unwrap();
