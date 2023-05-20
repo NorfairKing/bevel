@@ -84,24 +84,27 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
                 .unwrap_or_else(|| Duration::from_secs(0))
         };
 
+        // If there is an event, deal with it and finish the loop immediately.
         let event_available = crossterm::event::poll(timeout)?;
         if event_available {
             let event = event::read()?;
-            match event {
-                Event::Key(key) => match key.code {
+            if let Event::Key(key) = event {
+                match key.code {
                     KeyCode::Up => app.select_next(),
                     KeyCode::Down => app.select_previous(),
                     KeyCode::Enter => return Ok(app.selected()),
+                    KeyCode::Esc => return Ok(None),
                     _ => {}
-                },
-                _ => (),
+                }
             }
         }
-
-        // If there are more rows to load, we will try loading them
-        // as long as we still have time within this tick, load some more rows
-        while app.loaded < app.total && last_tick.elapsed() <= tick_rate {
-            app.load_rows(256);
+        // If there was no event available, use the rest of the tick time to load more rows.
+        else {
+            // If there are more rows to load, we will try loading them
+            // as long as we still have time within this tick, load some more rows
+            while app.loaded < app.total && last_tick.elapsed() <= tick_rate {
+                app.load_rows(256);
+            }
         }
 
         if last_tick.elapsed() >= tick_rate {
@@ -161,8 +164,8 @@ impl<'a> App<'a> {
         let mut list_state = ListState::default();
         list_state.select(Some(0));
         App {
-            connection: &connection,
-            list_state: list_state,
+            connection,
+            list_state,
             choices: Choices::new(),
             loaded: 0,
             total: total as u64,
@@ -226,7 +229,7 @@ struct Choices {
     item_scores: HashMap<String, f64>,
 }
 
-const NANOSECONDS_IN_A_DAY: f64 = 86400_000_000_000_f64;
+const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
 const MAX_ITEMS: usize = 20;
 
 impl Choices {
@@ -248,14 +251,13 @@ impl Choices {
         let score = NANOSECONDS_IN_A_DAY / timediff;
 
         // Add to the item scores
-        let total_score: f64 = self
+        let total_score: f64 = *self
             .item_scores
             .entry(key.clone())
             .and_modify(|s| {
                 *s += score;
             })
-            .or_insert(score)
-            .clone();
+            .or_insert(score);
 
         // // Minimum score to end up in the top_items.
         let minimum_score = if self.top_items.len() < MAX_ITEMS {
@@ -267,10 +269,19 @@ impl Choices {
         };
 
         if total_score > minimum_score {
+            // If the item is already there, remove it.
+            for i in 0..self.top_items.len() {
+                if key == self.top_items[i] {
+                    self.top_items.remove(i);
+                    break;
+                }
+            }
+            // Add the item again
             self.top_items.push(key);
-            self.top_items.dedup();
+            // Sort by score
             self.top_items
                 .sort_by_key(|k| Reverse(OrderedFloat(*self.item_scores.get(k).unwrap())));
+            // Remove any extra items
             while self.top_items.len() >= MAX_ITEMS {
                 self.top_items.pop();
             }
