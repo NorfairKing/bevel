@@ -49,10 +49,17 @@ fn main() -> Result<(), io::Error> {
     )?;
     terminal.show_cursor()?;
 
-    res
+    let selection = res?;
+    match selection {
+        Some(selected) => {
+            println!("{selected}");
+            Ok(())
+        }
+        None => Ok(()),
+    }
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<Option<String>> {
     // 1000 milliseconds is a second.
     let frames_per_second = 30;
     let tick_rate = Duration::from_millis(1000 / frames_per_second);
@@ -82,9 +89,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
             let event = event::read()?;
             match event {
                 Event::Key(key) => match key.code {
-                    KeyCode::Char('q') => return Ok(()),
                     KeyCode::Up => app.select_next(),
                     KeyCode::Down => app.select_previous(),
+                    KeyCode::Enter => return Ok(app.selected()),
                     _ => {}
                 },
                 _ => (),
@@ -187,6 +194,13 @@ impl<'a> App<'a> {
             None => 0,
         };
         self.list_state.select(Some(i));
+    }
+
+    pub fn selected(&self) -> Option<String> {
+        self.list_state
+            .selected()
+            .and_then(|ix| self.choices.top_items.get(ix))
+            .cloned()
     }
 
     pub fn load_rows(&mut self, rows: u64) {
