@@ -4,8 +4,9 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ordered_float::OrderedFloat;
-use ordered_map::OrderedMap;
 use std::{
+    cmp::Reverse,
+    collections::HashMap,
     io,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -95,10 +96,9 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     let items: Vec<ListItem> = app
         .choices
-        .items
-        .descending_keys()
-        .take(20)
-        .map(|command| ListItem::new((*command).clone()))
+        .top_items
+        .iter()
+        .map(|command| ListItem::new(command.clone()).style(Style::default().fg(Color::Yellow)))
         .collect();
     let choices_list = List::new(items).highlight_symbol("> ");
     f.render_stateful_widget(choices_list, chunks[0], &mut app.list_state);
@@ -124,7 +124,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 struct App<'a> {
     connection: &'a sqlite::Connection,
     list_state: ListState,
-    choices: Choices<'a>,
+    choices: Choices,
     loaded: u64,
     total: u64,
 }
@@ -134,9 +134,11 @@ impl<'a> App<'a> {
         let mut statement = connection.prepare(STARTING_COUNT_QUERY).unwrap();
         statement.next().unwrap();
         let total = statement.read::<i64, _>("COUNT(*)").unwrap();
+        let mut list_state = ListState::default();
+        list_state.select(Some(0));
         App {
             connection: &connection,
-            list_state: ListState::default(),
+            list_state: list_state,
             choices: Choices::new(),
             loaded: 0,
             total: total as u64,
@@ -155,33 +157,65 @@ impl<'a> App<'a> {
             self.loaded += 1;
             let workdir = statement.read::<String, _>("workdir").unwrap();
             let begin = statement.read::<i64, _>("begin").unwrap();
-            self.choices.add(&workdir, begin);
+            self.choices.add(workdir, begin);
         }
     }
 }
 
-struct Choices<'a> {
+struct Choices {
     now: i64,
-    items: OrderedMap<&'a String, f64, OrderedFloat<f64>>,
+    top_items: Vec<String>,
+    item_scores: HashMap<String, f64>,
 }
 
 const NANOSECONDS_IN_A_DAY: f64 = 86400_000_000_000_f64;
+const MAX_ITEMS: usize = 20;
 
-impl<'a> Choices<'a> {
+impl Choices {
     pub fn new() -> Self {
         Choices {
             now: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_nanos() as i64,
-            items: OrderedMap::new(|s| OrderedFloat(*s)),
+            top_items: Vec::with_capacity(MAX_ITEMS),
+            item_scores: HashMap::new(),
         }
     }
 
     // Add a (workdir, begin) pair after computing its score
-    pub fn add(&mut self, workdir: &'a String, begin: i64) {
+    pub fn add(&mut self, key: String, begin: i64) {
+        // Compute the score of this item
         let timediff = (self.now - begin) as f64;
         let score = NANOSECONDS_IN_A_DAY / timediff;
-        self.items.insert(workdir, score);
+
+        // Add to the item scores
+        let total_score: f64 = self
+            .item_scores
+            .entry(key.clone())
+            .and_modify(|s| {
+                *s += score;
+            })
+            .or_insert(score)
+            .clone();
+
+        // // Minimum score to end up in the top_items.
+        let minimum_score = if self.top_items.len() < MAX_ITEMS {
+            0_f64
+        } else {
+            let least_top = self.top_items.last().unwrap();
+            // We can 'unwrap' because the top_items MUST be in the item_scores too.
+            *self.item_scores.get(least_top).unwrap()
+        };
+
+        if total_score > minimum_score {
+            self.top_items.push(key);
+            self.top_items.dedup();
+            self.top_items
+                .sort_by_key(|k| Reverse(OrderedFloat(*self.item_scores.get(k).unwrap())));
+            while self.top_items.len() >= MAX_ITEMS {
+                self.top_items.pop();
+            }
+        }
     }
 }
