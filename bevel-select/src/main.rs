@@ -98,7 +98,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .items
         .descending_keys()
         .take(20)
-        .map(|command| ListItem::new(command.text.clone()))
+        .map(|command| ListItem::new((*command).clone()))
         .collect();
     let choices_list = List::new(items).highlight_symbol("> ");
     f.render_stateful_widget(choices_list, chunks[0], &mut app.list_state);
@@ -124,7 +124,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 struct App<'a> {
     connection: &'a sqlite::Connection,
     list_state: ListState,
-    choices: Choices,
+    choices: Choices<'a>,
     loaded: u64,
     total: u64,
 }
@@ -155,19 +155,19 @@ impl<'a> App<'a> {
             self.loaded += 1;
             let workdir = statement.read::<String, _>("workdir").unwrap();
             let begin = statement.read::<i64, _>("begin").unwrap();
-            self.choices.add(workdir, begin);
+            self.choices.add(&workdir, begin);
         }
     }
 }
 
-struct Choices {
+struct Choices<'a> {
     now: i64,
-    items: OrderedMap<String, f64, OrderedFloat<f64>>,
+    items: OrderedMap<&'a String, f64, OrderedFloat<f64>>,
 }
 
 const NANOSECONDS_IN_A_DAY: f64 = 86400_000_000_000_f64;
 
-impl Choices {
+impl<'a> Choices<'a> {
     pub fn new() -> Self {
         Choices {
             now: SystemTime::now()
@@ -179,7 +179,7 @@ impl Choices {
     }
 
     // Add a (workdir, begin) pair after computing its score
-    pub fn add(&mut self, workdir: String, begin: i64) {
+    pub fn add(&mut self, workdir: &'a String, begin: i64) {
         let timediff = (self.now - begin) as f64;
         let score = NANOSECONDS_IN_A_DAY / timediff;
         self.items.insert(workdir, score);
