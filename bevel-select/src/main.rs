@@ -77,6 +77,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') => return Ok(()),
+                    KeyCode::Up => app.select_next(),
+                    KeyCode::Down => app.select_previous(),
                     _ => {}
                 }
             }
@@ -145,6 +147,33 @@ impl<'a> App<'a> {
             loaded: 0,
             total: total as u64,
         }
+    }
+
+    pub fn select_next(&mut self) {
+        let i = match self.list_state.selected() {
+            Some(i) => {
+                if i >= self.choices.top_items.len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.list_state.select(Some(i));
+    }
+    pub fn select_previous(&mut self) {
+        let i = match self.list_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.choices.top_items.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.list_state.select(Some(i));
     }
 
     pub fn load_rows(&mut self, rows: u64) {
