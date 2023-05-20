@@ -1,0 +1,10 @@
+[package]
+name = "bevel-select"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+tui = "*"
+crossterm = "*"
+sqlite = "*"
+# sqlx = { version = "*", features = [ "runtime-tokio-rustls", "sqlite" ] }
