@@ -5,11 +5,20 @@ with final.haskell.lib;
 
   bevel-gather = final.callPackage ../bevel-gather/default.nix { };
   bevel-harness = final.callPackage ../bevel-harness/default.nix { };
+  bevel-select = (final.callPackage ../bevel-select/default.nix { }).overrideAttrs (old: {
+    nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
+      final.clippy
+    ];
+    preCheck = (old.preCheck or "") + ''
+      cargo clippy --no-deps -- --forbid warnings
+    '';
+  });
 
   bevelReleasePackages = mapAttrs (_: pkg: justStaticExecutables (doCheck pkg)) final.haskellPackages.bevelPackages // {
     inherit (final)
       bevel-gather
-      bevel-harness;
+      bevel-harness
+      bevel-select;
   };
   bevelRelease =
     final.symlinkJoin {

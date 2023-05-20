@@ -46,9 +46,6 @@ bevelCLI = do
     DispatchRegister -> runC Shared Commands.register
     DispatchLogin -> runC Shared Commands.login
     DispatchSync -> runC Exclusive Commands.sync
-    DispatchChangeDir -> runC Shared Commands.changeDir
-    DispatchRepeat -> runC Shared Commands.repeatCommand
-    DispatchRepeatLocal -> runC Shared Commands.repeatLocalCommand
     DispatchLast -> runC Shared Commands.lastDir
 
 completeCliMigrations :: (MonadUnliftIO m, MonadLogger m) => Bool -> SqlPersistT m ()

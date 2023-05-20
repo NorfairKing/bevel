@@ -21,13 +21,10 @@ library:
   - bevel-client
   - bevel-client-data
   - bevel-data
-  - brick
   - bytestring
   - conduit
   - containers
   - cookie
-  - cursor
-  - cursor-brick
   - envparse
   - esqueleto
   - filelock
@@ -63,31 +60,6 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - bevel-cli
-
-benchmarks:
-  bevel-cli-bench:
-    main: Main.hs
-    source-dirs: bench
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - QuickCheck
-    - bevel-cli
-    - bevel-client-data
-    - bevel-client-data-gen
-    - bevel-data
-    - conduit
-    - criterion
-    - genvalidity
-    - monad-logger
-    - path
-    - path-io
-    - persistent
-    - persistent-sqlite
-    - text
-    - time
 
 tests:
   bevel-cli-test:

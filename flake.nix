@@ -102,9 +102,13 @@
         withHoogle = true;
         doBenchmark = true;
         buildInputs = (with pkgs; [
-          niv
-          zlib
           cabal-install
+          cargo
+          clippy
+          pkg-config
+          rustc
+          rustfmt
+          zlib
         ]) ++ (with pre-commit-hooks.packages.${system};
           [
             hlint

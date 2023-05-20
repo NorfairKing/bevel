@@ -1,0 +1,14 @@
+[package]
+name = "bevel-select"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+tui = "*"
+crossterm = "*"
+sqlite = "*"
+ordered-float = "*"
+ordered-map = "*"
+whoami = "*"
+fuzzy-matcher = "*"
+xdg = "*"

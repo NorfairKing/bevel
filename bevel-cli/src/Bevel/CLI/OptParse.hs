@@ -65,9 +65,6 @@ data Dispatch
   = DispatchRegister
   | DispatchLogin
   | DispatchSync
-  | DispatchChangeDir
-  | DispatchRepeat
-  | DispatchRepeatLocal
   | DispatchLast
   deriving (Show, Eq, Generic)
 
@@ -100,9 +97,6 @@ combineToInstructions (Arguments cmd Flags {..}) Environment {..} mConf = do
       CommandRegister -> pure DispatchRegister
       CommandLogin -> pure DispatchLogin
       CommandSync -> pure DispatchSync
-      CommandChangeDir -> pure DispatchChangeDir
-      CommandRepeat -> pure DispatchRepeat
-      CommandRepeatLocal -> pure DispatchRepeatLocal
       CommandLast -> pure DispatchLast
   pure $ Instructions disp sets
   where
@@ -242,9 +236,6 @@ data Command
   = CommandRegister
   | CommandLogin
   | CommandSync
-  | CommandChangeDir
-  | CommandRepeat
-  | CommandRepeatLocal
   | CommandLast
   deriving (Show, Eq, Generic)
 
@@ -255,9 +246,6 @@ parseCommand =
       [ OptParse.command "register" parseCommandRegister,
         OptParse.command "login" parseCommandLogin,
         OptParse.command "sync" parseCommandSync,
-        OptParse.command "cd" parseCommandChangeDir,
-        OptParse.command "repeat" parseCommandRepeat,
-        OptParse.command "repeat-local" parseCommandRepeatLocal,
         OptParse.command "last" parseCommandLast
       ]
 
@@ -278,24 +266,6 @@ parseCommandSync = OptParse.info parser modifier
   where
     modifier = OptParse.fullDesc <> OptParse.progDesc "Synchronise the thing database"
     parser = pure CommandSync
-
-parseCommandChangeDir :: OptParse.ParserInfo Command
-parseCommandChangeDir = OptParse.info parser modifier
-  where
-    modifier = OptParse.fullDesc <> OptParse.progDesc "Select a directory to change to, based on terminal history"
-    parser = pure CommandChangeDir
-
-parseCommandRepeat :: OptParse.ParserInfo Command
-parseCommandRepeat = OptParse.info parser modifier
-  where
-    modifier = OptParse.fullDesc <> OptParse.progDesc "Select a command to run again"
-    parser = pure CommandRepeat
-
-parseCommandRepeatLocal :: OptParse.ParserInfo Command
-parseCommandRepeatLocal = OptParse.info parser modifier
-  where
-    modifier = OptParse.fullDesc <> OptParse.progDesc "Select a command to run again, from the local working directory's history"
-    parser = pure CommandRepeatLocal
 
 parseCommandLast :: OptParse.ParserInfo Command
 parseCommandLast = OptParse.info parser modifier

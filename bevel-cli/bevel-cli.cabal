@@ -22,19 +22,15 @@ library
       Bevel.CLI
       Bevel.CLI.Choices
       Bevel.CLI.Commands
-      Bevel.CLI.Commands.ChangeDir
       Bevel.CLI.Commands.Import
       Bevel.CLI.Commands.LastDir
       Bevel.CLI.Commands.Login
       Bevel.CLI.Commands.Register
-      Bevel.CLI.Commands.RepeatCommand
-      Bevel.CLI.Commands.RepeatLocalCommand
       Bevel.CLI.Commands.Sync
       Bevel.CLI.Env
       Bevel.CLI.OptParse
       Bevel.CLI.Score
       Bevel.CLI.Search
-      Bevel.CLI.Select
   other-modules:
       Paths_bevel_cli
   hs-source-dirs:
@@ -51,13 +47,10 @@ library
     , bevel-client
     , bevel-client-data
     , bevel-data
-    , brick
     , bytestring
     , conduit
     , containers
     , cookie
-    , cursor
-    , cursor-brick
     , envparse
     , esqueleto
     , filelock
@@ -131,31 +124,4 @@ test-suite bevel-cli-test
     , sydtest
     , text
     , typed-process
-  default-language: Haskell2010
-
-benchmark bevel-cli-bench
-  type: exitcode-stdio-1.0
-  main-is: Main.hs
-  other-modules:
-      Paths_bevel_cli
-  hs-source-dirs:
-      bench
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      QuickCheck
-    , base >=4.7 && <5
-    , bevel-cli
-    , bevel-client-data
-    , bevel-client-data-gen
-    , bevel-data
-    , conduit
-    , criterion
-    , genvalidity
-    , monad-logger
-    , path
-    , path-io
-    , persistent
-    , persistent-sqlite
-    , text
-    , time
   default-language: Haskell2010
