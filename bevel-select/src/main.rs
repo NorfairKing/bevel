@@ -12,7 +12,7 @@ use std::{
 };
 use tui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Corner, Direction, Layout},
     style::{Color, Style},
     text::{Span, Spans},
     widgets::{List, ListItem, ListState, Paragraph},
@@ -91,7 +91,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(90), Constraint::Percentage(10)].as_ref())
+        .constraints([Constraint::Percentage(90), Constraint::Length(1)].as_ref())
         .split(f.size());
 
     let items: Vec<ListItem> = app
@@ -100,7 +100,9 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .iter()
         .map(|command| ListItem::new(command.clone()).style(Style::default().fg(Color::Yellow)))
         .collect();
-    let choices_list = List::new(items).highlight_symbol("> ");
+    let choices_list = List::new(items)
+        .start_corner(Corner::BottomLeft)
+        .highlight_symbol("> ");
     f.render_stateful_widget(choices_list, chunks[0], &mut app.list_state);
 
     // The counter on the bottom right
