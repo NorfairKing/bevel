@@ -1,6 +1,6 @@
 _bevel_cd () {
 	tput rmkx
-  cd $(bevel cd)
+  cd $(bevel-select)
   tput smkx
 }
 
