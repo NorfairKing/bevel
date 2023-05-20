@@ -3,7 +3,6 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use gethostname::gethostname;
 use ordered_float::OrderedFloat;
 use std::{
     cmp::Reverse,
@@ -19,6 +18,7 @@ use tui::{
     widgets::{List, ListItem, ListState, Paragraph},
     Frame, Terminal,
 };
+use whoami::{hostname, username};
 
 use sqlite::State;
 
@@ -151,7 +151,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
 struct App<'a> {
     hostname: String,
-    // username: String,
+    username: String,
     connection: &'a sqlite::Connection,
     list_state: ListState,
     choices: Choices,
@@ -160,10 +160,13 @@ struct App<'a> {
 }
 impl<'a> App<'a> {
     pub fn new(connection: &'a sqlite::Connection) -> Self {
-        let hostname: String = gethostname().into_string().unwrap();
-        const STARTING_COUNT_QUERY: &str = "SELECT COUNT(*) from command WHERE host = ?";
+        let hostname: String = hostname();
+        let username: String = username();
+        const STARTING_COUNT_QUERY: &str =
+            "SELECT COUNT(*) from command WHERE host = ? AND user = ?";
         let mut statement = connection.prepare(STARTING_COUNT_QUERY).unwrap();
         statement.bind((1, hostname.as_str())).unwrap();
+        statement.bind((2, username.as_str())).unwrap();
 
         statement.next().unwrap();
         let total = statement.read::<i64, _>("COUNT(*)").unwrap();
@@ -171,7 +174,7 @@ impl<'a> App<'a> {
         list_state.select(Some(0));
         App {
             hostname,
-            // username,
+            username,
             connection,
             list_state,
             choices: Choices::new(),
@@ -218,11 +221,12 @@ impl<'a> App<'a> {
         let offset = self.loaded as i64;
         let limit = rows as i64;
         const ROW_LOADING_QUERY: &str =
-            "SELECT workdir, begin FROM command WHERE host = ? ORDER BY begin DESC LIMIT ? OFFSET ?";
+            "SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?";
         let mut statement = self.connection.prepare(ROW_LOADING_QUERY).unwrap();
         statement.bind((1, self.hostname.as_str())).unwrap();
-        statement.bind((2, limit)).unwrap();
-        statement.bind((3, offset)).unwrap();
+        statement.bind((2, self.username.as_str())).unwrap();
+        statement.bind((3, limit)).unwrap();
+        statement.bind((4, offset)).unwrap();
 
         while let Ok(State::Row) = statement.next() {
             self.loaded += 1;
