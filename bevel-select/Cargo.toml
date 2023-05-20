@@ -7,4 +7,5 @@ edition = "2021"
 tui = "*"
 crossterm = "*"
 sqlite = "*"
-# sqlx = { version = "*", features = [ "runtime-tokio-rustls", "sqlite" ] }
+ordered-float = "*"
+ordered-map = "*"
