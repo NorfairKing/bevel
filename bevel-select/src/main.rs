@@ -33,13 +33,11 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel").unwrap();
+    let path = xdg_dirs.get_data_file("history.sqlite3");
     let open_flags = sqlite::OpenFlags::new().set_read_only();
 
-    let connection = sqlite::Connection::open_with_flags(
-        "/home/syd/.local/share/bevel/history.sqlite3",
-        open_flags,
-    )
-    .unwrap();
+    let connection = sqlite::Connection::open_with_flags(path, open_flags).unwrap();
 
     let app = App::new(&connection);
     let res = run_app(&mut terminal, app);
