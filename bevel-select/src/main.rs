@@ -38,6 +38,7 @@ struct CdQueryMaker {
     hostname: String,
     username: String,
 }
+
 impl CdQueryMaker {
     fn new() -> Self {
         let hostname: String = hostname();
@@ -46,6 +47,7 @@ impl CdQueryMaker {
         CdQueryMaker { hostname, username }
     }
 }
+
 impl QueryMaker for CdQueryMaker {
     fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
         let mut statement = connection
@@ -73,11 +75,13 @@ impl QueryMaker for CdQueryMaker {
 }
 
 struct RepeatQueryMaker {}
+
 impl RepeatQueryMaker {
     fn new() -> Self {
         RepeatQueryMaker {}
     }
 }
+
 impl QueryMaker for RepeatQueryMaker {
     fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
         connection.prepare("SELECT COUNT(*) from command").unwrap()
@@ -96,20 +100,65 @@ impl QueryMaker for RepeatQueryMaker {
         statement
     }
 }
-const CD_COMMAND: &'static str = "cd";
-const REPEAT_COMMAND: &'static str = "repeat";
+
+struct RepeatLocalQueryMaker {
+    workdir: String,
+}
+
+impl RepeatLocalQueryMaker {
+    fn new() -> Self {
+        let workdir: String = env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap();
+        dbg!(&workdir);
+
+        RepeatLocalQueryMaker { workdir }
+    }
+}
+
+impl QueryMaker for RepeatLocalQueryMaker {
+    fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
+        let mut statement = connection
+            .prepare("SELECT COUNT(*) from command WHERE workdir = ?")
+            .unwrap();
+        statement.bind((1, self.workdir.as_str())).unwrap();
+        statement
+    }
+    fn bind_load_query<'a>(
+        &self,
+        connection: &'a sqlite::Connection,
+        limit: i64,
+        offset: i64,
+    ) -> sqlite::Statement<'a> {
+        let mut statement = connection
+            .prepare("SELECT text, begin FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
+            .unwrap();
+        statement.bind((1, self.workdir.as_str())).unwrap();
+        statement.bind((2, limit)).unwrap();
+        statement.bind((3, offset)).unwrap();
+        statement
+    }
+}
+
 fn main() -> Result<(), io::Error> {
     let command = env::args().nth(1).expect("No command given.");
     let cd_maker;
     let repeat_maker;
+    let repeat_local_maker;
     let query_maker: &dyn QueryMaker = match command.as_str() {
-        CD_COMMAND => {
+        "cd" => {
             cd_maker = CdQueryMaker::new();
             &cd_maker
         }
-        REPEAT_COMMAND => {
+        "repeat" => {
             repeat_maker = RepeatQueryMaker::new();
             &repeat_maker
+        }
+        "repeat-local" => {
+            repeat_local_maker = RepeatLocalQueryMaker::new();
+            &repeat_local_maker
         }
         _ => {
             println!("Unknown command");
