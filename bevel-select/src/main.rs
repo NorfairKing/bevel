@@ -3,6 +3,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use ordered_float::OrderedFloat;
 use std::{
     cmp::Reverse,
@@ -136,7 +138,18 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .choices
         .top_items
         .iter()
-        .map(|command| ListItem::new(command.clone()).style(Style::default().fg(Color::Yellow)))
+        .enumerate()
+        .map(|(ix, command)| {
+            let style = if Some(ix) == app.list_state.selected() {
+                Style::default()
+                    .fg(Color::Rgb(0xa0, 0xa0, 0xa0))
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Yellow)
+            };
+
+            ListItem::new(command.clone()).style(style)
+        })
         .collect();
     let choices_list = List::new(items)
         .start_corner(Corner::BottomLeft)
@@ -144,10 +157,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     f.render_stateful_widget(choices_list, chunks[0], &mut app.list_state);
 
     let search_text_span = Span::styled(
-        &app.search_text,
-        Style::default()
-            .fg(Color::White)
-            .add_modifier(Modifier::BOLD),
+        &app.choices.search_text,
+        Style::default().fg(Color::Rgb(0xa0, 0xa0, 0xa0)),
     );
     let width = search_text_span.width() as u16;
     let search_text_styled = vec![Spans::from(vec![search_text_span])];
@@ -182,7 +193,6 @@ struct App<'a> {
     connection: &'a sqlite::Connection,
     list_state: ListState,
     choices: Choices,
-    search_text: String,
     loaded: u64,
     total: u64,
 }
@@ -206,8 +216,7 @@ impl<'a> App<'a> {
             username,
             connection,
             list_state,
-            choices: Choices::new(),
-            search_text: String::new(),
+            choices: Choices::new(String::new()),
             loaded: 0,
             total: total as u64,
         }
@@ -249,17 +258,18 @@ impl<'a> App<'a> {
     }
 
     pub fn append(&mut self, c: char) {
-        self.search_text.push(c);
+        self.choices.search_text.push(c);
         self.reset_search();
     }
     pub fn remove(&mut self) {
-        self.search_text.pop();
+        self.choices.search_text.pop();
         self.reset_search();
     }
 
     fn reset_search(&mut self) {
         self.loaded = 0;
-        self.choices = Choices::new();
+        let text = self.choices.search_text.clone();
+        self.choices = Choices::new(text);
     }
 
     pub fn load_rows(&mut self, rows: u64) {
@@ -284,6 +294,8 @@ impl<'a> App<'a> {
 
 struct Choices {
     now: i64,
+    search_text: String,
+    matcher: SkimMatcherV2,
     top_items: Vec<String>,
     item_scores: HashMap<String, f64>,
 }
@@ -292,12 +304,14 @@ const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
 const MAX_ITEMS: usize = 20;
 
 impl Choices {
-    pub fn new() -> Self {
+    pub fn new(search_text: String) -> Self {
         Choices {
             now: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_nanos() as i64,
+            search_text,
+            matcher: SkimMatcherV2::default(),
             top_items: Vec::with_capacity(MAX_ITEMS),
             item_scores: HashMap::new(),
         }
@@ -305,6 +319,10 @@ impl Choices {
 
     // Add a (workdir, begin) pair after computing its score
     pub fn add(&mut self, key: String, begin: i64) {
+        if self.matcher.fuzzy_match(&key, &self.search_text).is_none() {
+            return;
+        }
+
         // Compute the score of this item
         let timediff = (self.now - begin) as f64;
         let score = NANOSECONDS_IN_A_DAY / timediff;
