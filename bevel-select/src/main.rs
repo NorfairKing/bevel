@@ -302,13 +302,6 @@ struct Choices {
 
 const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
 const MAX_ITEMS: usize = 20;
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct Choice {
-    fuzziness: i64,
-    score: OrderedFloat<f64>,
-    key: String,
-}
 impl Choices {
     pub fn new(search_text: String) -> Self {
         Choices {
@@ -362,7 +355,7 @@ impl Choices {
         if total_score > minimum_score {
             let choice = Choice {
                 fuzziness,
-                score: OrderedFloat(total_score),
+                score: total_score,
                 key: key.clone(),
             };
             // If the item is already there, remove it.
@@ -376,11 +369,16 @@ impl Choices {
             self.top_items.push(choice);
             // Sort by score
             self.top_items
-                .sort_by_key(|c| (Reverse(c.fuzziness), Reverse(c.score)));
+                .sort_by_key(|c| (Reverse(c.fuzziness), Reverse(OrderedFloat(c.score))));
             // Remove any extra items
             if self.top_items.len() >= MAX_ITEMS {
                 self.top_items.pop();
             }
         }
     }
+}
+struct Choice {
+    fuzziness: i64,
+    score: f64,
+    key: String,
 }
