@@ -141,25 +141,18 @@ impl QueryMaker for RepeatLocalQueryMaker {
         statement
     }
 }
-
+#[derive(QueryMaker)]
+enum SomeEnumMaker {
+    Cd(CdQueryMaker),
+    Repeat(RepeatQueryMaker),
+    RepeatLocal(RepeatLocalQueryMaker),
+}
 fn main() -> Result<(), io::Error> {
     let command = env::args().nth(1).expect("No command given.");
-    let cd_maker;
-    let repeat_maker;
-    let repeat_local_maker;
-    let query_maker: &dyn QueryMaker = match command.as_str() {
-        "cd" => {
-            cd_maker = CdQueryMaker::new();
-            &cd_maker
-        }
-        "repeat" => {
-            repeat_maker = RepeatQueryMaker::new();
-            &repeat_maker
-        }
-        "repeat-local" => {
-            repeat_local_maker = RepeatLocalQueryMaker::new();
-            &repeat_local_maker
-        }
+    let query_maker: SomeEnumMaker = match command.as_str() {
+        "cd" => SomeEnumMaker::Cd(CdQueryMaker::new()),
+        "repeat" => SomeEnumMaker::Repeat(RepeatQueryMaker::new()),
+        "repeat-local" => SomeEnumMaker::RepeatLocal(RepeatLocalQueryMaker::new()),
         _ => {
             println!("Unknown command");
             return Ok(());
@@ -180,7 +173,7 @@ fn main() -> Result<(), io::Error> {
 
     let connection = sqlite::Connection::open_with_flags(path, open_flags).unwrap();
 
-    let app = App::new(&connection, query_maker);
+    let app = App::new(&connection, &query_maker);
     let res = run_app(&mut terminal, app);
 
     // restore terminal
@@ -321,7 +314,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 }
 
 struct App<'a> {
-    query_maker: &'a dyn QueryMaker,
+    query_maker: &'a SomeEnumMaker,
     connection: &'a sqlite::Connection,
     list_state: ListState,
     choices: Choices,
@@ -329,7 +322,7 @@ struct App<'a> {
     total: u64,
 }
 impl<'a> App<'a> {
-    pub fn new(connection: &'a sqlite::Connection, query_maker: &'a dyn QueryMaker) -> Self {
+    pub fn new(connection: &'a sqlite::Connection, query_maker: &'a SomeEnumMaker) -> Self {
         let mut statement = query_maker.bind_count_query(connection);
 
         statement.next().unwrap();
