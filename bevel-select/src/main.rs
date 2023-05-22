@@ -285,8 +285,8 @@ impl<'a> App<'a> {
 
         while let Ok(State::Row) = statement.next() {
             self.loaded += 1;
-            let workdir = statement.read::<String, _>("workdir").unwrap();
-            let begin = statement.read::<i64, _>("begin").unwrap();
+            let workdir = statement.read::<String, _>(0).unwrap();
+            let begin = statement.read::<i64, _>(1).unwrap();
             self.choices.add(workdir, begin);
         }
     }
