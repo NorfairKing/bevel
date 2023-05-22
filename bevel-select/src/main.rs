@@ -363,12 +363,10 @@ impl Choices {
         }
     }
     fn recompute_minimum_score(&self) -> f64 {
-        if self.top_items.len() < MAX_ITEMS {
-            0_f64
-        } else {
-            let least_top = self.top_items.last().unwrap();
+        match self.top_items.last() {
+            None => 0.0,
             // We can 'unwrap' because the top_items MUST be in the item_scores too.
-            *self.item_scores.get(&least_top.key).unwrap()
+            Some(least_top) => *self.item_scores.get(&least_top.key).unwrap(),
         }
     }
 }
