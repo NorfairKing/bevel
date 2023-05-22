@@ -298,6 +298,7 @@ struct Choices {
     matcher: SkimMatcherV2,
     top_items: Vec<Choice>,
     item_scores: HashMap<String, f64>,
+    minimum_score: f64,
 }
 
 const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
@@ -313,6 +314,7 @@ impl Choices {
             matcher: SkimMatcherV2::default(),
             top_items: Vec::with_capacity(MAX_ITEMS),
             item_scores: HashMap::new(),
+            minimum_score: 0.0,
         }
     }
 
@@ -342,17 +344,7 @@ impl Choices {
             })
             .or_insert(score);
 
-        // TODO keep this ourselves so we don't have to ask.
-        // // Minimum score to end up in the top_items.
-        let minimum_score = if self.top_items.len() < MAX_ITEMS {
-            0_f64
-        } else {
-            let least_top = self.top_items.last().unwrap();
-            // We can 'unwrap' because the top_items MUST be in the item_scores too.
-            *self.item_scores.get(&least_top.key).unwrap()
-        };
-
-        if total_score > minimum_score {
+        if total_score > self.minimum_score {
             let choice = Choice {
                 fuzziness,
                 score: total_score,
@@ -374,6 +366,17 @@ impl Choices {
             if self.top_items.len() >= MAX_ITEMS {
                 self.top_items.pop();
             }
+            // There might be a new minimal top item, so we recompute the minimum score.
+            self.recompute_minimum_score();
+        }
+    }
+    fn recompute_minimum_score(&self) -> f64 {
+        if self.top_items.len() < MAX_ITEMS {
+            0_f64
+        } else {
+            let least_top = self.top_items.last().unwrap();
+            // We can 'unwrap' because the top_items MUST be in the item_scores too.
+            *self.item_scores.get(&least_top.key).unwrap()
         }
     }
 }
