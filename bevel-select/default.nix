@@ -9,6 +9,4 @@ rustPlatform.buildRustPackage {
   cargoLock = {
     lockFile = ./Cargo.lock;
   };
-
-  # ...
 }

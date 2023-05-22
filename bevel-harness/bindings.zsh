@@ -7,7 +7,7 @@ function _bevel_cd {
   zle -I # Invalidate current display
   
   # See [Note: stdin zle widgets]
-  cd $(bevel-select </dev/tty)
+  cd $(bevel-select cd </dev/tty)
 
 	zle reset-prompt # Re-expand prompt
 }
