@@ -56,7 +56,7 @@ fn main() -> Result<(), io::Error> {
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<Option<String>> {
     // 1000 milliseconds is a second.
-    let frames_per_second = 30;
+    let frames_per_second = 25;
     let tick_rate = Duration::from_millis(1000 / frames_per_second);
 
     let mut last_tick = Instant::now();
