@@ -1,5 +1,5 @@
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -27,9 +27,10 @@ use sqlite::State;
 fn main() -> Result<(), io::Error> {
     // setup terminal
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout);
+    // Output the tui to stderr so we can capture stdout from the shell afterwards
+    let mut stderr = io::stderr();
+    execute!(stderr, EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
     let open_flags = sqlite::OpenFlags::new().set_read_only();
@@ -45,11 +46,7 @@ fn main() -> Result<(), io::Error> {
 
     // restore terminal
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
 
     let selection = res?;

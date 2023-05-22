@@ -120,6 +120,7 @@ in
       packages = [
         cfg.bevelReleasePackages.bevel-cli
         cfg.bevelReleasePackages.bevel-gather # Needed for the harness
+        cfg.bevelReleasePackages.bevel-select
       ];
 
     in
