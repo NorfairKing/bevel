@@ -148,7 +148,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 Style::default().fg(Color::Yellow)
             };
 
-            ListItem::new(command.clone()).style(style)
+            ListItem::new(command.key.clone()).style(style)
         })
         .collect();
     let choices_list = List::new(items)
@@ -254,7 +254,7 @@ impl<'a> App<'a> {
         self.list_state
             .selected()
             .and_then(|ix| self.choices.top_items.get(ix))
-            .cloned()
+            .map(|c| c.key.clone())
     }
 
     pub fn append(&mut self, c: char) {
@@ -296,13 +296,19 @@ struct Choices {
     now: i64,
     search_text: String,
     matcher: SkimMatcherV2,
-    top_items: Vec<String>,
+    top_items: Vec<Choice>,
     item_scores: HashMap<String, f64>,
 }
 
 const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
 const MAX_ITEMS: usize = 20;
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct Choice {
+    fuzziness: i64,
+    score: OrderedFloat<f64>,
+    key: String,
+}
 impl Choices {
     pub fn new(search_text: String) -> Self {
         Choices {
@@ -319,7 +325,14 @@ impl Choices {
 
     // Add a (workdir, begin) pair after computing its score
     pub fn add(&mut self, key: String, begin: i64) {
-        if self.matcher.fuzzy_match(&key, &self.search_text).is_none() {
+        let fuzziness = if self.search_text.is_empty() {
+            1
+        } else {
+            self.matcher
+                .fuzzy_match(&key, &self.search_text)
+                .unwrap_or(0)
+        };
+        if fuzziness <= 0 {
             return;
         }
 
@@ -336,28 +349,34 @@ impl Choices {
             })
             .or_insert(score);
 
+        // TODO keep this ourselves so we don't have to ask.
         // // Minimum score to end up in the top_items.
         let minimum_score = if self.top_items.len() < MAX_ITEMS {
             0_f64
         } else {
             let least_top = self.top_items.last().unwrap();
             // We can 'unwrap' because the top_items MUST be in the item_scores too.
-            *self.item_scores.get(least_top).unwrap()
+            *self.item_scores.get(&least_top.key).unwrap()
         };
 
         if total_score > minimum_score {
+            let choice = Choice {
+                fuzziness,
+                score: OrderedFloat(total_score),
+                key: key.clone(),
+            };
             // If the item is already there, remove it.
             for i in 0..self.top_items.len() {
-                if key == self.top_items[i] {
+                if key == self.top_items[i].key {
                     self.top_items.remove(i);
                     break;
                 }
             }
             // Add the item again
-            self.top_items.push(key);
+            self.top_items.push(choice);
             // Sort by score
             self.top_items
-                .sort_by_key(|k| Reverse(OrderedFloat(*self.item_scores.get(k).unwrap())));
+                .sort_by_key(|c| (Reverse(c.fuzziness), Reverse(c.score)));
             // Remove any extra items
             while self.top_items.len() >= MAX_ITEMS {
                 self.top_items.pop();
