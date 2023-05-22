@@ -9,7 +9,7 @@ use ordered_float::OrderedFloat;
 use std::{
     cmp::Reverse,
     collections::HashMap,
-    io,
+    env, io,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tui::{
@@ -24,7 +24,34 @@ use whoami::{hostname, username};
 
 use sqlite::State;
 
+struct Queries {
+    filter_by_hostname_user: bool,
+    count_query: &'static str,
+    load_query: &'static str,
+}
+const CD_COMMAND: &'static str = "cd";
+const CD_QUERIES: Queries = Queries{
+    filter_by_hostname_user: true,
+    count_query: "SELECT COUNT(*) from command WHERE host = ? AND user = ?", 
+    load_query: "SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?"   
+};
+const REPEAT_COMMAND: &'static str = "repeat";
+const REPEAT_QUERIES: Queries = Queries {
+    filter_by_hostname_user: false,
+    count_query: "SELECT COUNT(*) from command",
+    load_query: "SELECT text, begin FROM command ORDER BY begin DESC LIMIT ? OFFSET ?",
+};
 fn main() -> Result<(), io::Error> {
+    let command = env::args().nth(1).expect("No command given.");
+    let queries: Queries = match command.as_str() {
+        CD_COMMAND => CD_QUERIES,
+        REPEAT_COMMAND => REPEAT_QUERIES,
+        _ => {
+            println!("Unknown command");
+            return Ok(());
+        }
+    };
+
     // setup terminal
     enable_raw_mode()?;
     // Output the tui to stderr so we can capture stdout from the shell afterwards
@@ -39,7 +66,7 @@ fn main() -> Result<(), io::Error> {
 
     let connection = sqlite::Connection::open_with_flags(path, open_flags).unwrap();
 
-    let app = App::new(&connection);
+    let app = App::new(&connection, queries);
     let res = run_app(&mut terminal, app);
 
     // restore terminal
@@ -180,6 +207,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 }
 
 struct App<'a> {
+    queries: Queries,
     hostname: String,
     username: String,
     connection: &'a sqlite::Connection,
@@ -189,21 +217,22 @@ struct App<'a> {
     total: u64,
 }
 impl<'a> App<'a> {
-    pub fn new(connection: &'a sqlite::Connection) -> Self {
+    pub fn new(connection: &'a sqlite::Connection, queries: Queries) -> Self {
         let hostname: String = hostname();
         let username: String = username();
 
-        const STARTING_COUNT_QUERY: &str =
-            "SELECT COUNT(*) from command WHERE host = ? AND user = ?";
-        let mut statement = connection.prepare(STARTING_COUNT_QUERY).unwrap();
-        statement.bind((1, hostname.as_str())).unwrap();
-        statement.bind((2, username.as_str())).unwrap();
+        let mut statement = connection.prepare(queries.count_query).unwrap();
+        if queries.filter_by_hostname_user {
+            statement.bind((1, hostname.as_str())).unwrap();
+            statement.bind((2, username.as_str())).unwrap();
+        }
 
         statement.next().unwrap();
         let total = statement.read::<i64, _>("COUNT(*)").unwrap();
         let mut list_state = ListState::default();
         list_state.select(Some(0));
         App {
+            queries,
             hostname,
             username,
             connection,
@@ -267,13 +296,18 @@ impl<'a> App<'a> {
     pub fn load_rows(&mut self, rows: u64) {
         let offset = self.loaded as i64;
         let limit = rows as i64;
-        const ROW_LOADING_QUERY: &str =
-            "SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?";
-        let mut statement = self.connection.prepare(ROW_LOADING_QUERY).unwrap();
-        statement.bind((1, self.hostname.as_str())).unwrap();
-        statement.bind((2, self.username.as_str())).unwrap();
-        statement.bind((3, limit)).unwrap();
-        statement.bind((4, offset)).unwrap();
+        let mut statement = self.connection.prepare(self.queries.load_query).unwrap();
+        let mut bindcount = 0;
+        if self.queries.filter_by_hostname_user {
+            bindcount += 1;
+            statement.bind((bindcount, self.hostname.as_str())).unwrap();
+            bindcount += 1;
+            statement.bind((bindcount, self.username.as_str())).unwrap();
+        }
+        bindcount += 1;
+        statement.bind((bindcount, limit)).unwrap();
+        bindcount += 1;
+        statement.bind((bindcount, offset)).unwrap();
 
         while let Ok(State::Row) = statement.next() {
             self.loaded += 1;
