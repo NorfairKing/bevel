@@ -13,7 +13,7 @@ use std::{
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Alignment, Constraint, Corner, Direction, Layout},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Span, Spans},
     widgets::{List, ListItem, ListState, Paragraph},
     Frame, Terminal,
@@ -95,6 +95,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
                     KeyCode::Down => app.select_previous(),
                     KeyCode::Enter => return Ok(app.selected()),
                     KeyCode::Esc => return Ok(None),
+                    KeyCode::Char(char) => app.append(char),
+                    KeyCode::Backspace => app.remove(),
                     _ => {}
                 }
             }
@@ -117,9 +119,19 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(90), Constraint::Length(1)].as_ref())
+        .constraints(
+            [
+                Constraint::Min(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+            ]
+            .as_ref(),
+        )
+        .vertical_margin(0)
+        .horizontal_margin(1)
         .split(f.size());
 
+    // The items at the top.
     let items: Vec<ListItem> = app
         .choices
         .top_items
@@ -128,8 +140,23 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .collect();
     let choices_list = List::new(items)
         .start_corner(Corner::BottomLeft)
-        .highlight_symbol("> ");
+        .highlight_symbol("❯ ");
     f.render_stateful_widget(choices_list, chunks[0], &mut app.list_state);
+
+    let search_text_span = Span::styled(
+        &app.search_text,
+        Style::default()
+            .fg(Color::White)
+            .add_modifier(Modifier::BOLD),
+    );
+    let width = search_text_span.width() as u16;
+    let search_text_styled = vec![Spans::from(vec![search_text_span])];
+    let search_text_widget = Paragraph::new(search_text_styled).alignment(Alignment::Left);
+    let mut chunk_to_the_right = chunks[1];
+    chunk_to_the_right.x += 2;
+    chunk_to_the_right.width -= 2;
+    f.render_widget(search_text_widget, chunk_to_the_right);
+    f.set_cursor(chunk_to_the_right.x + width, chunk_to_the_right.y);
 
     // The counter on the bottom right
     let loaded_colour = if app.loaded >= app.total {
@@ -146,7 +173,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         Span::styled(format!("{}", app.total), Style::default().fg(Color::Green)),
     ])];
     let loaded_label = Paragraph::new(loaded_text).alignment(Alignment::Right);
-    f.render_widget(loaded_label, chunks[1]);
+    f.render_widget(loaded_label, chunks[2]);
 }
 
 struct App<'a> {
@@ -155,6 +182,7 @@ struct App<'a> {
     connection: &'a sqlite::Connection,
     list_state: ListState,
     choices: Choices,
+    search_text: String,
     loaded: u64,
     total: u64,
 }
@@ -178,6 +206,7 @@ impl<'a> App<'a> {
             connection,
             list_state,
             choices: Choices::new(),
+            search_text: String::new(),
             loaded: 0,
             total: total as u64,
         }
@@ -196,6 +225,7 @@ impl<'a> App<'a> {
         };
         self.list_state.select(Some(i));
     }
+
     pub fn select_previous(&mut self) {
         let i = match self.list_state.selected() {
             Some(i) => {
@@ -215,6 +245,13 @@ impl<'a> App<'a> {
             .selected()
             .and_then(|ix| self.choices.top_items.get(ix))
             .cloned()
+    }
+
+    pub fn append(&mut self, c: char) {
+        self.search_text.push(c);
+    }
+    pub fn remove(&mut self) {
+        self.search_text.pop();
     }
 
     pub fn load_rows(&mut self, rows: u64) {
