@@ -48,59 +48,6 @@ impl CdQueryMaker {
     }
 }
 
-impl QueryMaker for CdQueryMaker {
-    fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
-        let mut statement = connection
-            .prepare("SELECT COUNT(*) from command WHERE host = ? AND user = ?")
-            .unwrap();
-        statement.bind((1, self.hostname.as_str())).unwrap();
-        statement.bind((2, self.username.as_str())).unwrap();
-        statement
-    }
-    fn bind_load_query<'a>(
-        &self,
-        connection: &'a sqlite::Connection,
-        limit: i64,
-        offset: i64,
-    ) -> sqlite::Statement<'a> {
-        let mut statement = connection
-            .prepare("SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
-            .unwrap();
-        statement.bind((1, self.hostname.as_str())).unwrap();
-        statement.bind((2, self.username.as_str())).unwrap();
-        statement.bind((3, limit)).unwrap();
-        statement.bind((4, offset)).unwrap();
-        statement
-    }
-}
-
-struct RepeatQueryMaker {}
-
-impl RepeatQueryMaker {
-    fn new() -> Self {
-        RepeatQueryMaker {}
-    }
-}
-
-impl QueryMaker for RepeatQueryMaker {
-    fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
-        connection.prepare("SELECT COUNT(*) from command").unwrap()
-    }
-    fn bind_load_query<'a>(
-        &self,
-        connection: &'a sqlite::Connection,
-        limit: i64,
-        offset: i64,
-    ) -> sqlite::Statement<'a> {
-        let mut statement = connection
-            .prepare("SELECT text, begin FROM command ORDER BY begin DESC LIMIT ? OFFSET ?")
-            .unwrap();
-        statement.bind((1, limit)).unwrap();
-        statement.bind((2, offset)).unwrap();
-        statement
-    }
-}
-
 struct RepeatLocalQueryMaker {
     workdir: String,
 }
@@ -117,14 +64,31 @@ impl RepeatLocalQueryMaker {
         RepeatLocalQueryMaker { workdir }
     }
 }
-
-impl QueryMaker for RepeatLocalQueryMaker {
+enum SomeEnumMaker {
+    Cd(CdQueryMaker),
+    Repeat,
+    RepeatLocal(RepeatLocalQueryMaker),
+}
+impl SomeEnumMaker {
     fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
-        let mut statement = connection
-            .prepare("SELECT COUNT(*) from command WHERE workdir = ?")
-            .unwrap();
-        statement.bind((1, self.workdir.as_str())).unwrap();
-        statement
+        match self {
+            SomeEnumMaker::Cd(cqm) => {
+                let mut statement = connection
+                    .prepare("SELECT COUNT(*) from command WHERE host = ? AND user = ?")
+                    .unwrap();
+                statement.bind((1, cqm.hostname.as_str())).unwrap();
+                statement.bind((2, cqm.username.as_str())).unwrap();
+                statement
+            }
+            SomeEnumMaker::Repeat => connection.prepare("SELECT COUNT(*) from command").unwrap(),
+            SomeEnumMaker::RepeatLocal(rlqm) => {
+                let mut statement = connection
+                    .prepare("SELECT COUNT(*) from command WHERE workdir = ?")
+                    .unwrap();
+                statement.bind((1, rlqm.workdir.as_str())).unwrap();
+                statement
+            }
+        }
     }
     fn bind_load_query<'a>(
         &self,
@@ -132,26 +96,42 @@ impl QueryMaker for RepeatLocalQueryMaker {
         limit: i64,
         offset: i64,
     ) -> sqlite::Statement<'a> {
-        let mut statement = connection
-            .prepare("SELECT text, begin FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
-            .unwrap();
-        statement.bind((1, self.workdir.as_str())).unwrap();
-        statement.bind((2, limit)).unwrap();
-        statement.bind((3, offset)).unwrap();
-        statement
+        match self {
+            SomeEnumMaker::Cd(cqm) => {
+                let mut statement = connection
+                                    .prepare("SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
+                                    .unwrap();
+                statement.bind((1, cqm.hostname.as_str())).unwrap();
+                statement.bind((2, cqm.username.as_str())).unwrap();
+                statement.bind((3, limit)).unwrap();
+                statement.bind((4, offset)).unwrap();
+                statement
+            }
+            SomeEnumMaker::Repeat => {
+                let mut statement = connection
+                    .prepare("SELECT text, begin FROM command ORDER BY begin DESC LIMIT ? OFFSET ?")
+                    .unwrap();
+                statement.bind((1, limit)).unwrap();
+                statement.bind((2, offset)).unwrap();
+                statement
+            }
+            SomeEnumMaker::RepeatLocal(rlqm) => {
+                let mut statement = connection
+                                        .prepare("SELECT text, begin FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
+                                        .unwrap();
+                statement.bind((1, rlqm.workdir.as_str())).unwrap();
+                statement.bind((2, limit)).unwrap();
+                statement.bind((3, offset)).unwrap();
+                statement
+            }
+        }
     }
-}
-#[derive(QueryMaker)]
-enum SomeEnumMaker {
-    Cd(CdQueryMaker),
-    Repeat(RepeatQueryMaker),
-    RepeatLocal(RepeatLocalQueryMaker),
 }
 fn main() -> Result<(), io::Error> {
     let command = env::args().nth(1).expect("No command given.");
     let query_maker: SomeEnumMaker = match command.as_str() {
         "cd" => SomeEnumMaker::Cd(CdQueryMaker::new()),
-        "repeat" => SomeEnumMaker::Repeat(RepeatQueryMaker::new()),
+        "repeat" => SomeEnumMaker::Repeat,
         "repeat-local" => SomeEnumMaker::RepeatLocal(RepeatLocalQueryMaker::new()),
         _ => {
             println!("Unknown command");
