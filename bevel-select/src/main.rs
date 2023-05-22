@@ -190,6 +190,7 @@ impl<'a> App<'a> {
     pub fn new(connection: &'a sqlite::Connection) -> Self {
         let hostname: String = hostname();
         let username: String = username();
+
         const STARTING_COUNT_QUERY: &str =
             "SELECT COUNT(*) from command WHERE host = ? AND user = ?";
         let mut statement = connection.prepare(STARTING_COUNT_QUERY).unwrap();
@@ -249,9 +250,16 @@ impl<'a> App<'a> {
 
     pub fn append(&mut self, c: char) {
         self.search_text.push(c);
+        self.reset_search();
     }
     pub fn remove(&mut self) {
         self.search_text.pop();
+        self.reset_search();
+    }
+
+    fn reset_search(&mut self) {
+        self.loaded = 0;
+        self.choices = Choices::new();
     }
 
     pub fn load_rows(&mut self, rows: u64) {
