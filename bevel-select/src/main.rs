@@ -378,7 +378,7 @@ impl Choices {
             self.top_items
                 .sort_by_key(|c| (Reverse(c.fuzziness), Reverse(c.score)));
             // Remove any extra items
-            while self.top_items.len() >= MAX_ITEMS {
+            if self.top_items.len() >= MAX_ITEMS {
                 self.top_items.pop();
             }
         }
