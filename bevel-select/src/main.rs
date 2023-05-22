@@ -48,13 +48,10 @@ fn main() -> Result<(), io::Error> {
     terminal.show_cursor()?;
 
     let selection = res?;
-    match selection {
-        Some(selected) => {
-            println!("{selected}");
-            Ok(())
-        }
-        None => Ok(()),
+    if let Some(selected) = selection {
+        println!("{selected}");
     }
+    Ok(())
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<Option<String>> {
