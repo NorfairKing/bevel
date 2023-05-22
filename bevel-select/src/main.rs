@@ -24,16 +24,6 @@ use whoami::{hostname, username};
 
 use sqlite::State;
 
-trait QueryMaker {
-    fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a>;
-    fn bind_load_query<'a>(
-        &self,
-        connection: &'a sqlite::Connection,
-        limit: i64,
-        offset: i64,
-    ) -> sqlite::Statement<'a>;
-}
-
 struct CdQueryMaker {
     hostname: String,
     username: String,
@@ -99,8 +89,8 @@ impl SomeEnumMaker {
         match self {
             SomeEnumMaker::Cd(cqm) => {
                 let mut statement = connection
-                                    .prepare("SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
-                                    .unwrap();
+                    .prepare("SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
+                    .unwrap();
                 statement.bind((1, cqm.hostname.as_str())).unwrap();
                 statement.bind((2, cqm.username.as_str())).unwrap();
                 statement.bind((3, limit)).unwrap();
@@ -117,8 +107,8 @@ impl SomeEnumMaker {
             }
             SomeEnumMaker::RepeatLocal(rlqm) => {
                 let mut statement = connection
-                                        .prepare("SELECT text, begin FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
-                                        .unwrap();
+                    .prepare("SELECT text, begin FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
+                    .unwrap();
                 statement.bind((1, rlqm.workdir.as_str())).unwrap();
                 statement.bind((2, limit)).unwrap();
                 statement.bind((3, offset)).unwrap();

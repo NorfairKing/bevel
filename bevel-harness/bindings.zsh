@@ -19,7 +19,7 @@ function _bevel_repeat {
   zle -I # Invalidate current display
 
   # See [Note: stdin zle widgets]
-  command=$(bevel repeat </dev/tty)
+  command=$(bevel-select repeat </dev/tty)
 
 	if [[ -n $command ]] ; then
 		LBUFFER=$command
@@ -35,7 +35,7 @@ function _bevel_repeat_local {
   zle -I # Invalidate current display
 
   # See [Note: stdin zle widgets]
-  command=$(bevel repeat-local </dev/tty)
+  command=$(bevel-select repeat-local </dev/tty)
 
 	if [[ -n $command ]] ; then
 		LBUFFER=$command
