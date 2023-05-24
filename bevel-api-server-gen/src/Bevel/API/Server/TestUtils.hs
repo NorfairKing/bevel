@@ -28,7 +28,8 @@ import Web.Cookie
 
 serverSpec :: SpecWith ClientEnv -> Spec
 serverSpec =
-  before (HTTP.newManager defaultManagerSettings) . aroundWith withTestServer
+  before (HTTP.newManager defaultManagerSettings)
+    . aroundWith withTestServer
     . modifyMaxSuccess (`div` 20)
     . modifyMaxShrinks (const 0) -- Shrinks are broken when using 'around'
 
