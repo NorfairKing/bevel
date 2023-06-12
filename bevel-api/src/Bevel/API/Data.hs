@@ -44,8 +44,10 @@ instance HasCodec RegistrationForm where
   codec =
     object "RegistrationForm" $
       RegistrationForm
-        <$> requiredField "username" "user name" .= registrationFormUsername
-        <*> requiredField "password" "password" .= registrationFormPassword
+        <$> requiredField "username" "user name"
+          .= registrationFormUsername
+        <*> requiredField "password" "password"
+          .= registrationFormPassword
 
 data LoginForm = LoginForm
   { loginFormUsername :: Username,
@@ -60,8 +62,10 @@ instance HasCodec LoginForm where
   codec =
     object "LoginForm" $
       LoginForm
-        <$> requiredField "username" "user name" .= loginFormUsername
-        <*> requiredField "password" "password" .= loginFormPassword
+        <$> requiredField "username" "user name"
+          .= loginFormUsername
+        <*> requiredField "password" "password"
+          .= loginFormPassword
 
 data AuthCookie = AuthCookie
   { authCookieUsername :: Username
@@ -105,8 +109,8 @@ instance HasCodec SyncResponse where
 instance ToBackendKey SqlBackend a => HasCodec (Sql.Key a) where
   codec = dimapCodec toSqlKey fromSqlKey codec
 
-instance (PersistEntity a, ToBackendKey SqlBackend a) => ToJSONKey (Sql.Key a) where
+instance (ToBackendKey SqlBackend a) => ToJSONKey (Sql.Key a) where
   toJSONKey = contramap fromSqlKey toJSONKey
 
-instance (PersistEntity a, ToBackendKey SqlBackend a) => FromJSONKey (Sql.Key a) where
+instance (ToBackendKey SqlBackend a) => FromJSONKey (Sql.Key a) where
   fromJSONKey = toSqlKey <$> fromJSONKey

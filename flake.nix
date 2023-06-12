@@ -5,8 +5,8 @@
     extra-trusted-public-keys = "bevel.cachix.org-1:LaYFysrJKkFZDRCWRsa95GC21eijfHh+IevNeZTqL00=";
   };
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.11";
-    home-manager.url = "github:nix-community/home-manager?ref=release-22.11";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-23.05";
+    home-manager.url = "github:nix-community/home-manager?ref=release-23.05";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     validity.url = "github:NorfairKing/validity";
     validity.flake = false;
@@ -16,7 +16,7 @@
     safe-coloured-text.flake = false;
     sydtest.url = "github:NorfairKing/sydtest";
     sydtest.flake = false;
-    appendful.url = "github:NorfairKing/appendful?ref=flake";
+    appendful.url = "github:NorfairKing/appendful";
     appendful.flake = false;
     dekking.url = "github:NorfairKing/dekking";
     dekking.flake = false;
@@ -83,6 +83,7 @@
           # Not haskell packages:
           # "bevel-gather"
           # "bevel-harness"
+          # "bevel-select"
         };
         pre-commit = pre-commit-hooks.lib.${system}.run {
           src = ./.;

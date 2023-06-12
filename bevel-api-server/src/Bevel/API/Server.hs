@@ -36,6 +36,7 @@ bevelAPIServer = do
                 }
         Warp.run settingPort $ bevelAPIServerApp serverEnv
 
+{-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
 bevelAPIServerApp :: Env -> Wai.Application
 bevelAPIServerApp env =
   genericServeTWithContext

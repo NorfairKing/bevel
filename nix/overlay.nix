@@ -64,7 +64,7 @@ with final.haskell.lib;
               }));
             bevelPkgWithComp =
               exeName: name:
-              generateOptparseApplicativeCompletion exeName (bevelPkg name);
+              self.generateOptparseApplicativeCompletions [ exeName ] (bevelPkg name);
             bevelPkgWithOwnComp = name: bevelPkgWithComp name name;
 
             bevelPackages = {
