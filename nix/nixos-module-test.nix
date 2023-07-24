@@ -4,9 +4,7 @@
 , bevel-home-manager-module
 }:
 let
-  bevel-production = bevel-nixos-module-factory {
-    envname = "production";
-  };
+  bevel-production = bevel-nixos-module-factory { envname = "production"; };
   port = 8001;
 in
 nixosTest (

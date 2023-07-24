@@ -18,51 +18,50 @@ in
         mkOption {
           type =
             types.submodule {
-              options =
-                {
-                  enable = mkEnableOption "Bevel API Server";
-                  config = mkOption {
-                    default = { };
-                    description = "The contents of the config file, as an attribute set. This will be translated to Yaml and put in the right place along with the rest of the options defined in this submodule.";
-                  };
-                  log-level =
-                    mkOption {
-                      type = types.str;
-                      example = "Debug";
-                      default = "Warn";
-                      description = "The log level to use";
-                    };
-                  hosts =
-                    mkOption {
-                      type = types.listOf (types.str);
-                      default = [ ];
-                      example = "api.bevel.cs-syd.eu";
-                      description = "The host to serve api requests on";
-                    };
-                  port =
-                    mkOption {
-                      type = types.int;
-                      example = 8001;
-                      description = "The port to serve api requests on";
-                    };
-                  local-backup =
-                    mkOption {
-                      type = types.nullOr (
-                        types.submodule {
-                          options = {
-                            enable = mkEnableOption "Bevel API Server Local Backup Service";
-                            backup-dir = mkOption {
-                              type = types.str;
-                              example = "backup/api-server";
-                              default = "backup/api-server";
-                              description = "The directory to store backups in, relative to the /www/bevel/${envname} directory or absolute";
-                            };
-                          };
-                        }
-                      );
-                      default = null;
-                    };
+              options = {
+                enable = mkEnableOption "Bevel API Server";
+                config = mkOption {
+                  default = { };
+                  description = "The contents of the config file, as an attribute set. This will be translated to Yaml and put in the right place along with the rest of the options defined in this submodule.";
                 };
+                log-level =
+                  mkOption {
+                    type = types.str;
+                    example = "Debug";
+                    default = "Warn";
+                    description = "The log level to use";
+                  };
+                hosts =
+                  mkOption {
+                    type = types.listOf (types.str);
+                    default = [ ];
+                    example = "api.bevel.cs-syd.eu";
+                    description = "The host to serve api requests on";
+                  };
+                port =
+                  mkOption {
+                    type = types.int;
+                    example = 8001;
+                    description = "The port to serve api requests on";
+                  };
+                local-backup =
+                  mkOption {
+                    type = types.nullOr (
+                      types.submodule {
+                        options = {
+                          enable = mkEnableOption "Bevel API Server Local Backup Service";
+                          backup-dir = mkOption {
+                            type = types.str;
+                            example = "backup/api-server";
+                            default = "backup/api-server";
+                            description = "The directory to store backups in, relative to the /www/bevel/${envname} directory or absolute";
+                          };
+                        };
+                      }
+                    );
+                    default = null;
+                  };
+              };
             };
           default = null;
         };

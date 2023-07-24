@@ -107,6 +107,7 @@
           cargo
           clippy
           pkg-config
+          rust-analyzer
           rustc
           rustfmt
           zlib
