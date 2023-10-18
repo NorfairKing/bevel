@@ -14,6 +14,8 @@
     autodocodec.flake = false;
     safe-coloured-text.url = "github:NorfairKing/safe-coloured-text";
     safe-coloured-text.flake = false;
+    fast-myers-diff.url = "github:NorfairKing/fast-myers-diff";
+    fast-myers-diff.flake = false;
     sydtest.url = "github:NorfairKing/sydtest";
     sydtest.flake = false;
     appendful.url = "github:NorfairKing/appendful";
@@ -31,6 +33,7 @@
     , safe-coloured-text
     , sydtest
     , autodocodec
+    , fast-myers-diff
     , appendful
     , dekking
     }:
@@ -46,6 +49,7 @@
           (import (sydtest + "/nix/overlay.nix"))
           (import (appendful + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
+          (import (fast-myers-diff + "/nix/overlay.nix"))
           (import (dekking + "/nix/overlay.nix"))
         ];
       };
