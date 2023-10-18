@@ -54,15 +54,15 @@ impl RepeatLocalQueryMaker {
         RepeatLocalQueryMaker { workdir }
     }
 }
-enum SomeEnumMaker {
+enum SomeQueryMaker {
     Cd(CdQueryMaker),
     Repeat,
     RepeatLocal(RepeatLocalQueryMaker),
 }
-impl SomeEnumMaker {
+impl SomeQueryMaker {
     fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
         match self {
-            SomeEnumMaker::Cd(cqm) => {
+            SomeQueryMaker::Cd(cqm) => {
                 let mut statement = connection
                     .prepare("SELECT COUNT(*) from command WHERE host = ? AND user = ?")
                     .unwrap();
@@ -70,8 +70,8 @@ impl SomeEnumMaker {
                 statement.bind((2, cqm.username.as_str())).unwrap();
                 statement
             }
-            SomeEnumMaker::Repeat => connection.prepare("SELECT COUNT(*) from command").unwrap(),
-            SomeEnumMaker::RepeatLocal(rlqm) => {
+            SomeQueryMaker::Repeat => connection.prepare("SELECT COUNT(*) from command").unwrap(),
+            SomeQueryMaker::RepeatLocal(rlqm) => {
                 let mut statement = connection
                     .prepare("SELECT COUNT(*) from command WHERE workdir = ?")
                     .unwrap();
@@ -87,7 +87,7 @@ impl SomeEnumMaker {
         offset: i64,
     ) -> sqlite::Statement<'a> {
         match self {
-            SomeEnumMaker::Cd(cqm) => {
+            SomeQueryMaker::Cd(cqm) => {
                 let mut statement = connection
                     .prepare("SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
                     .unwrap();
@@ -97,7 +97,7 @@ impl SomeEnumMaker {
                 statement.bind((4, offset)).unwrap();
                 statement
             }
-            SomeEnumMaker::Repeat => {
+            SomeQueryMaker::Repeat => {
                 let mut statement = connection
                     .prepare("SELECT text, begin FROM command ORDER BY begin DESC LIMIT ? OFFSET ?")
                     .unwrap();
@@ -105,7 +105,7 @@ impl SomeEnumMaker {
                 statement.bind((2, offset)).unwrap();
                 statement
             }
-            SomeEnumMaker::RepeatLocal(rlqm) => {
+            SomeQueryMaker::RepeatLocal(rlqm) => {
                 let mut statement = connection
                     .prepare("SELECT text, begin FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
                     .unwrap();
@@ -119,10 +119,10 @@ impl SomeEnumMaker {
 }
 fn main() -> Result<(), io::Error> {
     let command = env::args().nth(1).expect("No command given.");
-    let query_maker: SomeEnumMaker = match command.as_str() {
-        "cd" => SomeEnumMaker::Cd(CdQueryMaker::new()),
-        "repeat" => SomeEnumMaker::Repeat,
-        "repeat-local" => SomeEnumMaker::RepeatLocal(RepeatLocalQueryMaker::new()),
+    let query_maker: SomeQueryMaker = match command.as_str() {
+        "cd" => SomeQueryMaker::Cd(CdQueryMaker::new()),
+        "repeat" => SomeQueryMaker::Repeat,
+        "repeat-local" => SomeQueryMaker::RepeatLocal(RepeatLocalQueryMaker::new()),
         _ => {
             println!("Unknown command");
             return Ok(());
@@ -284,7 +284,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 }
 
 struct App<'a> {
-    query_maker: &'a SomeEnumMaker,
+    query_maker: &'a SomeQueryMaker,
     connection: &'a sqlite::Connection,
     list_state: ListState,
     choices: Choices,
@@ -292,7 +292,7 @@ struct App<'a> {
     total: u64,
 }
 impl<'a> App<'a> {
-    pub fn new(connection: &'a sqlite::Connection, query_maker: &'a SomeEnumMaker) -> Self {
+    pub fn new(connection: &'a sqlite::Connection, query_maker: &'a SomeQueryMaker) -> Self {
         let mut statement = query_maker.bind_count_query(connection);
 
         statement.next().unwrap();
