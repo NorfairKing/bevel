@@ -89,7 +89,7 @@ impl SomeQueryMaker {
         match self {
             SomeQueryMaker::Cd(cqm) => {
                 let mut statement = connection
-                    .prepare("SELECT workdir, begin FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
+                    .prepare("SELECT workdir, begin, exit FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
                     .unwrap();
                 statement.bind((1, cqm.hostname.as_str())).unwrap();
                 statement.bind((2, cqm.username.as_str())).unwrap();
@@ -99,7 +99,7 @@ impl SomeQueryMaker {
             }
             SomeQueryMaker::Repeat => {
                 let mut statement = connection
-                    .prepare("SELECT text, begin FROM command ORDER BY begin DESC LIMIT ? OFFSET ?")
+                    .prepare("SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT ? OFFSET ?")
                     .unwrap();
                 statement.bind((1, limit)).unwrap();
                 statement.bind((2, offset)).unwrap();
@@ -107,7 +107,7 @@ impl SomeQueryMaker {
             }
             SomeQueryMaker::RepeatLocal(rlqm) => {
                 let mut statement = connection
-                    .prepare("SELECT text, begin FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
+                    .prepare("SELECT text, begin, exit FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
                     .unwrap();
                 statement.bind((1, rlqm.workdir.as_str())).unwrap();
                 statement.bind((2, limit)).unwrap();
@@ -370,7 +370,8 @@ impl<'a> App<'a> {
             self.loaded += 1;
             let workdir = statement.read::<String, _>(0).unwrap();
             let begin = statement.read::<i64, _>(1).unwrap();
-            self.choices.add(workdir, begin);
+            let exit = statement.read::<Option<i64>, _>(2).unwrap();
+            self.choices.add(workdir, begin, exit);
         }
     }
 }
@@ -402,7 +403,7 @@ impl Choices {
     }
 
     // Add a (workdir, begin) pair after computing its score
-    pub fn add(&mut self, key: String, begin: i64) {
+    pub fn add(&mut self, key: String, begin: i64, exit: Option<i64>) {
         let fuzziness = if self.search_text.is_empty() {
             1
         } else {
@@ -416,7 +417,8 @@ impl Choices {
 
         // Compute the score of this item
         let timediff = (self.now - begin) as f64;
-        let score = NANOSECONDS_IN_A_DAY / timediff;
+        let exit_multiplier = if exit == Some(0) { 2 } else { 1 } as f64;
+        let score = exit_multiplier * NANOSECONDS_IN_A_DAY / timediff;
 
         // Add to the item scores
         let total_score: f64 = *self
