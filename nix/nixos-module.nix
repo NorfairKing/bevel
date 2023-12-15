@@ -1,5 +1,3 @@
-{ bevel-api-server
-}:
 { envname
 }:
 { lib, pkgs, config, ... }:
