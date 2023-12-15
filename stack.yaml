@@ -1,4 +1,4 @@
-resolver: lts-19.32
+resolver: lts-21.22
 packages:
 - bevel-api
 - bevel-api-gen
@@ -13,6 +13,16 @@ packages:
 - bevel-data
 - bevel-data-gen
 extra-deps:
+- github: NorfairKing/servant
+  commit: 552da96ff9a6d81a8553c6429843178d78356054
+  subdirs:
+  - servant 
+  - servant-auth/servant-auth
+  - servant-auth/servant-auth-client
+  - servant-auth/servant-auth-server
+  - servant-client
+  - servant-client-core 
+  - servant-server
 - github: NorfairKing/autodocodec
   commit: fa4d53e6c7694427c9d777b883fc446c4f3651b0
   subdirs:
@@ -40,7 +50,7 @@ extra-deps:
   - sydtest-wai
   - sydtest-yesod
 - github: NorfairKing/appendful
-  commit: fcaea3b910bdab241a8c47d2c56b3681df1e32f7
+  commit: 9100ac7fb88e8bb0357e6c648d1b5b404efcd4f8
   subdirs:
   - appendful
   - appendful-persistent
