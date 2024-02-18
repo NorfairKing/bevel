@@ -49,7 +49,6 @@ impl RepeatLocalQueryMaker {
             .into_os_string()
             .into_string()
             .unwrap();
-        dbg!(&workdir);
 
         RepeatLocalQueryMaker { workdir }
     }
