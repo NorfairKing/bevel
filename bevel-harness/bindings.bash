@@ -1,6 +1,7 @@
 _bevel_cd () {
 	tput rmkx
-  cd $(bevel-select cd)
+  local path="$(bevel-select cd)"
+  [[ -z $path ]] || cd "$path"
   tput smkx
 }
 
