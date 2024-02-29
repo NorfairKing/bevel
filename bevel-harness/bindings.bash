@@ -13,8 +13,10 @@ _bevel_repeat () {
   command="$(bevel-select repeat)"
 	tput smkx
 
-  READLINE_LINE=${command}
-  READLINE_POINT=${#READLINE_LINE}
+  if [[ $command ]]; then
+    READLINE_LINE=${command}
+    READLINE_POINT=${#READLINE_LINE}
+  fi
 }
 
 bind -x '"\C-r": _bevel_repeat'
@@ -25,8 +27,10 @@ _bevel_repeat_local () {
   command="$(bevel-select repeat-local)"
 	tput smkx
 
-  READLINE_LINE=${command}
-  READLINE_POINT=${#READLINE_LINE}
+  if [[ $command ]]; then
+    READLINE_LINE=${command}
+    READLINE_POINT=${#READLINE_LINE}
+  fi
 }
 
 bind -x '"\C-h": _bevel_repeat_local'
