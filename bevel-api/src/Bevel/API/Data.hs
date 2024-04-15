@@ -106,7 +106,7 @@ instance HasCodec SyncResponse where
     object "SyncResponse" $
       SyncResponse <$> requiredField "command" "commands sync response" .= syncResponseCommandSyncResponse
 
-instance ToBackendKey SqlBackend a => HasCodec (Sql.Key a) where
+instance (ToBackendKey SqlBackend a) => HasCodec (Sql.Key a) where
   codec = dimapCodec toSqlKey fromSqlKey codec
 
 instance (ToBackendKey SqlBackend a) => ToJSONKey (Sql.Key a) where

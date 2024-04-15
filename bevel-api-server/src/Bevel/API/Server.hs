@@ -55,6 +55,6 @@ bevelHandlers =
       postSync = protected handlePostSync
     }
 
-protected :: ThrowAll m => (authCookie -> m) -> AuthResult authCookie -> m
+protected :: (ThrowAll m) => (authCookie -> m) -> AuthResult authCookie -> m
 protected func (Authenticated authCookie) = func authCookie
 protected _ _ = throwAll err401

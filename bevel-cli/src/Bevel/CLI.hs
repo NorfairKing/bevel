@@ -60,7 +60,7 @@ completeCliMigrations quiet = do
   setUpIndices
   logInfoN "Migrations done."
 
-setUpIndices :: MonadIO m => SqlPersistT m ()
+setUpIndices :: (MonadIO m) => SqlPersistT m ()
 setUpIndices = do
   rawExecute "CREATE INDEX IF NOT EXISTS command_text ON command (text)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_begin ON command (begin)" []

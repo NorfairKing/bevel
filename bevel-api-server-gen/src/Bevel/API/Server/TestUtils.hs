@@ -69,7 +69,7 @@ registrationFormToLoginForm rf =
       loginFormPassword = registrationFormPassword rf
     }
 
-withAnyNewUser :: Testable a => ClientEnv -> (Token -> IO a) -> Property
+withAnyNewUser :: (Testable a) => ClientEnv -> (Token -> IO a) -> Property
 withAnyNewUser cenv func = forAllValid $ \rf -> ioProperty $ withNewUser cenv rf func
 
 withNewUser :: ClientEnv -> RegistrationForm -> (Token -> IO a) -> IO a
