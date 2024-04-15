@@ -1,5 +1,5 @@
 { mkDerivation, aeson-pretty, appendful-persistent, async
-, autodocodec, autodocodec-yaml, base, bevel-api
+, autodocodec, autodocodec-yaml, autoexporter, base, bevel-api
 , bevel-api-server-data, bevel-api-server-gen, bevel-client
 , bevel-client-data, bevel-client-data-gen, bevel-data, bytestring
 , conduit, containers, cookie, envparse, esqueleto, filelock
@@ -25,6 +25,7 @@ mkDerivation {
     persistent persistent-pagination persistent-sqlite servant-client
     text time unix unliftio vector vty witherable yaml
   ];
+  libraryToolDepends = [ autoexporter ];
   executableHaskellDepends = [ base ];
   testHaskellDepends = [
     async base bevel-api bevel-api-server-data bevel-api-server-gen

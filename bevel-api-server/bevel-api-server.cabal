@@ -31,6 +31,8 @@ library
       Paths_bevel_api_server
   hs-source-dirs:
       src
+  build-tool-depends:
+      autoexporter:autoexporter
   build-depends:
       appendful-persistent
     , autodocodec

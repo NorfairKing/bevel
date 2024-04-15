@@ -35,6 +35,8 @@ library
       Paths_bevel_cli
   hs-source-dirs:
       src
+  build-tool-depends:
+      autoexporter:autoexporter
   build-depends:
       aeson-pretty
     , appendful-persistent

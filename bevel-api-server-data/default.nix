@@ -1,6 +1,6 @@
-{ mkDerivation, aeson, autodocodec, base, bevel-data, esqueleto
-, lib, password, password-instances, persistent, text, validity
-, validity-persistent, validity-text
+{ mkDerivation, aeson, autodocodec, autoexporter, base, bevel-data
+, esqueleto, lib, password, password-instances, persistent, text
+, validity, validity-persistent, validity-text
 }:
 mkDerivation {
   pname = "bevel-api-server-data";
@@ -11,6 +11,7 @@ mkDerivation {
     password-instances persistent text validity validity-persistent
     validity-text
   ];
+  libraryToolDepends = [ autoexporter ];
   homepage = "https://github.com/NorfairKing/bevel#readme";
   license = lib.licenses.unfree;
   hydraPlatforms = lib.platforms.none;

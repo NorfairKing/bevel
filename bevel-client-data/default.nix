@@ -1,5 +1,6 @@
-{ mkDerivation, base, bevel-api-server-data, bevel-data, lib
-, persistent, persistent-sqlite, text, validity, validity-text
+{ mkDerivation, autoexporter, base, bevel-api-server-data
+, bevel-data, lib, persistent, persistent-sqlite, text, validity
+, validity-text
 }:
 mkDerivation {
   pname = "bevel-client-data";
@@ -9,6 +10,7 @@ mkDerivation {
     base bevel-api-server-data bevel-data persistent persistent-sqlite
     text validity validity-text
   ];
+  libraryToolDepends = [ autoexporter ];
   homepage = "https://github.com/NorfairKing/bevel#readme";
   license = lib.licenses.unfree;
   hydraPlatforms = lib.platforms.none;

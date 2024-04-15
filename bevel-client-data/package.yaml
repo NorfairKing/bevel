@@ -10,6 +10,7 @@ dependencies:
 
 library:
   source-dirs: src
+  build-tools: autoexporter
   dependencies:
   - bevel-api-server-data
   - bevel-data
