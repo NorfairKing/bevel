@@ -39,7 +39,7 @@
     }:
     let
       system = "x86_64-linux";
-      pkgsFor = nixpkgs: import nixpkgs {
+      pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [
@@ -53,12 +53,15 @@
           (import (dekking + "/nix/overlay.nix"))
         ];
       };
-      pkgs = pkgsFor nixpkgs;
-      mkNixosModule = import ./nix/nixos-module.nix { inherit (pkgs.bevelReleasePackages) bevel-api-server; };
+      pkgsMusl = pkgs.pkgsMusl;
+      mkNixosModule = import ./nix/nixos-module.nix { inherit (pkgsMusl.bevelReleasePackages) bevel-api-server; };
     in
     {
       overlays.${system} = import ./nix/overlay.nix;
-      packages.${system}.default = pkgs.bevelRelease;
+      packages.${system} = {
+        default = pkgs.bevelRelease;
+        static = pkgsMusl.bevelRelease;
+      };
       checks.${system} = {
         release = self.packages.${system}.default;
         shell = self.devShells.${system}.default;
@@ -127,6 +130,6 @@
       };
       nixosModules.${system}.default = mkNixosModule { envname = "production"; };
       nixosModuleFactories.${system}.default = mkNixosModule;
-      homeManagerModules.${system}.default = import ./nix/home-manager-module.nix { bevelReleasePackages = pkgs.bevelReleasePackages; };
+      homeManagerModules.${system}.default = import ./nix/home-manager-module.nix { inherit (pkgsMusl) bevelReleasePackages; };
     };
 }

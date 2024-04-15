@@ -2,6 +2,35 @@ final: prev:
 with final.lib;
 with final.haskell.lib;
 {
+  bevelRelease = final.symlinkJoin {
+    name = "bevel-release";
+    paths = builtins.attrValues final.bevelReleasePackages;
+    passthru = final.bevelReleasePackages;
+  };
+
+  bevelReleasePackages =
+    let
+      enableStatic = pkg: overrideCabal pkg
+        (old: {
+          configureFlags = (old.configureFlags or [ ]) ++ optionals final.stdenv.hostPlatform.isMusl [
+            "--ghc-option=-optl=-static"
+            # Static
+            "--extra-lib-dirs=${final.gmp6.override { withStatic = true; }}/lib"
+            "--extra-lib-dirs=${final.zlib.static}/lib"
+            "--extra-lib-dirs=${final.libffi.overrideAttrs (old: { dontDisableStatic = true; })}/lib"
+            # for -ltinfo
+            "--extra-lib-dirs=${(final.ncurses.override { enableStatic = true; })}/lib"
+          ];
+          enableSharedExecutables = !final.stdenv.hostPlatform.isMusl;
+          enableSharedLibraries = !final.stdenv.hostPlatform.isMusl;
+        });
+    in
+    mapAttrs (_: pkg: justStaticExecutables (enableStatic pkg)) final.haskellPackages.bevelPackages // {
+      inherit (final)
+        bevel-gather
+        bevel-harness
+        bevel-select;
+    };
 
   bevel-gather = final.callPackage ../bevel-gather/default.nix { };
   bevel-harness = final.callPackage ../bevel-harness/default.nix { };
@@ -14,18 +43,10 @@ with final.haskell.lib;
     '';
   });
 
-  bevelReleasePackages = mapAttrs (_: pkg: justStaticExecutables (doCheck pkg)) final.haskellPackages.bevelPackages // {
-    inherit (final)
-      bevel-gather
-      bevel-harness
-      bevel-select;
-  };
-  bevelRelease =
-    final.symlinkJoin {
-      name = "bevel-release";
-      paths = builtins.attrValues final.bevelReleasePackages;
-    };
-
+  sqlite =
+    if final.stdenv.hostPlatform.isMusl
+    then prev.sqlite.overrideAttrs (old: { dontDisableStatic = true; })
+    else prev.sqlite;
 
   haskellPackages = prev.haskellPackages.override (old: {
     overrides = final.lib.composeExtensions (old.overrides or (_: _: { }))
@@ -82,12 +103,14 @@ with final.haskell.lib;
               bevel-data-gen = bevelPkg "bevel-data-gen";
             };
 
-            servantPkg = name: subdir: self.callCabal2nix name
-              ((builtins.fetchGit {
-                url = "https://github.com/haskell-servant/servant";
-                rev = "552da96ff9a6d81a8553c6429843178d78356054";
-              }) + "/${subdir}")
-              { };
+            servantPkg = name: subdir:
+              # Some tests are really slow so we turn them off.
+              dontCheck (self.callCabal2nix name
+                ((builtins.fetchGit {
+                  url = "https://github.com/haskell-servant/servant";
+                  rev = "552da96ff9a6d81a8553c6429843178d78356054";
+                }) + "/${subdir}")
+                { });
             servantPackages = {
               "servant" = servantPkg "servant" "servant";
               "servant-client" = servantPkg "servant-client" "servant-client";
