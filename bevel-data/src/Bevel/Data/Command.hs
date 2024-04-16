@@ -23,7 +23,7 @@ data Command = Command
     commandHost :: !Text,
     commandExit :: !(Maybe Int8)
   }
-  deriving stock (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec Command)
 
 instance Validity Command

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -11,9 +10,7 @@ import Autodocodec.Yaml
 import Control.Applicative
 import Data.Maybe
 import qualified Data.Text as T
-import Data.Yaml (FromJSON, ToJSON)
 import qualified Env
-import GHC.Generics (Generic)
 import Options.Applicative as OptParse
 import qualified Options.Applicative.Help as OptParse (string)
 import Path
@@ -31,7 +28,6 @@ data Settings = Settings
     settingDbFile :: Path Abs File,
     settingSigningKeyFile :: Path Abs File
   }
-  deriving (Show, Eq, Generic)
 
 combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO Settings
 combineToSettings Flags {..} Environment {..} mConf = do
@@ -49,8 +45,6 @@ data Configuration = Configuration
   { configPort :: Maybe Int,
     configDbFile :: Maybe FilePath
   }
-  deriving stock (Show, Eq, Generic)
-  deriving (FromJSON, ToJSON) via (Autodocodec Configuration)
 
 instance HasCodec Configuration where
   codec =
@@ -74,7 +68,6 @@ data Environment = Environment
     envPort :: Maybe Int,
     envDbFile :: Maybe FilePath
   }
-  deriving (Show, Eq, Generic)
 
 getEnvironment :: IO Environment
 getEnvironment = Env.parse (Env.header "Environment") environmentParser
@@ -118,7 +111,6 @@ data Flags = Flags
     flagPort :: Maybe Int,
     flagDbFile :: Maybe FilePath
   }
-  deriving (Show, Eq, Generic)
 
 parseFlags :: OptParse.Parser Flags
 parseFlags =

@@ -20,7 +20,6 @@ source-repository head
 library
   exposed-modules:
       Bevel.CLI
-      Bevel.CLI.Choices
       Bevel.CLI.Commands
       Bevel.CLI.Commands.Import
       Bevel.CLI.Commands.LastDir
@@ -29,8 +28,6 @@ library
       Bevel.CLI.Commands.Sync
       Bevel.CLI.Env
       Bevel.CLI.OptParse
-      Bevel.CLI.Score
-      Bevel.CLI.Search
   other-modules:
       Paths_bevel_cli
   hs-source-dirs:
@@ -95,8 +92,6 @@ test-suite bevel-cli-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Bevel.CLI.ScoreSpec
-      Bevel.CLI.SearchSpec
       Bevel.CLISpec
       Bevel.GatherSpec
       Paths_bevel_cli

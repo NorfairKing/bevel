@@ -5,17 +5,11 @@
 module Bevel.API where
 
 import Bevel.API.Data
-import Data.Proxy
 import Data.Text (Text)
 import Data.Validity.Text ()
 import Servant.API
 import Servant.API.Generic
 import Servant.Auth
-
-bevelAPI :: Proxy BevelAPI
-bevelAPI = Proxy
-
-type BevelAPI = ToServantApi BevelRoutes
 
 data BevelRoutes route = BevelRoutes
   { postRegister :: !(route :- PostRegister),

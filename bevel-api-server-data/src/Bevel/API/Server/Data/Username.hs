@@ -40,8 +40,5 @@ instance PersistFieldSql Username where
 instance HasCodec Username where
   codec = bimapCodec parseUsernameOrErr usernameText codec
 
-parseUsername :: Text -> Maybe Username
-parseUsername = constructValid . Username
-
 parseUsernameOrErr :: Text -> Either String Username
 parseUsernameOrErr = prettyValidate . Username

@@ -6,9 +6,9 @@ module Bevel.GatherSpec (spec) where
 
 import Bevel.CLI
 import Bevel.Client.Data
-import Bevel.Client.Data.Gen ()
 import Control.Concurrent.Async
 import Control.Monad.Logger
+import Data.GenValidity.Text ()
 import Data.Int
 import Data.Maybe
 import qualified Data.Text as T

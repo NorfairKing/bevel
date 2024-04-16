@@ -1,7 +1,7 @@
 module Bevel.Client.Data.DBSpec where
 
+import Bevel.API.Server.Data.Gen ()
 import Bevel.Client.Data.DB
-import Bevel.Client.Data.Gen ()
 import Test.Syd
 import Test.Syd.Validity
 

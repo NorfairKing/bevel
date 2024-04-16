@@ -1,6 +1,7 @@
-{ mkDerivation, base, bevel-client-data, bevel-data-gen
-, genvalidity, genvalidity-persistent, genvalidity-sydtest
-, genvalidity-text, lib, sydtest, sydtest-discover
+{ mkDerivation, base, bevel-api-server-data-gen, bevel-client-data
+, bevel-data-gen, genvalidity, genvalidity-persistent
+, genvalidity-sydtest, genvalidity-text, lib, sydtest
+, sydtest-discover
 }:
 mkDerivation {
   pname = "bevel-client-data-gen";
@@ -11,9 +12,11 @@ mkDerivation {
     genvalidity-persistent genvalidity-text
   ];
   testHaskellDepends = [
-    base bevel-client-data genvalidity-sydtest sydtest
+    base bevel-api-server-data-gen bevel-client-data
+    genvalidity-sydtest sydtest
   ];
   testToolDepends = [ sydtest-discover ];
+  doHaddock = false;
   homepage = "https://github.com/NorfairKing/bevel#readme";
   license = lib.licenses.unfree;
   hydraPlatforms = lib.platforms.none;

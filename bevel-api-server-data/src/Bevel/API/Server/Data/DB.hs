@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -22,12 +21,10 @@ import Data.Int
 import Data.Password.Bcrypt
 import Data.Password.Instances ()
 import Data.Text (Text)
-import Data.Validity
 import Data.Validity.Persist ()
 import Data.Word
 import Database.Esqueleto.Experimental as E
 import Database.Persist.TH
-import GHC.Generics (Generic)
 
 share
   [mkPersist sqlSettings, mkMigrate "serverMigration"]
@@ -39,7 +36,9 @@ User
 
   UniqueUsername name
 
-  deriving Show Eq Ord Generic
+  deriving Show
+  deriving Eq
+  deriving Ord
 
 
 ServerCommand sql=command
@@ -56,22 +55,8 @@ ServerCommand sql=command
   deriving Show
   deriving Eq
   deriving Ord
-  deriving Generic
 
 |]
-
-instance Validity (Salt a) where
-  validate = trivialValidation
-
-instance Validity Password where
-  validate = trivialValidation
-
-instance Validity (PasswordHash a) where
-  validate = trivialValidation
-
-instance Validity User
-
-instance Validity ServerCommand
 
 serverMakeCommand :: ServerCommand -> Command
 serverMakeCommand ServerCommand {..} = Command {..}

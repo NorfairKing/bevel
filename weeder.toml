@@ -1,0 +1,29 @@
+unused-types = true
+type-class-roots = false
+roots = [
+  # General
+  ".main$",
+  "^Main.spec$",
+  "^Paths_.*",
+]
+root-instances = [
+  {class = 'ToBackendKey', module = "^Bevel.API.Server.Data.DB$"},
+  {instance = 'AtLeastOneUniqueKey .*', module = "Bevel.API.Server.Data.DB"},
+  {instance = 'OnlyOneUniqueKey .*', module = "Bevel.API.Server.Data.DB"},
+  {instance = '^SymbolToField .*', module = "Bevel.API.Server.Data.DB"},
+  {instance = '^ToBackendKey .*', module = "Bevel.API.Server.Data.DB"},
+  {instance = '^SafeToInsert .*', module = "Bevel.API.Server.Data.DB"},
+  {instance = 'AtLeastOneUniqueKey .*', module = "Bevel.Client.Data.DB"},
+  {instance = 'OnlyOneUniqueKey .*', module = "Bevel.Client.Data.DB"},
+  {instance = '^SymbolToField .*', module = "Bevel.Client.Data.DB"},
+  {instance = '^ToBackendKey .*', module = "Bevel.Client.Data.DB"},
+  {instance = '^SafeToInsert .*', module = "Bevel.Client.Data.DB"},
+  {instance = '^PathPiece \(Key .*\)$'},
+  {instance = '^ToHttpApiData \(Key .*\)$'},
+  {instance = '^FromHttpApiData \(Key .*\)$'},
+  {instance = '^PersistFieldSql \(Key .*\)$'},
+  {instance = '^PersistFieldSql .*$', module = "Bevel.API.Server.Data.DB"},
+  {instance = '^PersistFieldSql .*$', module = "Bevel.Client.Data.DB"},
+  ## Routes
+  {instance = 'RouteAttrs', module = "Intray.Web.Server.Foundation"},
+]
