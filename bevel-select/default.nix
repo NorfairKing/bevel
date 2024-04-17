@@ -6,6 +6,8 @@ rustPlatform.buildRustPackage {
 
   src = ./.;
 
+  dontDisableStatic = true;
+
   cargoLock = {
     lockFile = ./Cargo.lock;
   };
