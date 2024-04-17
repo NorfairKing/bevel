@@ -1,6 +1,25 @@
 final: prev:
 with final.lib;
 with final.haskell.lib;
+let
+  staticCheck = pkg:
+    if final.stdenv.hostPlatform.isMusl
+    then
+      pkg.overrideAttrs
+        (old: {
+          postInstall = (old.postInstall or "") + ''
+            for b in $out/bin/*
+            do
+              if ldd "$b"
+              then
+                echo "ldd succeeded on $b, which may mean that it is not statically linked"
+                exit 1
+              fi
+            done
+          '';
+        })
+    else pkg;
+in
 {
   bevelRelease = final.symlinkJoin {
     name = "bevel-release";
@@ -10,31 +29,35 @@ with final.haskell.lib;
 
   bevelReleasePackages =
     let
-      enableStatic = pkg: overrideCabal pkg
-        (old: {
-          configureFlags = (old.configureFlags or [ ]) ++ optionals final.stdenv.hostPlatform.isMusl [
-            "--ghc-option=-optl=-static"
-            # Static
-            "--extra-lib-dirs=${final.gmp6.override { withStatic = true; }}/lib"
-            "--extra-lib-dirs=${final.zlib.static}/lib"
-            "--extra-lib-dirs=${final.libffi.overrideAttrs (old: { dontDisableStatic = true; })}/lib"
-            # for -ltinfo
-            "--extra-lib-dirs=${(final.ncurses.override { enableStatic = true; })}/lib"
-          ];
-          enableSharedExecutables = !final.stdenv.hostPlatform.isMusl;
-          enableSharedLibraries = !final.stdenv.hostPlatform.isMusl;
-        });
+      enableStatic = pkg:
+        if final.stdenv.hostPlatform.isMusl
+        then
+          overrideCabal (staticCheck pkg)
+            (old: {
+              configureFlags = (old.configureFlags or [ ]) ++ [
+                "--ghc-option=-optl=-static"
+                # Static
+                "--extra-lib-dirs=${final.gmp6.override { withStatic = true; }}/lib"
+                "--extra-lib-dirs=${final.zlib.static}/lib"
+                "--extra-lib-dirs=${final.libffi.overrideAttrs (old: { dontDisableStatic = true; })}/lib"
+                # for -ltinfo
+                "--extra-lib-dirs=${(final.ncurses.override { enableStatic = true; })}/lib"
+              ];
+              enableSharedExecutables = false;
+              enableSharedLibraries = false;
+            })
+        else pkg;
     in
-    mapAttrs (_: pkg: justStaticExecutables (enableStatic pkg)) final.haskellPackages.bevelPackages // {
+    builtins.mapAttrs (_: pkg: justStaticExecutables (enableStatic pkg)) final.haskellPackages.bevelPackages // {
       inherit (final)
         bevel-gather
         bevel-harness
         bevel-select;
     };
 
-  bevel-gather = final.callPackage ../bevel-gather/default.nix { };
+  bevel-gather = staticCheck (final.callPackage ../bevel-gather/default.nix { });
   bevel-harness = final.callPackage ../bevel-harness/default.nix { };
-  bevel-select = (final.callPackage ../bevel-select/default.nix { }).overrideAttrs (old: {
+  bevel-select = (staticCheck (final.callPackage ../bevel-select/default.nix { })).overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
       final.clippy
     ];
