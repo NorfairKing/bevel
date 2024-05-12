@@ -20,7 +20,7 @@ use tui::{
     widgets::{List, ListItem, ListState, Paragraph},
     Frame, Terminal,
 };
-use whoami::{hostname, username};
+use whoami::fallible::{hostname, username};
 
 use sqlite::State;
 
@@ -31,8 +31,8 @@ struct CdQueryMaker {
 
 impl CdQueryMaker {
     fn new() -> Self {
-        let hostname: String = hostname();
-        let username: String = username();
+        let hostname: String = hostname().expect("Unable to read hostname");
+        let username: String = username().expect("Unable to read username");
 
         CdQueryMaker { hostname, username }
     }
@@ -138,7 +138,7 @@ fn main() -> Result<(), io::Error> {
 
     let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel").unwrap();
     let path = xdg_dirs.get_data_file("history.sqlite3");
-    let open_flags = sqlite::OpenFlags::new().set_read_only();
+    let open_flags = sqlite::OpenFlags::new().with_read_only();
 
     let connection = sqlite::Connection::open_with_flags(path, open_flags).unwrap();
 
