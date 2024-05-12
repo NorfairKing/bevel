@@ -68,6 +68,7 @@
       };
       checks.${system} = {
         release = self.packages.${system}.default;
+        static = self.packages.${system}.static;
         shell = self.devShells.${system}.default;
         nixos-module-test = import ./nix/nixos-module-test.nix {
           inherit (pkgs) nixosTest;
