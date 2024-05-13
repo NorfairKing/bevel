@@ -38,6 +38,11 @@ in
                     example = "api.bevel.cs-syd.eu";
                     description = "The host to serve api requests on";
                   };
+                openFirewall = mkOption {
+                  type = types.bool;
+                  default = false;
+                  description = "Whether to open the specified ports in the firewall";
+                };
                 port =
                   mkOption {
                     type = types.int;
@@ -179,7 +184,7 @@ in
           local-backup-timer
         ];
       networking.firewall.allowedTCPPorts = builtins.concatLists [
-        (optional cfg.api-server.enable cfg.api-server.port)
+        (optional ((cfg.api-server.enable or false) && cfg.api-server.openFirewall) cfg.api-server.port)
       ];
       services.nginx.virtualHosts =
         mergeListRecursively [

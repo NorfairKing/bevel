@@ -20,6 +20,7 @@ nixosTest (
           api-server = {
             enable = true;
             inherit port;
+            openFirewall = true;
           };
         };
       };
