@@ -1,5 +1,13 @@
-{ bevelReleasePackages }:
-{ lib, pkgs, config, ... }:
+{ bevel-cli
+, bevel-gather
+, bevel-harness
+, bevel-select
+}:
+{ lib
+, pkgs
+, config
+, ...
+}:
 
 with lib;
 
@@ -12,9 +20,21 @@ in
   options = {
     programs.bevel = {
       enable = mkEnableOption "Bevel";
-      bevelReleasePackages = mkOption {
-        description = "The bevelPackages attribute defined in the nix/overlay.nix file in the bevel repository.";
-        default = bevelReleasePackages;
+      bevel-cli = mkOption {
+        description = "The bevel-cli package";
+        default = bevel-cli;
+      };
+      bevel-gather = mkOption {
+        description = "The bevel-gather package";
+        default = bevel-gather;
+      };
+      bevel-harness = mkOption {
+        description = "The bevel-harness package";
+        default = bevel-harness;
+      };
+      bevel-select = mkOption {
+        description = "The bevel-select package";
+        default = bevel-select;
       };
       config = mkOption {
         description = "The contents of the config file, as an attribute set. This will be translated to Yaml and put in the right place along with the rest of the options defined in this submodule.";
@@ -35,6 +55,11 @@ in
         type = types.nullOr (types.submodule {
           options = {
             enable = mkEnableOption "Bevel syncing";
+            autosync = mkOption {
+              type = types.bool;
+              default = true;
+              description = "Whether to sync automatically";
+            };
             server-url = mkOption {
               type = types.str;
               example = "api.bevel.cs-syd.eu";
@@ -43,8 +68,7 @@ in
             username = mkOption {
               type = types.str;
               example = "syd";
-              description =
-                "The username to use when logging into the sync server";
+              description = "The username to use when logging into the sync server";
             };
             password = mkOption {
               type = types.nullOr types.str;
@@ -79,7 +103,7 @@ in
         };
         Service = {
           ExecStart = "${pkgs.writeShellScript "sync-bevel-service-ExecStart" ''
-              exec ${cfg.bevelReleasePackages.bevel-cli}/bin/bevel sync
+              exec ${cfg.bevel-cli}/bin/bevel sync
             ''}";
           Type = "oneshot";
         };
@@ -113,15 +137,14 @@ in
         }
       );
       timers = (
-        optionalAttrs (cfg.sync.enable or false) {
+        optionalAttrs ((cfg.sync.enable or false) && (cfg.sync.autosync or false)) {
           "${syncBevelName}" = syncBevelTimer;
         }
       );
       packages = [
-        cfg.bevelReleasePackages.bevel-cli
-        cfg.bevelReleasePackages.bevel-gather # Needed for the harness
-        cfg.bevelReleasePackages.bevel-select
-      ];
+        cfg.bevel-gather # Needed for the harness
+        cfg.bevel-select
+      ] ++ optional (cfg.sync.enable or false) cfg.bevel-cli;
 
     in
     mkIf cfg.enable {
@@ -137,13 +160,13 @@ in
 
       programs.bash.initExtra = mkIf (cfg.harness.bash.enable) ''
         source "${pkgs.bash-preexec}/share/bash/bash-preexec.sh"
-        source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.bash"
-        ${optionalString cfg.harness.bash.bindings "source ${cfg.bevelReleasePackages.bevel-harness}/share/bindings.bash"}
+        source "${cfg.bevel-harness}/share/harness.bash"
+        ${optionalString cfg.harness.bash.bindings "source ${cfg.bevel-harness}/share/bindings.bash"}
       '';
 
       programs.zsh.initExtra = mkIf (cfg.harness.zsh.enable) ''
-        source "${cfg.bevelReleasePackages.bevel-harness}/share/harness.zsh"
-        ${optionalString cfg.harness.zsh.bindings "source ${cfg.bevelReleasePackages.bevel-harness}/share/bindings.zsh"}
+        source "${cfg.bevel-harness}/share/harness.zsh"
+        ${optionalString cfg.harness.zsh.bindings "source ${cfg.bevel-harness}/share/bindings.zsh"}
       '';
     };
 }

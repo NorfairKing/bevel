@@ -139,6 +139,12 @@
       };
       nixosModules.${system}.default = mkNixosModule { envname = "production"; };
       nixosModuleFactories.${system}.default = mkNixosModule;
-      homeManagerModules.${system}.default = import ./nix/home-manager-module.nix { inherit (pkgsMusl) bevelReleasePackages; };
+      homeManagerModules.${system}.default = import ./nix/home-manager-module.nix {
+        inherit (pkgsMusl.bevelReleasePackages)
+          bevel-cli
+          bevel-gather
+          bevel-harness
+          bevel-select;
+      };
     };
 }

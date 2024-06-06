@@ -44,7 +44,6 @@ nixosTest (
             xdg.enable = true;
             programs.bevel = {
               enable = true;
-              bevelReleasePackages = pkgs.bevelReleasePackages;
               harness = {
                 bash = {
                   enable = true;
