@@ -140,9 +140,25 @@ in
               "servant-auth-client" = servantPkg "servant-auth-client" "servant-auth/servant-auth-client";
               "servant-auth-server" = servantPkg "servant-auth-server" "servant-auth/servant-auth-server";
             };
-
+            fixGHC = pkg:
+              if final.stdenv.hostPlatform.isMusl
+              then
+                pkg.override
+                  {
+                    # To make sure that executables that need template
+                    # haskell can be linked statically.
+                    enableRelocatedStaticLibs = true;
+                    enableShared = false;
+                    enableDwarf = false;
+                  }
+              else pkg;
           in
           {
+            ghc = fixGHC super.ghc;
+            buildHaskellPackages = old.buildHaskellPackages.override (oldBuildHaskellPackages: {
+              ghc = fixGHC oldBuildHaskellPackages.ghc;
+            });
+
             inherit bevelPackages;
 
             bevelRelease =

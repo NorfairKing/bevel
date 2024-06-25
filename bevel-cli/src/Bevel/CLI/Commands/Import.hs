@@ -7,6 +7,7 @@ import Bevel.CLI.OptParse as X
 import Bevel.Client as X hiding (Unique)
 import Bevel.Client.Data as X
 import Bevel.Data as X
+import Control.Monad as X
 import Control.Monad.Logger as X
 import Control.Monad.Reader as X
 import Database.Persist as X
