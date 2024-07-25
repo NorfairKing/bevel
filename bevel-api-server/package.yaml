@@ -22,6 +22,7 @@ library:
     - jose
     - monad-logger
     - mtl
+    - opt-env-conf
     - optparse-applicative
     - password
     - path

@@ -5,6 +5,10 @@ license: AllRightsReserved
 author: "Tom Sydney Kerckhove"
 maintainer: "syd@cs-syd.eu"
 
+extra-source-files:
+- test_resources/**/*
+- options.nix
+
 dependencies:
 - base >= 4.7 && < 5
 
@@ -35,6 +39,7 @@ library:
   - http-client-tls
   - monad-logger
   - mtl
+  - opt-env-conf
   - optparse-applicative
   - path
   - path-io
@@ -84,6 +89,7 @@ tests:
     - genvalidity-text
     - genvalidity-time
     - monad-logger
+    - opt-env-conf-test
     - path
     - path-io
     - persistent-sqlite

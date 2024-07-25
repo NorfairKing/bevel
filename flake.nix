@@ -12,7 +12,7 @@
     weeder-nix.flake = false;
     validity.url = "github:NorfairKing/validity";
     validity.flake = false;
-    autodocodec.url = "github:NorfairKing/autodocodec";
+    autodocodec.url = "github:NorfairKing/autodocodec/development";
     autodocodec.flake = false;
     safe-coloured-text.url = "github:NorfairKing/safe-coloured-text";
     safe-coloured-text.flake = false;
@@ -20,6 +20,8 @@
     fast-myers-diff.flake = false;
     sydtest.url = "github:NorfairKing/sydtest";
     sydtest.flake = false;
+    opt-env-conf.url = "github:NorfairKing/opt-env-conf";
+    opt-env-conf.flake = false;
     appendful.url = "github:NorfairKing/appendful";
     appendful.flake = false;
     dekking.url = "github:NorfairKing/dekking";
@@ -35,6 +37,7 @@
     , validity
     , safe-coloured-text
     , sydtest
+    , opt-env-conf
     , autodocodec
     , fast-myers-diff
     , appendful
@@ -50,6 +53,7 @@
           (import (autodocodec + "/nix/overlay.nix"))
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
+          (import (opt-env-conf + "/nix/overlay.nix"))
           (import (appendful + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
           (import (fast-myers-diff + "/nix/overlay.nix"))
@@ -58,7 +62,10 @@
         ];
       };
       pkgsMusl = pkgs.pkgsMusl;
-      mkNixosModule = import ./nix/nixos-module.nix { inherit (pkgsMusl.bevelReleasePackages) bevel-api-server; };
+      mkNixosModule = import ./nix/nixos-module.nix {
+        inherit (pkgsMusl.bevelReleasePackages) bevel-api-server;
+        inherit (pkgsMusl.haskellPackages) opt-env-conf;
+      };
     in
     {
       overlays.${system} = import ./nix/overlay.nix;
@@ -109,6 +116,8 @@
             ormolu.enable = true;
             nixpkgs-fmt.enable = true;
             nixpkgs-fmt.excludes = [ ".*/default.nix" ];
+            deadnix.enable = true;
+            deadnix.excludes = [ ".*/default.nix" ];
             cabal2nix.enable = true;
           };
         };
@@ -118,7 +127,7 @@
         packages = p: builtins.attrValues p.bevelPackages;
         withHoogle = true;
         doBenchmark = true;
-        buildInputs = (with pkgs; [
+        buildInputs = with pkgs; [
           cabal-install
           cargo
           clippy
@@ -127,14 +136,7 @@
           rustc
           rustfmt
           zlib
-        ]) ++ (with pre-commit-hooks.packages.${system};
-          [
-            hlint
-            hpack
-            nixpkgs-fmt
-            ormolu
-            cabal2nix
-          ]);
+        ] ++ self.checks.${system}.pre-commit.enabledPackages;
         shellHook = self.checks.${system}.pre-commit.shellHook;
       };
       nixosModules.${system}.default = mkNixosModule { envname = "production"; };
@@ -145,6 +147,7 @@
           bevel-gather
           bevel-harness
           bevel-select;
+        inherit (pkgsMusl.haskellPackages) opt-env-conf;
       };
     };
 }

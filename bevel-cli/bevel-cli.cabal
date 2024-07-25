@@ -12,6 +12,9 @@ author:         Tom Sydney Kerckhove
 maintainer:     syd@cs-syd.eu
 license:        AllRightsReserved
 build-type:     Simple
+extra-source-files:
+    test_resources/documentation.txt
+    options.nix
 
 source-repository head
   type: git
@@ -59,6 +62,7 @@ library
     , http-client-tls
     , monad-logger
     , mtl
+    , opt-env-conf
     , optparse-applicative
     , path
     , path-io
@@ -92,6 +96,7 @@ test-suite bevel-cli-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Bevel.CLI.OptParseSpec
       Bevel.CLISpec
       Bevel.GatherSpec
       Paths_bevel_cli
@@ -114,6 +119,7 @@ test-suite bevel-cli-test
     , genvalidity-text
     , genvalidity-time
     , monad-logger
+    , opt-env-conf-test
     , path
     , path-io
     , persistent-sqlite

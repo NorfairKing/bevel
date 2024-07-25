@@ -39,7 +39,7 @@ in
                 # Static
                 "--extra-lib-dirs=${final.gmp6.override { withStatic = true; }}/lib"
                 "--extra-lib-dirs=${final.zlib.static}/lib"
-                "--extra-lib-dirs=${final.libffi.overrideAttrs (old: { dontDisableStatic = true; })}/lib"
+                "--extra-lib-dirs=${final.libffi.overrideAttrs (_: { dontDisableStatic = true; })}/lib"
                 # for -ltinfo
                 "--extra-lib-dirs=${(final.ncurses.override { enableStatic = true; })}/lib"
               ];
@@ -68,7 +68,7 @@ in
 
   sqlite =
     if final.stdenv.hostPlatform.isMusl
-    then prev.sqlite.overrideAttrs (old: { dontDisableStatic = true; })
+    then prev.sqlite.overrideAttrs (_: { dontDisableStatic = true; })
     else prev.sqlite;
 
   haskellPackages = prev.haskellPackages.override (old: {
@@ -144,7 +144,7 @@ in
 
             inherit bevelPackages;
 
-            servant-auth-server = unmarkBroken super.servant-auth-server;
+            servant-auth-server = dontCheck (unmarkBroken super.servant-auth-server);
 
             bevelRelease =
               final.symlinkJoin {

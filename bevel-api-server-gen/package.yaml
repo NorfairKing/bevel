@@ -5,6 +5,10 @@ license: AllRightsReserved
 author: "Tom Sydney Kerckhove"
 maintainer: "syd@cs-syd.eu"
 
+extra-source-files:
+- test_resources/**/*
+- options.nix
+
 dependencies:
 - base >= 4.7 && < 5
 
@@ -42,22 +46,23 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - QuickCheck
-    - cookie
-    - genvalidity-sydtest
-    - sydtest
-    - http-client
-    - http-types
-    - monad-logger
-    - persistent-sqlite
-    - servant
-    - servant-auth-server
     - bevel-api
     - bevel-api-gen
     - bevel-api-gen
     - bevel-api-server
+    - bevel-api-server-data
     - bevel-api-server-gen
     - bevel-client
     - bevel-data-gen
-    - bevel-api-server-data
+    - cookie
+    - genvalidity-sydtest
+    - http-client
+    - http-types
+    - monad-logger
+    - opt-env-conf-test
+    - persistent-sqlite
+    - servant
+    - servant-auth-server
+    - sydtest
     - text
     - warp

@@ -12,29 +12,27 @@ packages:
 - bevel-client-data-gen
 - bevel-data
 - bevel-data-gen
-extra-deps:
-- github: NorfairKing/servant
-  commit: 552da96ff9a6d81a8553c6429843178d78356054
+extra-deps: 
+- github: NorfairKing/opt-env-conf
+  commit: aca7601a7bf2e322318acb600d91586441fc027c
   subdirs:
-  - servant 
-  - servant-auth/servant-auth
-  - servant-auth/servant-auth-client
-  - servant-auth/servant-auth-server
-  - servant-client
-  - servant-client-core 
-  - servant-server
-- github: NorfairKing/autodocodec
-  commit: fa4d53e6c7694427c9d777b883fc446c4f3651b0
-  subdirs:
-  - autodocodec
-  - autodocodec-schema
-  - autodocodec-yaml
+    - opt-env-conf
+    - opt-env-conf-test
+
 - github: NorfairKing/safe-coloured-text
-  commit: f18578151d579c495eda46b8eeafcddb69adea07
+  commit: 26b7657428f277f819a0831cbddddb7f4c5408f9
   subdirs:
-  - safe-coloured-text
-  - safe-coloured-text-layout
-  - safe-coloured-text-terminfo
+    - safe-coloured-text
+    - safe-coloured-text-layout
+    - safe-coloured-text-terminfo
+
+- github: NorfairKing/autodocodec
+  commit: b07651baecd3f045a03f3827aa34b4dee5479bbe
+  subdirs:               
+    - autodocodec  
+    - autodocodec-schema  
+    - autodocodec-yaml                            
+    - autodocodec-nix
 - github: NorfairKing/sydtest
   commit: 6be618a53366d2453ba55da6cddc119d6d589916
   subdirs:

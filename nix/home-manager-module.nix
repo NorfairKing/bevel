@@ -2,6 +2,7 @@
 , bevel-gather
 , bevel-harness
 , bevel-select
+, opt-env-conf
 }:
 { lib
 , pkgs
@@ -37,6 +38,12 @@ in
         default = bevel-select;
       };
       config = mkOption {
+        default = { };
+        type = types.submodule {
+          options = pkgs.callPackage ../bevel-cli/options.nix { };
+        };
+      };
+      extraConfig = mkOption {
         description = "The contents of the config file, as an attribute set. This will be translated to Yaml and put in the right place along with the rest of the options defined in this submodule.";
         default = { };
       };
@@ -50,51 +57,12 @@ in
           bindings = mkEnableOption "Bevel keybindings for zsh";
         };
       };
-      sync = mkOption {
-        default = null;
-        type = types.nullOr (types.submodule {
-          options = {
-            enable = mkEnableOption "Bevel syncing";
-            autosync = mkOption {
-              type = types.bool;
-              default = true;
-              description = "Whether to sync automatically";
-            };
-            server-url = mkOption {
-              type = types.str;
-              example = "api.bevel.cs-syd.eu";
-              description = "The url of the sync server";
-            };
-            username = mkOption {
-              type = types.str;
-              example = "syd";
-              description = "The username to use when logging into the sync server";
-            };
-            password = mkOption {
-              type = types.nullOr types.str;
-              default = null;
-              example = "hunter12";
-              description = "The password to use when logging into the sync server";
-            };
-            password-file = mkOption {
-              type = types.nullOr types.str;
-              default = null;
-              description = "The file with the password to use when logging into the sync server";
-            };
-          };
-        });
-      };
+      sync.enable = mkEnableOption "Bevel syncing";
+      sync.autosync = mkEnableOption "Sync automatically";
     };
   };
   config =
     let
-      syncConfig = optionalAttrs (cfg.sync.enable or false) {
-        server-url = cfg.sync.server-url;
-        username = cfg.sync.username;
-        password = cfg.sync.password;
-        password-file = cfg.sync.password-file;
-      };
-
       syncBevelName = "sync-bevel";
       syncBevelService = {
         Unit = {
@@ -123,13 +91,18 @@ in
       };
 
       bevelConfig = mergeListRecursively [
-        syncConfig
-        cfg.config
+        (builtins.removeAttrs cfg.config [ "override" "overrideDerivation" ])
+        cfg.extraConfig
       ];
 
       # Convert the config file to pretty yaml, for readability.
       # The keys will not be in the "right" order but that's fine.
       bevelConfigFile = (pkgs.formats.yaml { }).generate "bevel-config.yaml" bevelConfig;
+
+      settingsCheck = opt-env-conf.makeSettingsCheck "bevel-settings-check"
+        "${cfg.bevel-cli}/bin/bevel"
+        [ "--config-file" bevelConfigFile "sync" ]
+        { };
 
       services = (
         optionalAttrs (cfg.sync.enable or false) {
@@ -150,6 +123,7 @@ in
     mkIf cfg.enable {
       xdg = {
         configFile."bevel/config.yaml".source = bevelConfigFile;
+        configFile."bevel/settings-check.txt".source = settingsCheck;
       };
       systemd.user = {
         startServices = true;

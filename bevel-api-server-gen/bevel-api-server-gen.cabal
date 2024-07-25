@@ -12,6 +12,9 @@ author:         Tom Sydney Kerckhove
 maintainer:     syd@cs-syd.eu
 license:        AllRightsReserved
 build-type:     Simple
+extra-source-files:
+    test_resources/documentation.txt
+    options.nix
 
 source-repository head
   type: git
@@ -52,6 +55,7 @@ test-suite bevel-api-server-tests
   other-modules:
       Bevel.API.Server.Handler.AuthSpec
       Bevel.API.Server.Handler.SyncSpec
+      Bevel.API.Server.OptParseSpec
       Paths_bevel_api_server_gen
   hs-source-dirs:
       test
@@ -73,6 +77,7 @@ test-suite bevel-api-server-tests
     , http-client
     , http-types
     , monad-logger
+    , opt-env-conf-test
     , persistent-sqlite
     , servant
     , servant-auth-server
