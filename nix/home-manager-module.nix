@@ -63,14 +63,14 @@ in
   };
   config =
     let
-      syncBevelName = "sync-bevel";
+      syncBevelName = "bevel-sync";
       syncBevelService = {
         Unit = {
           Description = "Sync bevel";
           Wants = [ "network-online.target" ];
         };
         Service = {
-          ExecStart = "${pkgs.writeShellScript "sync-bevel-service-ExecStart" ''
+          ExecStart = "${pkgs.writeShellScript "bevel-sync-service-ExecStart" ''
               exec ${cfg.bevel-cli}/bin/bevel sync
             ''}";
           Type = "oneshot";
