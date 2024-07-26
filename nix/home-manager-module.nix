@@ -99,21 +99,18 @@ in
       # The keys will not be in the "right" order but that's fine.
       bevelConfigFile = (pkgs.formats.yaml { }).generate "bevel-config.yaml" bevelConfig;
 
-      settingsCheck = opt-env-conf.makeSettingsCheck "bevel-settings-check"
-        "${cfg.bevel-cli}/bin/bevel"
-        [ "--config-file" bevelConfigFile "sync" ]
-        { };
-
-      services = (
-        optionalAttrs (cfg.sync.enable or false) {
-          "${syncBevelName}" = syncBevelService;
-        }
-      );
-      timers = (
-        optionalAttrs ((cfg.sync.enable or false) && (cfg.sync.autosync or false)) {
-          "${syncBevelName}" = syncBevelTimer;
-        }
-      );
+      activationScripts = optionalAttrs (cfg.sync.enable or false) {
+        bevel-settings-check = opt-env-conf.makeSettingsCheckHomeManagerActivationScript "bevel-settings-check"
+          "${cfg.bevel-cli}/bin/bevel"
+          [ "--config-file" bevelConfigFile "sync" ]
+          { };
+      };
+      services = optionalAttrs (cfg.sync.enable or false) {
+        "${syncBevelName}" = syncBevelService;
+      };
+      timers = optionalAttrs ((cfg.sync.enable or false) && (cfg.sync.autosync or false)) {
+        "${syncBevelName}" = syncBevelTimer;
+      };
       packages = [
         cfg.bevel-gather # Needed for the harness
         cfg.bevel-select
@@ -121,16 +118,16 @@ in
 
     in
     mkIf cfg.enable {
-      xdg = {
-        configFile."bevel/config.yaml".source = bevelConfigFile;
-        configFile."bevel/settings-check.txt".source = settingsCheck;
+      home.activation = activationScripts;
+      home.packages = packages;
+      xdg.configFile = {
+        "bevel/config.yaml".source = bevelConfigFile;
       };
       systemd.user = {
         startServices = true;
-        services = services;
-        timers = timers;
+        inherit services;
+        inherit timers;
       };
-      home.packages = packages;
 
       programs.bash.initExtra = mkIf (cfg.harness.bash.enable) ''
         source "${pkgs.bash-preexec}/share/bash/bash-preexec.sh"

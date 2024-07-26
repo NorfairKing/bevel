@@ -15,36 +15,34 @@ in
   options.services.bevel."${envname}" =
     {
       enable = mkEnableOption "Bevel Service";
-      api-server =
-        mkOption {
-          type =
-            types.submodule {
-              options = {
-                enable = mkEnableOption "Bevel API Server";
-                hosts = mkOption {
-                  type = types.listOf types.str;
-                  default = [ ];
-                  example = "api.bevel.cs-syd.eu";
-                  description = "The host to serve api requests on";
-                };
-                openFirewall = mkOption {
-                  type = types.bool;
-                  default = false;
-                  description = "Whether to open the specified ports in the firewall";
-                };
-                config = mkOption {
-                  default = { };
-                  type = types.submodule {
-                    options = (pkgs.callPackage ../bevel-api-server-gen/options.nix { });
-                  };
-                };
-                extraConfig = mkOption {
-                  description = "The contents of the config file, as an attribute set. This will be translated to Yaml and put in the right place along with the rest of the options defined in this submodule.";
-                  default = { };
-                };
+      api-server = mkOption {
+        type = types.submodule {
+          options = {
+            enable = mkEnableOption "Bevel API Server";
+            hosts = mkOption {
+              type = types.listOf types.str;
+              default = [ ];
+              example = "api.bevel.cs-syd.eu";
+              description = "The host to serve api requests on";
+            };
+            openFirewall = mkOption {
+              type = types.bool;
+              default = false;
+              description = "Whether to open the specified ports in the firewall";
+            };
+            config = mkOption {
+              default = { };
+              type = types.submodule {
+                options = pkgs.callPackage ../bevel-api-server-gen/options.nix { };
               };
             };
+            extraConfig = mkOption {
+              description = "The contents of the config file, as an attribute set. This will be translated to Yaml and put in the right place along with the rest of the options defined in this submodule.";
+              default = { };
+            };
+          };
         };
+      };
     };
   config =
     let
@@ -64,43 +62,36 @@ in
             environment = {
               "BEVEL_API_SERVER_CONFIG_FILE" = "${api-server-config-file}";
             };
-            script =
-              ''
-                mkdir -p "${api-server-working-dir}"
-                cd ${api-server-working-dir};
-                ${bevel-api-server}/bin/bevel-api-server
-              '';
-            serviceConfig =
-              {
-                Restart = "always";
-                RestartSec = 1;
-                Nice = 15;
-              };
-            unitConfig =
-              {
-                StartLimitIntervalSec = 0;
-                # ensure Restart=always is always honoured
-              };
+            script = ''
+              mkdir -p "${api-server-working-dir}"
+              cd ${api-server-working-dir};
+              ${bevel-api-server}/bin/bevel-api-server
+            '';
+            serviceConfig = {
+              Restart = "always";
+              RestartSec = 1;
+              Nice = 15;
+            };
+            unitConfig = {
+              StartLimitIntervalSec = 0;
+              # ensure Restart=always is always honoured
+            };
           };
         };
-      api-server-host =
-        with cfg.api-server;
-
-        optionalAttrs (enable && hosts != [ ]) {
-          "${head hosts}" =
-            {
-              enableACME = true;
-              forceSSL = true;
-              locations."/" = {
-                proxyPass = "http://localhost:${builtins.toString config.port}";
-                # Just to make sure we don't run into 413 errors on big syncs
-                extraConfig = ''
-                  client_max_body_size 0;
-                '';
-              };
-              serverAliases = tail hosts;
-            };
+      api-server-host = optionalAttrs (cfg.api-server.enable && cfg.api-server.hosts != [ ]) {
+        "${head cfg.api-server.hosts}" = {
+          enableACME = true;
+          forceSSL = true;
+          locations."/" = {
+            proxyPass = "http://localhost:${builtins.toString cfg.api-server.config.port}";
+            # Just to make sure we don't run into 413 errors on big syncs
+            extraConfig = ''
+              client_max_body_size 0;
+            '';
+          };
+          serverAliases = tail cfg.api-server.hosts;
         };
+      };
     in
     mkIf cfg.enable {
       systemd.services = api-server-service;
