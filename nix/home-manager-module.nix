@@ -2,7 +2,6 @@
 , bevel-gather
 , bevel-harness
 , bevel-select
-, opt-env-conf
 }:
 { lib
 , pkgs
@@ -99,14 +98,6 @@ in
       # The keys will not be in the "right" order but that's fine.
       bevelConfigFile = (pkgs.formats.yaml { }).generate "bevel-config.yaml" bevelConfig;
 
-      activationScripts = optionalAttrs (cfg.sync.enable or false) {
-        bevel-settings-check = opt-env-conf.makeSettingsCheckHomeManagerActivationScriptAfter
-          "bevel-settings-check"
-          [ "agenix" ]
-          "${cfg.bevel-cli}/bin/bevel"
-          [ "--config-file" bevelConfigFile "sync" ]
-          { };
-      };
       services = optionalAttrs (cfg.sync.enable or false) {
         "${syncBevelName}" = syncBevelService;
       };
@@ -120,7 +111,10 @@ in
 
     in
     mkIf cfg.enable {
-      home.activation = activationScripts;
+      # We have no "opt-env-conf"-style settings check because the 'password'
+      # secret is provided by agenix' home-manager service, which uses a
+      # systemd service instead of an activation script.
+
       home.packages = packages;
       xdg.configFile = {
         "bevel/config.yaml".source = bevelConfigFile;
