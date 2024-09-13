@@ -14,7 +14,7 @@ packages:
 - bevel-data-gen
 extra-deps: 
 - github: NorfairKing/opt-env-conf
-  commit: aca7601a7bf2e322318acb600d91586441fc027c
+  commit: dcc6dbd8af9460e267e10704301c011a95c0de84
   subdirs:
     - opt-env-conf
     - opt-env-conf-test
@@ -27,7 +27,7 @@ extra-deps:
     - safe-coloured-text-terminfo
 
 - github: NorfairKing/autodocodec
-  commit: b07651baecd3f045a03f3827aa34b4dee5479bbe
+  commit: be4aba9ef133520a8a4087aa26915aaabf1376a7
   subdirs:               
     - autodocodec  
     - autodocodec-schema  

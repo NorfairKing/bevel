@@ -100,7 +100,9 @@ in
       bevelConfigFile = (pkgs.formats.yaml { }).generate "bevel-config.yaml" bevelConfig;
 
       activationScripts = optionalAttrs (cfg.sync.enable or false) {
-        bevel-settings-check = opt-env-conf.makeSettingsCheckHomeManagerActivationScript "bevel-settings-check"
+        bevel-settings-check = opt-env-conf.makeSettingsCheckHomeManagerActivationScriptAfter
+          "bevel-settings-check"
+          [ "agenix" ]
           "${cfg.bevel-cli}/bin/bevel"
           [ "--config-file" bevelConfigFile "sync" ]
           { };

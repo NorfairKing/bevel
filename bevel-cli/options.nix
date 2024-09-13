@@ -8,7 +8,12 @@
   log-level = lib.mkOption {
     default = null;
     description = "minimal severity of log messages";
-    type = lib.types.nullOr lib.types.anything;
+    type = lib.types.nullOr (lib.types.enum [
+      "Debug"
+      "Info"
+      "Warn"
+      "Error"
+    ]);
   };
   max-options = lib.mkOption {
     default = null;
