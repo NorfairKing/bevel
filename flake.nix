@@ -62,26 +62,30 @@
         ];
       };
       pkgsMusl = pkgs.pkgsMusl;
-      mkNixosModule = import ./nix/nixos-module.nix {
-        inherit (pkgsMusl.bevelReleasePackages) bevel-api-server;
-        inherit (pkgsMusl.haskellPackages) opt-env-conf;
-      };
     in
     {
       overlays.${system} = import ./nix/overlay.nix;
       packages.${system} = {
-        default = pkgs.bevelRelease;
+        default = self.packages.${system}.dynamic;
         static = pkgsMusl.bevelRelease;
+        dynamic = pkgs.bevelRelease;
       };
       checks.${system} = {
         release = self.packages.${system}.default;
         static = self.packages.${system}.static;
+        dynamic = self.packages.${system}.dynamic;
         shell = self.devShells.${system}.default;
-        nixos-module-test = import ./nix/nixos-module-test.nix {
+        nixos-module-test-static = import ./nix/nixos-module-test.nix {
           inherit (pkgs) nixosTest;
           home-manager = home-manager.nixosModules.home-manager;
-          bevel-nixos-module-factory = self.nixosModuleFactories.${system}.default;
-          bevel-home-manager-module = self.homeManagerModules.${system}.default;
+          bevel-nixos-module-factory = self.nixosModuleFactories.${system}.static;
+          bevel-home-manager-module = self.homeManagerModules.${system}.static;
+        };
+        nixos-module-test-dynamic = import ./nix/nixos-module-test.nix {
+          inherit (pkgs) nixosTest;
+          home-manager = home-manager.nixosModules.home-manager;
+          bevel-nixos-module-factory = self.nixosModuleFactories.${system}.dynamic;
+          bevel-home-manager-module = self.homeManagerModules.${system}.dynamic;
         };
         coverage-report = pkgs.dekking.makeCoverageReport {
           name = "test-coverage-report";
@@ -139,14 +143,38 @@
         ] ++ self.checks.${system}.pre-commit.enabledPackages;
         shellHook = self.checks.${system}.pre-commit.shellHook;
       };
-      nixosModules.${system}.default = mkNixosModule { envname = "production"; };
-      nixosModuleFactories.${system}.default = mkNixosModule;
-      homeManagerModules.${system}.default = import ./nix/home-manager-module.nix {
-        inherit (pkgsMusl.bevelReleasePackages)
-          bevel-cli
-          bevel-gather
-          bevel-harness
-          bevel-select;
+      nixosModules.${system} = {
+        default = self.nixosModules.${system}.dynamic;
+        static = self.nixosModuleFactories.${system}.static { envname = "production"; };
+        dynamic = self.nixosModuleFactories.${system}.dynamic { envname = "production"; };
+      };
+      nixosModuleFactories.${system} = {
+        default = self.nixosModuleFactories.${system}.dynamic;
+        static = import ./nix/nixos-module.nix {
+          inherit (pkgsMusl.bevelReleasePackages) bevel-api-server;
+          inherit (pkgsMusl.haskellPackages) opt-env-conf;
+        };
+        dynamic = import ./nix/nixos-module.nix {
+          inherit (pkgs.bevelReleasePackages) bevel-api-server;
+          inherit (pkgs.haskellPackages) opt-env-conf;
+        };
+      };
+      homeManagerModules.${system} = {
+        default = self.homeManagerModules.${system}.dynamic;
+        static = import ./nix/home-manager-module.nix {
+          inherit (pkgsMusl.bevelReleasePackages)
+            bevel-cli
+            bevel-gather
+            bevel-harness
+            bevel-select;
+        };
+        dynamic = import ./nix/home-manager-module.nix {
+          inherit (pkgs.bevelReleasePackages)
+            bevel-cli
+            bevel-gather
+            bevel-harness
+            bevel-select;
+        };
       };
     };
 }
