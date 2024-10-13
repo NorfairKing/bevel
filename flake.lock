@@ -121,6 +121,38 @@
         "type": "github"
       }
     },
+    "looper": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1728774243,
+        "narHash": "sha256-a6Ij1+tHEHxL/8oKH3ulFSskb4E4IYZRlJHY0AikyVY=",
+        "owner": "NorfairKing",
+        "repo": "looper",
+        "rev": "ed0b5953bbe42b18918fe9367670fa8632cc9bf6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NorfairKing",
+        "repo": "looper",
+        "type": "github"
+      }
+    },
+    "necrork": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1728697457,
+        "narHash": "sha256-sYivTmFnEP5JVXJ/hh65XGmBTYh8VhAsPaEoWjsHspM=",
+        "owner": "NorfairKing",
+        "repo": "necrork",
+        "rev": "510ab6bf191fa2cf84baebee0c0ec668e50c0040",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NorfairKing",
+        "repo": "necrork",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1716542732,
@@ -229,6 +261,8 @@
         "dekking": "dekking",
         "fast-myers-diff": "fast-myers-diff",
         "home-manager": "home-manager",
+        "looper": "looper",
+        "necrork": "necrork",
         "nixpkgs": "nixpkgs_2",
         "opt-env-conf": "opt-env-conf",
         "pre-commit-hooks": "pre-commit-hooks",

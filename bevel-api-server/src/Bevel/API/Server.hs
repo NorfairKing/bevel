@@ -13,6 +13,7 @@ import Control.Monad.Logger
 import qualified Data.Text as T
 import Database.Persist.Sql
 import Database.Persist.Sqlite
+import qualified Necrork
 import Network.Wai as Wai
 import Network.Wai.Handler.Warp as Warp
 import Path
@@ -25,16 +26,15 @@ bevelAPIServer = do
   runStderrLoggingT $
     withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 $ \pool -> do
       runSqlPool (runMigration serverMigration) pool
-      liftIO $ do
-        jwk <- loadSigningKey settingSigningKeyFile
-        let serverEnv =
-              Env
-                { envConnectionPool = pool,
-                  envHashDifficulty = 10,
-                  envCookieSettings = defaultCookieSettings,
-                  envJWTSettings = defaultJWTSettings jwk
-                }
-        Warp.run settingPort $ bevelAPIServerApp serverEnv
+      jwk <- liftIO $ loadSigningKey settingSigningKeyFile
+      let serverEnv =
+            Env
+              { envConnectionPool = pool,
+                envHashDifficulty = 10,
+                envCookieSettings = defaultCookieSettings,
+                envJWTSettings = defaultJWTSettings jwk
+              }
+      Necrork.withMNotifier settingNecrorkNotifierSettings $ liftIO $ Warp.run settingPort $ bevelAPIServerApp serverEnv
 
 {-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
 bevelAPIServerApp :: Env -> Wai.Application

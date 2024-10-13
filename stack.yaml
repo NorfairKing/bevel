@@ -12,7 +12,21 @@ packages:
 - bevel-client-data-gen
 - bevel-data
 - bevel-data-gen
+
 extra-deps: 
+- github: NorfairKing/token-limiter-concurrent
+  commit: 50466d2b9fae420e3f7bb5102187506dd64e6d23
+  subdirs:
+    - token-limiter-concurrent
+- github: NorfairKing/necrork
+  commit: 510ab6bf191fa2cf84baebee0c0ec668e50c0040
+  subdirs:
+    - necrork
+- github: NorfairKing/looper
+  commit: 8dcec153ccdb61db9603b6a1d6dee6c551dcc329
+  subdirs:
+    - looper
+
 - github: NorfairKing/opt-env-conf
   commit: dcc6dbd8af9460e267e10704301c011a95c0de84
   subdirs:

@@ -22,6 +22,10 @@
     sydtest.flake = false;
     opt-env-conf.url = "github:NorfairKing/opt-env-conf";
     opt-env-conf.flake = false;
+    necrork.url = "github:NorfairKing/necrork";
+    necrork.flake = false;
+    looper.url = "github:NorfairKing/looper";
+    looper.flake = false;
     appendful.url = "github:NorfairKing/appendful";
     appendful.flake = false;
     dekking.url = "github:NorfairKing/dekking";
@@ -38,6 +42,8 @@
     , safe-coloured-text
     , sydtest
     , opt-env-conf
+    , necrork
+    , looper
     , autodocodec
     , fast-myers-diff
     , appendful
@@ -54,6 +60,8 @@
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
           (import (opt-env-conf + "/nix/overlay.nix"))
+          (import (necrork + "/nix/overlay.nix"))
+          (import (looper + "/nix/overlay.nix"))
           (import (appendful + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
           (import (fast-myers-diff + "/nix/overlay.nix"))
