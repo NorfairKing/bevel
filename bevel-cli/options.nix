@@ -27,7 +27,7 @@
   };
   password-file = lib.mkOption {
     default = null;
-    description = "path to password file";
+    description = "password";
     type = lib.types.nullOr lib.types.str;
   };
   server-url = lib.mkOption {

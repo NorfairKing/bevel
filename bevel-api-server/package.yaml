@@ -45,5 +45,7 @@ executables:
     - -rtsopts
     - -threaded
     - -with-rtsopts=-N
+    - -with-rtsopts=-Iw60 # Only idle-gc once per minute
+    - -with-rtsopts=--nonmoving-gc # GC with more consistent latency
     dependencies:
       - bevel-api-server

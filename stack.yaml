@@ -28,7 +28,7 @@ extra-deps:
     - looper
 
 - github: NorfairKing/opt-env-conf
-  commit: dcc6dbd8af9460e267e10704301c011a95c0de84
+  commit: c23d64ec23eae882729ad380d2be515847bfff5f
   subdirs:
     - opt-env-conf
     - opt-env-conf-test

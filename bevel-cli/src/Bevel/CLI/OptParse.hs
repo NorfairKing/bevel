@@ -81,18 +81,10 @@ parseSettings = do
         ]
   settingPassword <-
     optional $
-      choice
-        [ mapIO readSecretTextFile $
-            filePathSetting
-              [ help "path to password file",
-                name "password-file"
-              ],
-          setting
-            [ help "password",
-              reader str,
-              name "password",
-              metavar "PASSWORD"
-            ]
+      secretTextFileOrBareSetting
+        [ help "password",
+          name "password",
+          metavar "PASSWORD"
         ]
   settingMaxOptions <-
     setting

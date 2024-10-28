@@ -67,7 +67,7 @@ executable bevel-api-server
       Paths_bevel_api_server
   hs-source-dirs:
       app/
-  ghc-options: -rtsopts -threaded -with-rtsopts=-N
+  ghc-options: -rtsopts -threaded -with-rtsopts=-N -with-rtsopts=-Iw60 -with-rtsopts=--nonmoving-gc
   build-depends:
       base >=4.7 && <5
     , bevel-api-server
