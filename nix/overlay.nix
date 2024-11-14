@@ -1,25 +1,6 @@
 final: prev:
 with final.lib;
 with final.haskell.lib;
-let
-  staticCheck = pkg:
-    if final.stdenv.hostPlatform.isMusl
-    then
-      pkg.overrideAttrs
-        (old: {
-          postInstall = (old.postInstall or "") + ''
-            for b in $out/bin/*
-            do
-              if ldd "$b"
-              then
-                echo "ldd succeeded on $b, which may mean that it is not statically linked"
-                exit 1
-              fi
-            done
-          '';
-        })
-    else pkg;
-in
 {
   bevelRelease = final.symlinkJoin {
     name = "bevel-release";
@@ -28,36 +9,16 @@ in
   };
 
   bevelReleasePackages =
-    let
-      enableStatic = pkg:
-        if final.stdenv.hostPlatform.isMusl
-        then
-          overrideCabal (staticCheck pkg)
-            (old: {
-              configureFlags = (old.configureFlags or [ ]) ++ [
-                "--ghc-option=-optl=-static"
-                # Static
-                "--extra-lib-dirs=${final.gmp6.override { withStatic = true; }}/lib"
-                "--extra-lib-dirs=${final.zlib.static}/lib"
-                "--extra-lib-dirs=${final.libffi.overrideAttrs (_: { dontDisableStatic = true; })}/lib"
-                # for -ltinfo
-                "--extra-lib-dirs=${(final.ncurses.override { enableStatic = true; })}/lib"
-              ];
-              enableSharedExecutables = false;
-              enableSharedLibraries = false;
-            })
-        else pkg;
-    in
-    builtins.mapAttrs (_: pkg: justStaticExecutables (enableStatic pkg)) final.haskellPackages.bevelPackages // {
+    builtins.mapAttrs (_: pkg: justStaticExecutables pkg) final.haskellPackages.bevelPackages // {
       inherit (final)
         bevel-gather
         bevel-harness
         bevel-select;
     };
 
-  bevel-gather = staticCheck (final.callPackage ../bevel-gather/default.nix { });
+  bevel-gather = final.callPackage ../bevel-gather/default.nix { };
   bevel-harness = final.callPackage ../bevel-harness/default.nix { };
-  bevel-select = (staticCheck (final.callPackage ../bevel-select/default.nix { })).overrideAttrs (old: {
+  bevel-select = (final.callPackage ../bevel-select/default.nix { }).overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
       final.clippy
     ];
@@ -65,11 +26,6 @@ in
       cargo clippy --no-deps -- --forbid warnings
     '';
   });
-
-  sqlite =
-    if final.stdenv.hostPlatform.isMusl
-    then prev.sqlite.overrideAttrs (_: { dontDisableStatic = true; })
-    else prev.sqlite;
 
   haskellPackages = prev.haskellPackages.override (old: {
     overrides = final.lib.composeExtensions (old.overrides or (_: _: { }))
@@ -122,26 +78,8 @@ in
               bevel-data = bevelPkg "bevel-data";
               bevel-data-gen = bevelPkg "bevel-data-gen";
             };
-
-            fixGHC = pkg:
-              if final.stdenv.hostPlatform.isMusl
-              then
-                pkg.override
-                  {
-                    # To make sure that executables that need template
-                    # haskell can be linked statically.
-                    enableRelocatedStaticLibs = true;
-                    enableShared = false;
-                    enableDwarf = false;
-                  }
-              else pkg;
           in
           {
-            ghc = fixGHC super.ghc;
-            buildHaskellPackages = old.buildHaskellPackages.override (oldBuildHaskellPackages: {
-              ghc = fixGHC oldBuildHaskellPackages.ghc;
-            });
-
             inherit bevelPackages;
 
             servant-auth-server = dontCheck (unmarkBroken super.servant-auth-server);
