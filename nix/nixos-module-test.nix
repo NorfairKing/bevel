@@ -36,7 +36,7 @@ nixosTest {
           imports = [
             bevel-home-manager-module
           ];
-          home.stateVersion = "24.05";
+          home.stateVersion = "24.11";
           home.packages = with pkgs; [
             sqlite
           ];
@@ -72,13 +72,13 @@ nixosTest {
 
     server.start()
     client.start()
+
     server.wait_for_unit("multi-user.target")
-    client.wait_for_unit("multi-user.target")
-
     server.wait_for_open_port(${builtins.toString port})
-    client.succeed("curl server:${builtins.toString port}")
 
-    client.wait_for_unit("home-manager-testuser.service")
+    client.wait_for_unit("multi-user.target")
+    client.require_unit_state("home-manager-testuser.service", "inactive")
+    client.succeed("curl server:${builtins.toString port}")
 
 
     def su(user, cmd):
