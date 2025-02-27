@@ -19,7 +19,7 @@ extra-deps:
   subdirs:
     - token-limiter-concurrent
 - github: NorfairKing/necrork
-  commit: 510ab6bf191fa2cf84baebee0c0ec668e50c0040
+  commit: 10f7baa249c6a410bafc3b6d883f4692bc955d7c
   subdirs:
     - necrork
 - github: NorfairKing/looper
@@ -28,7 +28,7 @@ extra-deps:
     - looper
 
 - github: NorfairKing/opt-env-conf
-  commit: c23d64ec23eae882729ad380d2be515847bfff5f
+  commit: 2a6d3505aec34aacd2bc41d688fdf752815d9916
   subdirs:
     - opt-env-conf
     - opt-env-conf-test

@@ -1,4 +1,4 @@
-[36mUsage: [m[33mbevel[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m COMMAND [36m[[m[37m--server-url[m [33mURL[m[36m][m [36m[[m[37m--username[m [33mUSERNAME[m[36m][m [36m[[m[37m--password[m [33mPASSWORD[m [36m|[m [37m--password-file[m [33mFILE_PATH[m[36m][m [36m[[m[37m--max-options[m [33mINT[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--log-level[m [33mLOG_LEVEL[m[36m][m
+[36mUsage: [m[33mbevel[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m COMMAND [36m[[m[37m--server-url[m [33mURL[m[36m][m [36m[[m[37m--username[m [33mUSERNAME[m[36m][m [36m[[m[37m--password[m [33mPASSWORD[m [36m|[m [37m--password-file[m [33mPASSWORD[m[36m][m [36m[[m[37m--max-options[m [33mINT[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--log-level[m [33mLOG_LEVEL[m[36m][m
 
 [36mAll settings[m:
   [34mShow this help text[m
@@ -27,9 +27,9 @@
 
   [34mpassword[m
   option: [37m--password[m [33mPASSWORD[m
-  option: [37m--password-file[m [33mFILE_PATH[m
+  option: [37m--password-file[m [33mPASSWORD[m
   env: [37mBEVEL_PASSWORD[m [33mPASSWORD[m
-  env: [37mBEVEL_PASSWORD_FILE[m [33mFILE_PATH[m
+  env: [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m
   config:
     [37mpassword[m: # [32mor null[m
       [33m<string>[m
@@ -96,14 +96,14 @@
   [37m--log-level[m [34mminimal severity of log messages[m default: [33mLevelWarn[m
 
 [36mEnvironment Variables[m:
-  [37mBEVEL_CONFIG_FILE[m [33mFILE_PATH[m     [34mPath to the configuration file[m                                       
-  [37mBEVEL_SERVER_URL[m [33mURL[m            [34mserver base url[m                                                      
-  [37mBEVEL_USERNAME[m [33mUSERNAME[m         [34muser name[m                                                            
-  [37mBEVEL_PASSWORD[m [33mPASSWORD[m         [34mpassword[m                                                             
-  [37mBEVEL_PASSWORD_FILE[m [33mFILE_PATH[m   [34mpassword[m                                                             
-  [37mBEVEL_MAX_OPTIONS[m [33mINT[m           [34mmaximum number of options to show when selecting[m   default: [33m15[m       
-  [37mBEVEL_DATABASE[m [33mFILE_PATH[m        [34mpath to the database file[m                                            
-  [37mBEVEL_LOG_LEVEL[m [33mLOG_LEVEL[m       [34mminimal severity of log messages[m                   default: [33mLevelWarn[m
+  [37mBEVEL_CONFIG_FILE[m [33mFILE_PATH[m    [34mPath to the configuration file[m                                       
+  [37mBEVEL_SERVER_URL[m [33mURL[m           [34mserver base url[m                                                      
+  [37mBEVEL_USERNAME[m [33mUSERNAME[m        [34muser name[m                                                            
+  [37mBEVEL_PASSWORD[m [33mPASSWORD[m        [34mpassword[m                                                             
+  [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m   [34mpassword[m                                                             
+  [37mBEVEL_MAX_OPTIONS[m [33mINT[m          [34mmaximum number of options to show when selecting[m   default: [33m15[m       
+  [37mBEVEL_DATABASE[m [33mFILE_PATH[m       [34mpath to the database file[m                                            
+  [37mBEVEL_LOG_LEVEL[m [33mLOG_LEVEL[m      [34mminimal severity of log messages[m                   default: [33mLevelWarn[m
 
 [36mConfiguration Values[m:
   [34mserver base url[m
