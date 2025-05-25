@@ -82,13 +82,7 @@ in
         "${head cfg.api-server.hosts}" = {
           enableACME = true;
           forceSSL = true;
-          locations."/" = {
-            proxyPass = "http://localhost:${builtins.toString cfg.api-server.config.port}";
-            # Just to make sure we don't run into 413 errors on big syncs
-            extraConfig = ''
-              client_max_body_size 0;
-            '';
-          };
+          locations."/".proxyPass = "http://localhost:${builtins.toString cfg.api-server.config.port}";
           serverAliases = tail cfg.api-server.hosts;
         };
       };
