@@ -136,8 +136,8 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel").unwrap();
-    let path = xdg_dirs.get_data_file("history.sqlite3");
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel");
+    let path = xdg_dirs.find_data_file("history.sqlite3").unwrap();
     let open_flags = sqlite::OpenFlags::new().with_read_only();
 
     let connection = sqlite::Connection::open_with_flags(path, open_flags).unwrap();

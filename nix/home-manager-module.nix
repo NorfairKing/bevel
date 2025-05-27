@@ -131,7 +131,7 @@ in
         ${optionalString cfg.harness.bash.bindings "source ${cfg.bevel-harness}/share/bindings.bash"}
       '';
 
-      programs.zsh.initExtra = mkIf (cfg.harness.zsh.enable) ''
+      programs.zsh.initContent = mkIf (cfg.harness.zsh.enable) ''
         source "${cfg.bevel-harness}/share/harness.zsh"
         ${optionalString cfg.harness.zsh.bindings "source ${cfg.bevel-harness}/share/bindings.zsh"}
       '';

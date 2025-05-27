@@ -1,4 +1,4 @@
-resolver: lts-22.39
+resolver: lts-23.19
 packages:
 - bevel-api
 - bevel-api-gen
@@ -13,105 +13,18 @@ packages:
 - bevel-data
 - bevel-data-gen
 
-extra-deps: 
-- github: NorfairKing/token-limiter-concurrent
-  commit: 50466d2b9fae420e3f7bb5102187506dd64e6d23
-  subdirs:
-    - token-limiter-concurrent
-- github: NorfairKing/necrork
-  commit: 10f7baa249c6a410bafc3b6d883f4692bc955d7c
-  subdirs:
-    - necrork
-- github: NorfairKing/looper
-  commit: 8dcec153ccdb61db9603b6a1d6dee6c551dcc329
-  subdirs:
-    - looper
-
-- github: NorfairKing/opt-env-conf
-  commit: 2a6d3505aec34aacd2bc41d688fdf752815d9916
-  subdirs:
-    - opt-env-conf
-    - opt-env-conf-test
-
-- github: NorfairKing/safe-coloured-text
-  commit: 26b7657428f277f819a0831cbddddb7f4c5408f9
-  subdirs:
-    - safe-coloured-text
-    - safe-coloured-text-layout
-    - safe-coloured-text-terminfo
-
-- github: NorfairKing/autodocodec
-  commit: be4aba9ef133520a8a4087aa26915aaabf1376a7
-  subdirs:               
-    - autodocodec  
-    - autodocodec-schema  
-    - autodocodec-yaml                            
-    - autodocodec-nix
-- github: NorfairKing/sydtest
-  commit: 6be618a53366d2453ba55da6cddc119d6d589916
-  subdirs:
-  - sydtest
-  - sydtest-aeson
-  - sydtest-discover
-  - sydtest-hspec
-  - sydtest-persistent
-  - sydtest-persistent-sqlite
-  - sydtest-process
-  - sydtest-servant
-  - sydtest-typed-process
-  - sydtest-wai
-  - sydtest-yesod
-- github: NorfairKing/appendful
-  commit: 9100ac7fb88e8bb0357e6c648d1b5b404efcd4f8
-  subdirs:
-  - appendful
-  - appendful-persistent
-  - genvalidity-appendful
-- github: NorfairKing/validity
-  commit: a251897dc1eb7e851fd4d3dbc6fa976d22388f27
-  subdirs:
-  - validity
-  - validity-aeson
-  - validity-bytestring
-  - validity-containers
-  - validity-path
-  - validity-persistent
-  - validity-primitive
-  - validity-scientific
-  - validity-text
-  - validity-time
-  - validity-unordered-containers
-  - validity-uuid
-  - validity-vector
-  - genvalidity
-  - genvalidity-aeson
-  - genvalidity-bytestring
-  - genvalidity-containers
-  - genvalidity-criterion
-  - genvalidity-hspec
-  - genvalidity-hspec-aeson
-  - genvalidity-hspec-binary
-  - genvalidity-hspec-cereal
-  - genvalidity-hspec-hashable
-  - genvalidity-hspec-optics
-  - genvalidity-hspec-persistent
-  - genvalidity-path
-  - genvalidity-persistent
-  - genvalidity-property
-  - genvalidity-scientific
-  - genvalidity-sydtest
-  - genvalidity-sydtest-aeson
-  - genvalidity-sydtest-hashable
-  - genvalidity-sydtest-lens
-  - genvalidity-sydtest-persistent
-  - genvalidity-text
-  - genvalidity-time
-  - genvalidity-unordered-containers
-  - genvalidity-uuid
-  - genvalidity-vector
 
 ghc-options:
   "$locals": -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Widentities -Wredundant-constraints -Wcpp-undef
+
+extra-deps:
+- looper-0.3.0.2@sha256:f880aead01250795cbcb8b5d0b32902ac2b2fff76d265da1977e8c35d8580396,1379
+- opt-env-conf-0.9.0.0@sha256:21d89d24f0f83f6e01ddcbfa688d228e9ddb8489d69a11af1945050605851a2c,1709
+- opt-env-conf-test-0.0.0.2@sha256:a4f968e4223977f445e84e515e361e0217a25187fe55aee4f1cd5b911637101d,17412
+- github: NorfairKing/necrork
+  commit: 87cd9f2a4ebfffdcf393f87de6851f7b124184c5
+  subdirs:
+    - necrork
 
 system-ghc: true
 nix:
