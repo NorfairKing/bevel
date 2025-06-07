@@ -1,7 +1,7 @@
 { mkDerivation, base, bevel-api-server-data-gen, bevel-client-data
 , bevel-data-gen, genvalidity, genvalidity-persistent
 , genvalidity-sydtest, genvalidity-text, lib, sydtest
-, sydtest-discover
+, sydtest-discover, sydtest-persistent-sqlite
 }:
 mkDerivation {
   pname = "bevel-client-data-gen";
@@ -13,7 +13,7 @@ mkDerivation {
   ];
   testHaskellDepends = [
     base bevel-api-server-data-gen bevel-client-data
-    genvalidity-sydtest sydtest
+    genvalidity-sydtest sydtest sydtest-persistent-sqlite
   ];
   testToolDepends = [ sydtest-discover ];
   doHaddock = false;

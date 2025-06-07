@@ -5,6 +5,9 @@ license: AllRightsReserved
 author: "Tom Sydney Kerckhove"
 maintainer: "syd@cs-syd.eu"
 
+extra-source-files:
+- test_resources/**/*
+
 dependencies:
 - base >= 4.7 && < 5
 
@@ -32,3 +35,4 @@ tests:
     - bevel-client-data-gen
     - genvalidity-sydtest
     - sydtest
+    - sydtest-persistent-sqlite
