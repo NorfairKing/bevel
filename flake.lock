@@ -180,7 +180,6 @@
       },
       "original": {
         "owner": "NorfairKing",
-        "ref": "development",
         "repo": "opt-env-conf",
         "type": "github"
       }

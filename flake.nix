@@ -10,7 +10,7 @@
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     weeder-nix.url = "github:NorfairKing/weeder-nix";
     weeder-nix.flake = false;
-    opt-env-conf.url = "github:NorfairKing/opt-env-conf/development";
+    opt-env-conf.url = "github:NorfairKing/opt-env-conf";
     opt-env-conf.flake = false;
     necrork.url = "github:NorfairKing/necrork";
     necrork.flake = false;
