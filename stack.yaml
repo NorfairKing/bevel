@@ -18,13 +18,16 @@ ghc-options:
   "$locals": -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Widentities -Wredundant-constraints -Wcpp-undef
 
 extra-deps:
-- looper-0.3.0.2@sha256:f880aead01250795cbcb8b5d0b32902ac2b2fff76d265da1977e8c35d8580396,1379
 - opt-env-conf-0.9.0.0@sha256:21d89d24f0f83f6e01ddcbfa688d228e9ddb8489d69a11af1945050605851a2c,1709
 - opt-env-conf-test-0.0.0.2@sha256:a4f968e4223977f445e84e515e361e0217a25187fe55aee4f1cd5b911637101d,17412
 - github: NorfairKing/necrork
-  commit: 87cd9f2a4ebfffdcf393f87de6851f7b124184c5
+  commit: 1126bc6fd887cc9d38a8d191fadde7737446b925
   subdirs:
     - necrork
+- github: NorfairKing/looper
+  commit: eb24595196b08b0dcef7f6dbca65637cc26f8e6e
+  subdirs:
+    - looper
 
 system-ghc: true
 nix:
