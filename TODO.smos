@@ -10,6 +10,5 @@ value:
   - Session ID so we can reproduce sessions
   - entry: Better scoring
     forest:
-    - 'Exit code: success is better than failure'
     - 'Directory: local is better than futher away in the filesystem'
     - 'Time: Maybe exponential is too harsh?'

@@ -416,7 +416,13 @@ impl Choices {
 
         // Compute the score of this item
         let timediff = (self.now - begin) as f64;
-        let exit_multiplier = if exit == Some(0) { 2 } else { 1 } as f64;
+        let exit_multiplier = match exit {
+            // If the command is still running or was interrupted, it's less relevant.
+            None => 0.5f64,
+            // If the command is succesful, it's more relevant.
+            Some(0) => 2f64,
+            Some(_) => 1f64,
+        };
         let score = exit_multiplier * NANOSECONDS_IN_A_DAY / timediff;
 
         // Add to the item scores
