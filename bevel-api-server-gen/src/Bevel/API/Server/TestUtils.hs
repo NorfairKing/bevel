@@ -35,7 +35,8 @@ serverSpec =
 
 withTestServer :: (ClientEnv -> IO a) -> (HTTP.Manager -> IO a)
 withTestServer func man =
-  runNoLoggingT $
+  runNoLoggingT $ do
+    logFunc <- askLoggerIO
     withSqlitePool ":memory:" 1 $ \pool -> do
       void $ runSqlPool (runMigrationQuiet serverMigration) pool
       liftIO $ do
@@ -47,7 +48,7 @@ withTestServer func man =
                   envCookieSettings = defaultCookieSettings,
                   envJWTSettings = defaultJWTSettings jwk
                 }
-        let serverApp = bevelAPIServerApp serverEnv
+        let serverApp = bevelAPIServerApp logFunc serverEnv
         testWithApplication (pure serverApp) $ \p -> do
           let env = mkClientEnv man $ BaseUrl Http "127.0.0.1" p ""
           func env

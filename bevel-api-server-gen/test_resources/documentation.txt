@@ -1,4 +1,4 @@
-[36mUsage: [m[33mbevel-api-server[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m [36m[[m[37m--port[m [33mPORT[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--signing-key[m [33mFILE_PATH[m[36m][m [36m[[m[37m--necrork-switch[m [33mSWITCH_NAME[m [36m[[m[37m--necrork-peer[m [33mURL[m [36m[[m[37m--necrork-peer[m [33mURL[m[36m][m[36m][m [36m[[m[37m--necrork-(enable|disable)-notifier[m[36m][m [36m[[m[37m--necrork-notifier-phase[m [33mSECONDS[m[36m][m [36m[[m[37m--necrork-notifier-period[m [33mSECONDS[m[36m][m [36m[[m[37m--necrork-timeout[m [33mSECONDS[m[36m][m [37m--necrork-intray-username[m [33mUSERNAME[m [36m[[m[37m--necrork-intray-key[m [33mKEY[m [36m|[m [37m--necrork-intray-key-file[m [33mKEY[m[36m][m[36m][m
+[36mUsage: [m[33mbevel-api-server[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m [36m[[m[37m--port[m [33mPORT[m[36m][m [36m[[m[37m--log-level[m [33mLOG_LEVEL[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--signing-key[m [33mFILE_PATH[m[36m][m [36m[[m[37m--necrork-switch[m [33mSWITCH_NAME[m [36m[[m[37m--necrork-peer[m [33mURL[m [36m[[m[37m--necrork-peer[m [33mURL[m[36m][m[36m][m [36m[[m[37m--necrork-(enable|disable)-notifier[m[36m][m [36m[[m[37m--necrork-notifier-phase[m [33mSECONDS[m[36m][m [36m[[m[37m--necrork-notifier-period[m [33mSECONDS[m[36m][m [36m[[m[37m--necrork-timeout[m [33mSECONDS[m[36m][m [37m--necrork-intray-username[m [33mUSERNAME[m [36m[[m[37m--necrork-intray-key[m [33mKEY[m [36m|[m [37m--necrork-intray-key-file[m [33mKEY[m[36m][m[36m][m
 
 [36mAll settings[m:
   [34mShow this help text[m
@@ -18,6 +18,19 @@
     [37mport[m: # [32mor null[m
       [33m<integer>[m # [32m64 bit signed integer[m
   default: [33m8000[m
+
+  [34mminimal severity of log messages[m
+  option: [37m--log-level[m [33mLOG_LEVEL[m
+  env: [37mBEVEL_API_SERVER_LOG_LEVEL[m [33mLOG_LEVEL[m
+  config:
+    [37mlog-level[m: # [32mor null[m
+      # [32mone of[m
+      [ Debug
+      , Info
+      , Warn
+      , Error
+      ]
+  default: [33mLevelWarn[m
 
   [34mdatabase file[m
   option: [37m--database[m [33mFILE_PATH[m
@@ -109,6 +122,7 @@
   [37m--version[m                           [34mOutput version information[m                                                                            
   [37m--config-file[m                       [34mPath to the configuration file[m                                                                        
   [37m--port[m                              [34mport to serve requests on[m                                                   default: [33m8000[m             
+  [37m--log-level[m                         [34mminimal severity of log messages[m                                            default: [33mLevelWarn[m        
   [37m--database[m                          [34mdatabase file[m                                                               default: [33m"bevel.sqlite"[m   
   [37m--signing-key[m                       [34msigning key file[m                                                            default: [33m"signing-key.dat"[m
   [37m--necrork-switch[m                    [34mName of the necrork switch[m                                                                            
@@ -125,6 +139,7 @@
 [36mEnvironment Variables[m:
   [37mBEVEL_API_SERVER_CONFIG_FILE[m [33mFILE_PATH[m              [34mPath to the configuration file[m                                                                                  
   [37mBEVEL_API_SERVER_PORT[m [33mPORT[m                          [34mport to serve requests on[m                                                     default: [33m8000[m                     
+  [37mBEVEL_API_SERVER_LOG_LEVEL[m [33mLOG_LEVEL[m                [34mminimal severity of log messages[m                                              default: [33mLevelWarn[m                
   [37mBEVEL_API_SERVER_DATABASE[m [33mFILE_PATH[m                 [34mdatabase file[m                                                                 default: [33m"bevel.sqlite"[m           
   [37mBEVEL_API_SERVER_SIGNING_KEY[m [33mFILE_PATH[m              [34msigning key file[m                                                              default: [33m"signing-key.dat"[m        
   [37mBEVEL_API_SERVER_NECRORK_SWITCH[m [33mSWITCH_NAME[m         [34mName of the necrork switch[m                                                                                      
@@ -143,6 +158,16 @@
   [37mport[m:
     # [32mor null[m
     [33m<integer>[m # [32m64 bit signed integer[m
+  [34mminimal severity of log messages[m
+  default: [33mLevelWarn[m
+  [37mlog-level[m:
+    # [32mor null[m
+    # [32mone of[m
+    [ Debug
+    , Info
+    , Warn
+    , Error
+    ]
   [34mdatabase file[m
   default: [33m"bevel.sqlite"[m
   [37mdatabase[m:

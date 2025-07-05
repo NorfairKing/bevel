@@ -21,6 +21,7 @@ library:
     - envparse
     - jose
     - monad-logger
+    - monad-logger
     - mtl
     - necrork
     - opt-env-conf

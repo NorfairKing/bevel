@@ -1,10 +1,15 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Bevel.API.Server.OptParse where
 
+import Autodocodec
+import Control.Monad.Logger
 import qualified Necrork
 import OptEnvConf
 import Path
@@ -15,6 +20,7 @@ getSettings = runSettingsParser version "bevel API server"
 
 data Settings = Settings
   { settingPort :: !Int,
+    settingLogLevel :: !LogLevel,
     settingDbFile :: !(Path Abs File),
     settingSigningKeyFile :: !(Path Abs File),
     settingNecrorkNotifierSettings :: !(Maybe Necrork.NotifierSettings)
@@ -34,6 +40,19 @@ parseSettings = subEnv_ "bevel-api-server" $ withLocalYamlConfig $ do
         metavar "PORT",
         value 8000
       ]
+  settingLogLevel <-
+    setting
+      [ help "minimal severity of log messages",
+        reader $ maybeReader $ \case
+          "Debug" -> Just LevelDebug
+          "Info" -> Just LevelInfo
+          "Warn" -> Just LevelWarn
+          "Error" -> Just LevelError
+          _ -> Nothing,
+        name "log-level",
+        value LevelWarn,
+        metavar "LOG_LEVEL"
+      ]
   settingDbFile <-
     filePathSetting
       [ help "database file",
@@ -48,3 +67,12 @@ parseSettings = subEnv_ "bevel-api-server" $ withLocalYamlConfig $ do
       ]
   settingNecrorkNotifierSettings <- optional $ subSettings "necrork"
   pure Settings {..}
+
+instance HasCodec LogLevel where
+  codec =
+    stringConstCodec
+      [ (LevelDebug, "Debug"),
+        (LevelInfo, "Info"),
+        (LevelWarn, "Warn"),
+        (LevelError, "Error")
+      ]

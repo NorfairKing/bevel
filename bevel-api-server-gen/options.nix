@@ -5,6 +5,16 @@
     description = "database file";
     type = lib.types.nullOr lib.types.str;
   };
+  log-level = lib.mkOption {
+    default = null;
+    description = "minimal severity of log messages";
+    type = lib.types.nullOr (lib.types.enum [
+      "Debug"
+      "Info"
+      "Warn"
+      "Error"
+    ]);
+  };
   necrork = lib.mkOption {
     default = { };
     type = lib.types.submodule {

@@ -34,13 +34,20 @@ bevelAPIServer = do
                 envCookieSettings = defaultCookieSettings,
                 envJWTSettings = defaultJWTSettings jwk
               }
-      Necrork.withMNotifier settingNecrorkNotifierSettings $ liftIO $ Warp.run settingPort $ bevelAPIServerApp serverEnv
+      logFunc <- askLoggerIO
+      Necrork.withMNotifier settingNecrorkNotifierSettings $
+        liftIO $
+          Warp.run settingPort $
+            bevelAPIServerApp logFunc serverEnv
 
 {-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
-bevelAPIServerApp :: Env -> Wai.Application
-bevelAPIServerApp env =
+bevelAPIServerApp ::
+  (Loc -> LogSource -> LogLevel -> LogStr -> IO ()) ->
+  Env ->
+  Wai.Application
+bevelAPIServerApp logFunc env =
   genericServeTWithContext
-    (flip runReaderT env)
+    (flip runLoggingT logFunc . flip runReaderT env)
     bevelHandlers
     (bevelContext env)
 
