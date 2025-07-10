@@ -12,8 +12,6 @@
     weeder-nix.flake = false;
     opt-env-conf.url = "github:NorfairKing/opt-env-conf";
     opt-env-conf.flake = false;
-    necrork.url = "github:NorfairKing/necrork";
-    necrork.flake = false;
     looper.url = "github:NorfairKing/looper";
     looper.flake = false;
     appendful.url = "github:NorfairKing/appendful";
@@ -29,7 +27,6 @@
     , pre-commit-hooks
     , weeder-nix
     , opt-env-conf
-    , necrork
     , looper
     , appendful
     , dekking
@@ -42,7 +39,6 @@
         overlays = [
           self.overlays.${system}
           (import (opt-env-conf + "/nix/overlay.nix"))
-          (import (necrork + "/nix/overlay.nix"))
           (import (looper + "/nix/overlay.nix"))
           (import (appendful + "/nix/overlay.nix"))
           (import (dekking + "/nix/overlay.nix"))

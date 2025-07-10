@@ -45,7 +45,6 @@ library
     , jose
     , monad-logger
     , mtl
-    , necrork
     , opt-env-conf
     , optparse-applicative
     , password

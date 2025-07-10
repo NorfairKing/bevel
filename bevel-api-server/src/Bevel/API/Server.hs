@@ -13,7 +13,6 @@ import Control.Monad.Logger
 import qualified Data.Text as T
 import Database.Persist.Sql
 import Database.Persist.Sqlite
-import qualified Necrork
 import Network.Wai as Wai
 import Network.Wai.Handler.Warp as Warp
 import Path
@@ -35,10 +34,9 @@ bevelAPIServer = do
                 envJWTSettings = defaultJWTSettings jwk
               }
       logFunc <- askLoggerIO
-      Necrork.withMNotifier settingNecrorkNotifierSettings $
-        liftIO $
-          Warp.run settingPort $
-            bevelAPIServerApp logFunc serverEnv
+      liftIO $
+        Warp.run settingPort $
+          bevelAPIServerApp logFunc serverEnv
 
 {-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
 bevelAPIServerApp ::

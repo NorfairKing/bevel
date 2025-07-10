@@ -10,7 +10,6 @@ module Bevel.API.Server.OptParse where
 
 import Autodocodec
 import Control.Monad.Logger
-import qualified Necrork
 import OptEnvConf
 import Path
 import Paths_bevel_api_server (version)
@@ -22,8 +21,7 @@ data Settings = Settings
   { settingPort :: !Int,
     settingLogLevel :: !LogLevel,
     settingDbFile :: !(Path Abs File),
-    settingSigningKeyFile :: !(Path Abs File),
-    settingNecrorkNotifierSettings :: !(Maybe Necrork.NotifierSettings)
+    settingSigningKeyFile :: !(Path Abs File)
   }
 
 instance HasParser Settings where
@@ -65,7 +63,6 @@ parseSettings = subEnv_ "bevel-api-server" $ withLocalYamlConfig $ do
         name "signing-key",
         value "signing-key.dat"
       ]
-  settingNecrorkNotifierSettings <- optional $ subSettings "necrork"
   pure Settings {..}
 
 instance HasCodec LogLevel where

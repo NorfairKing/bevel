@@ -1,6 +1,6 @@
 { mkDerivation, appendful-persistent, autodocodec, autodocodec-yaml
 , autoexporter, base, bevel-api, bevel-api-server-data, bevel-data
-, envparse, jose, lib, monad-logger, mtl, necrork, opt-env-conf
+, envparse, jose, lib, monad-logger, mtl, opt-env-conf
 , optparse-applicative, password, path, path-io, persistent
 , persistent-sqlite, servant-auth-server, servant-server, text, wai
 , warp, yaml
@@ -14,9 +14,9 @@ mkDerivation {
   libraryHaskellDepends = [
     appendful-persistent autodocodec autodocodec-yaml base bevel-api
     bevel-api-server-data bevel-data envparse jose monad-logger mtl
-    necrork opt-env-conf optparse-applicative password path path-io
-    persistent persistent-sqlite servant-auth-server servant-server
-    text wai warp yaml
+    opt-env-conf optparse-applicative password path path-io persistent
+    persistent-sqlite servant-auth-server servant-server text wai warp
+    yaml
   ];
   libraryToolDepends = [ autoexporter ];
   executableHaskellDepends = [ base ];
