@@ -14,10 +14,13 @@ import qualified Data.Text as T
 import Database.Persist.Sql
 import Database.Persist.Sqlite
 import Network.Wai as Wai
-import Network.Wai.Handler.Warp as Warp
+import qualified Network.Wai.Handler.Warp as Warp
+import Network.Wai.Middleware.RequestLogger
 import Path
 import Servant.Auth.Server
 import Servant.Server.Generic
+import qualified System.Metrics.Prometheus.Concurrent.Registry as Registry
+import System.Metrics.Prometheus.Wai.Middleware
 
 bevelAPIServer :: IO ()
 bevelAPIServer = do
@@ -34,9 +37,22 @@ bevelAPIServer = do
                 envJWTSettings = defaultJWTSettings jwk
               }
       logFunc <- askLoggerIO
-      liftIO $
-        Warp.run settingPort $
-          bevelAPIServerApp logFunc serverEnv
+      loggingMiddleware <-
+        liftIO $
+          mkRequestLogger
+            defaultRequestLoggerSettings
+              { destination = Callback $ \str ->
+                  logFunc defaultLoc "warp" LevelInfo str
+              }
+      registry <- liftIO Registry.new
+      waiMetrics <- liftIO $ registerWaiMetrics mempty registry
+      let middlewares =
+            metricsEndpointMiddleware registry
+              . instrumentWaiMiddleware waiMetrics
+              . loggingMiddleware
+      let completedApp = middlewares $ bevelAPIServerApp logFunc serverEnv
+      let sets = Warp.setPort settingPort Warp.defaultSettings
+      liftIO $ Warp.runSettings sets completedApp
 
 {-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
 bevelAPIServerApp ::

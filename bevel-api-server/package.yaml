@@ -30,10 +30,13 @@ library:
     - path-io
     - persistent
     - persistent-sqlite
+    - prometheus
+    - prometheus-wai
     - servant-auth-server
     - servant-server
     - text
     - wai
+    - wai-extra
     - warp
     - yaml
 
