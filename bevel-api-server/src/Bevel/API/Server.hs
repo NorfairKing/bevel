@@ -42,7 +42,8 @@ bevelAPIServer = do
           mkRequestLogger
             defaultRequestLoggerSettings
               { destination = Callback $ \str ->
-                  logFunc defaultLoc "warp" LevelInfo str
+                  logFunc defaultLoc "warp" LevelInfo str,
+                outputFormat = Apache FromSocket
               }
       registry <- liftIO Registry.new
       waiMetrics <- liftIO $ registerWaiMetrics mempty registry
