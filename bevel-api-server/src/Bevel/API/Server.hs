@@ -26,34 +26,35 @@ bevelAPIServer :: IO ()
 bevelAPIServer = do
   Settings {..} <- getSettings
   runStderrLoggingT $
-    withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 $ \pool -> do
-      runSqlPool (runMigration serverMigration) pool
-      jwk <- liftIO $ loadSigningKey settingSigningKeyFile
-      let serverEnv =
-            Env
-              { envConnectionPool = pool,
-                envHashDifficulty = 10,
-                envCookieSettings = defaultCookieSettings,
-                envJWTSettings = defaultJWTSettings jwk
-              }
-      logFunc <- askLoggerIO
-      loggingMiddleware <-
-        liftIO $
-          mkRequestLogger
-            defaultRequestLoggerSettings
-              { destination = Callback $ \str ->
-                  logFunc defaultLoc "warp" LevelInfo str,
-                outputFormat = Apache FromSocket
-              }
-      registry <- liftIO Registry.new
-      waiMetrics <- liftIO $ registerWaiMetrics mempty registry
-      let middlewares =
-            metricsEndpointMiddleware registry
-              . instrumentWaiMiddleware waiMetrics
-              . loggingMiddleware
-      let completedApp = middlewares $ bevelAPIServerApp logFunc serverEnv
-      let sets = Warp.setPort settingPort Warp.defaultSettings
-      liftIO $ Warp.runSettings sets completedApp
+    filterLogger (\_ ll -> ll >= settingLogLevel) $
+      withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 $ \pool -> do
+        runSqlPool (runMigration serverMigration) pool
+        jwk <- liftIO $ loadSigningKey settingSigningKeyFile
+        let serverEnv =
+              Env
+                { envConnectionPool = pool,
+                  envHashDifficulty = 10,
+                  envCookieSettings = defaultCookieSettings,
+                  envJWTSettings = defaultJWTSettings jwk
+                }
+        logFunc <- askLoggerIO
+        loggingMiddleware <-
+          liftIO $
+            mkRequestLogger
+              defaultRequestLoggerSettings
+                { destination = Callback $ \str ->
+                    logFunc defaultLoc "warp" LevelInfo str,
+                  outputFormat = Apache FromSocket
+                }
+        registry <- liftIO Registry.new
+        waiMetrics <- liftIO $ registerWaiMetrics mempty registry
+        let middlewares =
+              metricsEndpointMiddleware registry
+                . instrumentWaiMiddleware waiMetrics
+                . loggingMiddleware
+        let completedApp = middlewares $ bevelAPIServerApp logFunc serverEnv
+        let sets = Warp.setPort settingPort Warp.defaultSettings
+        liftIO $ Warp.runSettings sets completedApp
 
 {-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
 bevelAPIServerApp ::
