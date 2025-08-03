@@ -27,7 +27,7 @@ import Database.Esqueleto.Experimental as E
 import Database.Persist.TH
 
 share
-  [mkPersist sqlSettings, mkMigrate "serverMigration"]
+  [mkPersist sqlSettings, mkMigrate "automaticServerMigrations"]
   [persistLowerCase|
 
 User

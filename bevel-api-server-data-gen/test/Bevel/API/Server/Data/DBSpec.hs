@@ -8,7 +8,7 @@ import Test.Syd.Validity
 
 spec :: Spec
 spec = do
-  sqliteMigrationSucceedsSpec "test_resources/migration.sql" serverMigration
+  sqliteMigrationSucceedsSpec "test_resources/migration.sql" automaticServerMigrations
   describe "makeUnsyncedServerCommand" $
     it "roundtrips with serverMakeCommand" $
       forAllValid $ \userId ->

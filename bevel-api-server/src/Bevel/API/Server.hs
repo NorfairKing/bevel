@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -9,6 +10,7 @@ import Bevel.API.Server.Env
 import Bevel.API.Server.Handler
 import Bevel.API.Server.OptParse
 import Bevel.API.Server.SigningKey
+import Control.Monad
 import Control.Monad.Logger
 import qualified Data.Text as T
 import Database.Persist.Sql
@@ -19,8 +21,10 @@ import Network.Wai.Middleware.RequestLogger
 import Path
 import Servant.Auth.Server
 import Servant.Server.Generic
+import System.Exit
 import qualified System.Metrics.Prometheus.Concurrent.Registry as Registry
 import System.Metrics.Prometheus.Wai.Middleware
+import UnliftIO
 
 bevelAPIServer :: IO ()
 bevelAPIServer = do
@@ -28,7 +32,7 @@ bevelAPIServer = do
   runStderrLoggingT $
     filterLogger (\_ ll -> ll >= settingLogLevel) $
       withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 $ \pool -> do
-        runSqlPool (runMigration serverMigration) pool
+        runSqlPool (completeServerMigrations False) pool
         jwk <- liftIO $ loadSigningKey settingSigningKeyFile
         let serverEnv =
               Env
@@ -55,6 +59,29 @@ bevelAPIServer = do
         let completedApp = middlewares $ bevelAPIServerApp logFunc serverEnv
         let sets = Warp.setPort settingPort Warp.defaultSettings
         liftIO $ Warp.runSettings sets completedApp
+
+completeServerMigrations :: (MonadUnliftIO m, MonadLogger m) => Bool -> SqlPersistT m ()
+completeServerMigrations quiet = do
+  logInfoN "Running automatic migrations"
+  (if quiet then void . runMigrationQuiet else runMigration) automaticServerMigrations
+    `catch` ( \case
+                PersistError t -> liftIO $ die $ T.unpack t
+                e -> throwIO e
+            )
+  logInfoN "Autmatic migrations done, starting application-specific migrations."
+  setUpIndices
+  logInfoN "Migrations done."
+
+setUpIndices :: (MonadIO m) => SqlPersistT m ()
+setUpIndices = do
+  rawExecute "CREATE INDEX IF NOT EXISTS command_server_user ON command (server_user)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_text ON command (text)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_begin ON command (begin)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_begin_end ON command (begin,end)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_workdir ON command (workdir)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_user_host ON command (user,host)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_user_host_begin ON command (user,host,begin)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_exit ON command (exit)" []
 
 {-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
 bevelAPIServerApp ::

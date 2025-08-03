@@ -68,3 +68,4 @@ setUpIndices = do
   rawExecute "CREATE INDEX IF NOT EXISTS command_workdir ON command (workdir)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_user_host ON command (user,host)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_user_host_begin ON command (user,host,begin)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_exit ON command (exit)" []

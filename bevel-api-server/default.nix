@@ -3,8 +3,8 @@
 , envparse, jose, lib, monad-logger, mtl, opt-env-conf
 , optparse-applicative, password, path, path-io, persistent
 , persistent-sqlite, prometheus, prometheus-wai
-, servant-auth-server, servant-server, text, wai, wai-extra, warp
-, yaml
+, servant-auth-server, servant-server, text, unliftio, wai
+, wai-extra, warp, yaml
 }:
 mkDerivation {
   pname = "bevel-api-server";
@@ -17,7 +17,7 @@ mkDerivation {
     bevel-api-server-data bevel-data envparse jose monad-logger mtl
     opt-env-conf optparse-applicative password path path-io persistent
     persistent-sqlite prometheus prometheus-wai servant-auth-server
-    servant-server text wai wai-extra warp yaml
+    servant-server text unliftio wai wai-extra warp yaml
   ];
   libraryToolDepends = [ autoexporter ];
   executableHaskellDepends = [ base ];

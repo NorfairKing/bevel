@@ -57,6 +57,7 @@ library
     , servant-auth-server
     , servant-server
     , text
+    , unliftio
     , wai
     , wai-extra
     , warp

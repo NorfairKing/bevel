@@ -7,7 +7,6 @@ import Bevel.API
 import Bevel.API.Data
 import Bevel.API.Data.Gen ()
 import Bevel.API.Server
-import Bevel.API.Server.Data
 import Bevel.API.Server.Env
 import Bevel.Client
 import Control.Monad
@@ -38,7 +37,7 @@ withTestServer func man =
   runNoLoggingT $ do
     logFunc <- askLoggerIO
     withSqlitePool ":memory:" 1 $ \pool -> do
-      void $ runSqlPool (runMigrationQuiet serverMigration) pool
+      void $ runSqlPool (completeServerMigrations True) pool
       liftIO $ do
         jwk <- generateKey
         let serverEnv =
