@@ -74,6 +74,7 @@ completeServerMigrations quiet = do
 
 setUpIndices :: (MonadIO m) => SqlPersistT m ()
 setUpIndices = do
+  rawExecute "CREATE UNIQUE INDEX IF NOT EXISTS command_server_id ON command (id)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_server_user ON command (server_user)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_text ON command (text)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_begin ON command (begin)" []

@@ -62,6 +62,7 @@ completeCliMigrations quiet = do
 
 setUpIndices :: (MonadIO m) => SqlPersistT m ()
 setUpIndices = do
+  rawExecute "CREATE UNIQUE INDEX IF NOT EXISTS command_id ON command (id)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_text ON command (text)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_begin ON command (begin)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_begin_end ON command (begin,end)" []
