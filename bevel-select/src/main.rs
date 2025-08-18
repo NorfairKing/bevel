@@ -82,36 +82,55 @@ impl SomeQueryMaker {
     fn bind_load_query<'a>(
         &self,
         connection: &'a sqlite::Connection,
-        limit: i64,
-        offset: i64,
+        last_begin: Option<i64>,
     ) -> sqlite::Statement<'a> {
         match self {
             SomeQueryMaker::Cd(cqm) => {
-                let mut statement = connection
-                    .prepare("SELECT workdir, begin, exit FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
-                    .unwrap();
-                statement.bind((1, cqm.hostname.as_str())).unwrap();
-                statement.bind((2, cqm.username.as_str())).unwrap();
-                statement.bind((3, limit)).unwrap();
-                statement.bind((4, offset)).unwrap();
-                statement
+                if let Some(last) = last_begin {
+                    let mut statement = connection
+                        .prepare("SELECT workdir, begin, exit FROM command WHERE begin < ? AND host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
+                        .unwrap();
+                    statement.bind((1, last)).unwrap();
+                    statement.bind((2, cqm.hostname.as_str())).unwrap();
+                    statement.bind((3, cqm.username.as_str())).unwrap();
+                    statement
+                } else {
+                    let mut statement = connection
+                        .prepare("SELECT workdir, begin, exit FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
+                        .unwrap();
+                    statement.bind((1, cqm.hostname.as_str())).unwrap();
+                    statement.bind((2, cqm.username.as_str())).unwrap();
+                    statement
+                }
             }
             SomeQueryMaker::Repeat => {
-                let mut statement = connection
-                    .prepare("SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT ? OFFSET ?")
-                    .unwrap();
-                statement.bind((1, limit)).unwrap();
-                statement.bind((2, offset)).unwrap();
-                statement
+                if let Some(last) = last_begin {
+                    let mut statement = connection
+                        .prepare("SELECT text, begin, exit FROM command WHERE begin < ? ORDER BY begin DESC LIMIT 8096")
+                        .unwrap();
+                    statement.bind((1, last)).unwrap();
+                    statement
+                } else {
+                    connection
+                        .prepare("SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT 8096")
+                        .unwrap()
+                }
             }
             SomeQueryMaker::RepeatLocal(rlqm) => {
-                let mut statement = connection
-                    .prepare("SELECT text, begin, exit FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT ? OFFSET ?")
-                    .unwrap();
-                statement.bind((1, rlqm.workdir.as_str())).unwrap();
-                statement.bind((2, limit)).unwrap();
-                statement.bind((3, offset)).unwrap();
-                statement
+                if let Some(last) = last_begin {
+                    let mut statement = connection
+                        .prepare("SELECT text, begin, exit FROM command WHERE begin < ? AND workdir = ? ORDER BY begin DESC LIMIT 8096")
+                        .unwrap();
+                    statement.bind((1, last)).unwrap();
+                    statement.bind((2, rlqm.workdir.as_str())).unwrap();
+                    statement
+                } else {
+                    let mut statement = connection
+                        .prepare("SELECT text, begin, exit FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT 8096")
+                        .unwrap();
+                    statement.bind((1, rlqm.workdir.as_str())).unwrap();
+                    statement
+                }
             }
         }
     }
@@ -203,7 +222,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
             // If there are more rows to load, we will try loading them
             // as long as we still have time within this tick, load some more rows
             while app.loaded < app.total && last_tick.elapsed() <= tick_rate {
-                app.load_rows(8192);
+                app.load_rows();
             }
         }
 
@@ -287,6 +306,7 @@ struct App<'a> {
     connection: &'a sqlite::Connection,
     list_state: ListState,
     choices: Choices,
+    last_begin_loaded: Option<i64>,
     loaded: u64,
     total: u64,
 }
@@ -303,6 +323,7 @@ impl<'a> App<'a> {
             connection,
             list_state,
             choices: Choices::new(String::new()),
+            last_begin_loaded: None,
             loaded: 0,
             total: total as u64,
         }
@@ -354,23 +375,25 @@ impl<'a> App<'a> {
 
     fn reset_search(&mut self) {
         self.loaded = 0;
+        self.last_begin_loaded = None;
         let text = self.choices.search_text.clone();
         self.choices = Choices::new(text);
     }
 
-    pub fn load_rows(&mut self, rows: u64) {
-        let limit = rows as i64;
-        let offset = self.loaded as i64;
+    pub fn load_rows(&mut self) {
         let mut statement = self
             .query_maker
-            .bind_load_query(self.connection, limit, offset);
+            .bind_load_query(self.connection, self.last_begin_loaded);
 
         while let Ok(State::Row) = statement.next() {
-            self.loaded += 1;
             let workdir = statement.read::<String, _>(0).unwrap();
             let begin = statement.read::<i64, _>(1).unwrap();
             let exit = statement.read::<Option<i64>, _>(2).unwrap();
+
             self.choices.add(workdir, begin, exit);
+
+            self.loaded += 1;
+            self.last_begin_loaded = Some(begin);
         }
     }
 }
