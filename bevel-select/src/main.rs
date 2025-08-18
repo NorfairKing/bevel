@@ -203,7 +203,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
             // If there are more rows to load, we will try loading them
             // as long as we still have time within this tick, load some more rows
             while app.loaded < app.total && last_tick.elapsed() <= tick_rate {
-                app.load_rows(1024);
+                app.load_rows(8192);
             }
         }
 
