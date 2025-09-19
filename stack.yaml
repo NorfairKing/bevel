@@ -20,6 +20,12 @@ ghc-options:
 extra-deps:
 - opt-env-conf-0.9.0.0@sha256:21d89d24f0f83f6e01ddcbfa688d228e9ddb8489d69a11af1945050605851a2c,1709
 - opt-env-conf-test-0.0.0.2@sha256:a4f968e4223977f445e84e515e361e0217a25187fe55aee4f1cd5b911637101d,17412
+- github: NorfairKing/appendful
+  commit: 7dbdbe46e3c6eb6f9973fedd68376a5eae1c4ccd
+  subdirs:
+    - appendful
+    - appendful-persistent
+    - genvalidity-appendful
 - github: NorfairKing/looper
   commit: eb24595196b08b0dcef7f6dbca65637cc26f8e6e
   subdirs:
