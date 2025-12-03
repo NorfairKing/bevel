@@ -36,7 +36,7 @@ in
         description = "The bevel-select package";
         default = bevel-select;
       };
-      config = mkOption {
+      configuration = mkOption {
         default = { };
         type = types.submodule {
           options = pkgs.callPackage ../bevel-cli/options.nix { };
@@ -90,7 +90,7 @@ in
       };
 
       bevelConfig = mergeListRecursively [
-        (builtins.removeAttrs cfg.config [ "override" "overrideDerivation" ])
+        (builtins.removeAttrs cfg.configuration [ "override" "overrideDerivation" ])
         cfg.extraConfig
       ];
 
