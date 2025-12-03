@@ -19,7 +19,7 @@ runNixOSTest {
         api-server = {
           enable = true;
           openFirewall = true;
-          config = {
+          configuration = {
             inherit port;
           };
         };
@@ -57,7 +57,7 @@ runNixOSTest {
             };
             sync.enable = true;
             sync.autosync = true;
-            config = {
+            configuration = {
               server-url = "server:${builtins.toString port}";
               username = "testuser";
               password = "testpassword";

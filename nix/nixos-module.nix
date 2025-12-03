@@ -30,7 +30,7 @@ in
               default = false;
               description = "Whether to open the specified ports in the firewall";
             };
-            config = mkOption {
+            configuration = mkOption {
               default = { };
               type = types.submodule {
                 options = pkgs.callPackage ../bevel-api-server-gen/options.nix { };
@@ -48,7 +48,7 @@ in
     let
       working-dir = "/www/bevel/${envname}/";
       api-server-config = with cfg.api-server; mergeListRecursively [
-        (builtins.removeAttrs cfg.api-server.config [ "override" "overrideDerivation" ])
+        (builtins.removeAttrs cfg.api-server.configuration [ "override" "overrideDerivation" ])
         cfg.api-server.extraConfig
       ];
       api-server-config-file = (pkgs.formats.yaml { }).generate "bevel-api-server-config.yaml" api-server-config;
