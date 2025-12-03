@@ -5,8 +5,8 @@
     extra-trusted-public-keys = "bevel.cachix.org-1:LaYFysrJKkFZDRCWRsa95GC21eijfHh+IevNeZTqL00=";
   };
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-25.05";
-    home-manager.url = "github:nix-community/home-manager?ref=release-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-25.11";
+    home-manager.url = "github:nix-community/home-manager?ref=release-25.11";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     weeder-nix.url = "github:NorfairKing/weeder-nix";
     weeder-nix.flake = false;
@@ -57,7 +57,7 @@
         release = self.packages.${system}.default;
         shell = self.devShells.${system}.default;
         nixos-module-test = import ./nix/nixos-module-test.nix {
-          inherit (pkgs) nixosTest;
+          inherit (pkgs.testers) runNixOSTest;
           home-manager = home-manager.nixosModules.home-manager;
           bevel-nixos-module-factory = self.nixosModuleFactories.${system}.default;
           bevel-home-manager-module = self.homeManagerModules.${system}.default;

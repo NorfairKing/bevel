@@ -56,7 +56,7 @@ in
       api-server-service =
         with cfg.api-server;
         optionalAttrs enable {
-          "bevel-api-server-${envname}" = opt-env-conf.addSettingsCheckToService {
+          "bevel-api-server-${envname}" = opt-env-conf.addSettingsCheckToService { } {
             description = "Bevel API Server ${envname} Service";
             wantedBy = [ "multi-user.target" ];
             environment = {
