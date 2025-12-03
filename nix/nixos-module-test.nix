@@ -1,4 +1,4 @@
-{ nixosTest
+{ runNixOSTest
 , home-manager
 , bevel-nixos-module-factory
 , bevel-home-manager-module
@@ -7,7 +7,7 @@ let
   bevel-production = bevel-nixos-module-factory { envname = "production"; };
   port = 8001;
 in
-nixosTest {
+runNixOSTest {
   name = "bevel-module-test";
   nodes = {
     server = {
@@ -36,7 +36,7 @@ nixosTest {
           imports = [
             bevel-home-manager-module
           ];
-          home.stateVersion = "25.05";
+          home.stateVersion = "25.11";
           home.packages = with pkgs; [
             sqlite
           ];
