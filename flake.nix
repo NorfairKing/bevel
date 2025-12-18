@@ -129,6 +129,7 @@
           bevel-gather
           bevel-harness
           bevel-select;
+        inherit (pkgs.haskellPackages) opt-env-conf;
       };
     };
 }

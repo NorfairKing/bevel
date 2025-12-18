@@ -1,4 +1,5 @@
-{ bevel-cli
+{ opt-env-conf
+, bevel-cli
 , bevel-gather
 , bevel-harness
 , bevel-select
@@ -63,15 +64,14 @@ in
   config =
     let
       syncBevelName = "bevel-sync";
-      syncBevelService = {
+      syncBevelService = opt-env-conf.addSettingsCheckToUserService { read-secret = false; } {
         Unit = {
           Description = "Sync bevel";
           Wants = [ "network-online.target" ];
         };
         Service = {
-          ExecStart = "${pkgs.writeShellScript "bevel-sync-service-ExecStart" ''
-              exec ${cfg.bevel-cli}/bin/bevel sync
-            ''}";
+          Environment = [ "BEVEL_CONFIG_FILE=${bevelConfigFile}" ];
+          ExecStart = "${cfg.bevel-cli}/bin/bevel sync";
           Type = "oneshot";
         };
       };
