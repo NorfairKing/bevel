@@ -14,6 +14,8 @@
     opt-env-conf.flake = false;
     prometheus-wai.url = "github:NorfairKing/prometheus-wai";
     prometheus-wai.flake = false;
+    prometheus-ghc-stats.url = "github:NorfairKing/prometheus-ghc-stats";
+    prometheus-ghc-stats.flake = false;
     looper.url = "github:NorfairKing/looper";
     looper.flake = false;
     appendful.url = "github:NorfairKing/appendful";
@@ -30,6 +32,7 @@
     , weeder-nix
     , opt-env-conf
     , prometheus-wai
+    , prometheus-ghc-stats
     , looper
     , appendful
     , dekking
@@ -45,6 +48,7 @@
           (import (looper + "/nix/overlay.nix"))
           (import (appendful + "/nix/overlay.nix"))
           (import (prometheus-wai + "/nix/overlay.nix"))
+          (import (prometheus-ghc-stats + "/nix/overlay.nix"))
           (import (dekking + "/nix/overlay.nix"))
           (import (weeder-nix + "/nix/overlay.nix"))
         ];

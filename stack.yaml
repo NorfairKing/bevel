@@ -21,7 +21,7 @@ extra-deps:
 - opt-env-conf-0.9.0.0@sha256:21d89d24f0f83f6e01ddcbfa688d228e9ddb8489d69a11af1945050605851a2c,1709
 - opt-env-conf-test-0.0.0.2@sha256:a4f968e4223977f445e84e515e361e0217a25187fe55aee4f1cd5b911637101d,17412
 - github: NorfairKing/appendful
-  commit: 7dbdbe46e3c6eb6f9973fedd68376a5eae1c4ccd
+  commit: 8ae68808e81466675f721c509e2ff81f9c568317
   subdirs:
     - appendful
     - appendful-persistent
@@ -31,9 +31,13 @@ extra-deps:
   subdirs:
     - looper
 - github: NorfairKing/prometheus-wai
-  commit: 1a7d090a83ee2364f80cd261e7f490db51405241
+  commit: 6699a7241f8ecbb2ba551a542bfc4abba586d606
   subdirs:
     - prometheus-wai
+- github: NorfairKing/prometheus-ghc-stats
+  commit: 7cf4a8210c815f0573f67cb326cff6718e6962ad
+  subdirs:
+    - prometheus-ghc-stats
 
 system-ghc: true
 nix:

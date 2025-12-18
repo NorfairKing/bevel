@@ -188,14 +188,30 @@
         "type": "github"
       }
     },
+    "prometheus-ghc-stats": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1765955216,
+        "narHash": "sha256-0mJbQ590BzSOhyHQ15XpcRduSHRQ7CTxWJ5Jw9/iQyM=",
+        "owner": "NorfairKing",
+        "repo": "prometheus-ghc-stats",
+        "rev": "7cf4a8210c815f0573f67cb326cff6718e6962ad",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NorfairKing",
+        "repo": "prometheus-ghc-stats",
+        "type": "github"
+      }
+    },
     "prometheus-wai": {
       "flake": false,
       "locked": {
-        "lastModified": 1764755070,
-        "narHash": "sha256-Npb8VzJfv8RXhTnkE9uYqVgLghmad0p7QKZIQcJRBhM=",
+        "lastModified": 1765987377,
+        "narHash": "sha256-DW7PPSTxkNDekDEWqJAC6dlBhGv0KJHT3zhPZ/XORjU=",
         "owner": "NorfairKing",
         "repo": "prometheus-wai",
-        "rev": "b319bb672d9c6f4dce921a49640ce6d1d75738c0",
+        "rev": "6699a7241f8ecbb2ba551a542bfc4abba586d606",
         "type": "github"
       },
       "original": {
@@ -213,6 +229,7 @@
         "nixpkgs": "nixpkgs_2",
         "opt-env-conf": "opt-env-conf",
         "pre-commit-hooks": "pre-commit-hooks",
+        "prometheus-ghc-stats": "prometheus-ghc-stats",
         "prometheus-wai": "prometheus-wai",
         "weeder-nix": "weeder-nix"
       }
