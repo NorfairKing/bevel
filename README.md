@@ -1,5 +1,7 @@
 # Bevel: Command line history in an SQLite database for effective re-use
 
+[![NixCI](https://staging.nix-ci.com/badge/gh:NorfairKing:bevel)](https://staging.nix-ci.com/gh:NorfairKing:bevel)
+
 Pronounced "bəvɛl".
 
 ## How it works
