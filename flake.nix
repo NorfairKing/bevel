@@ -5,8 +5,8 @@
     extra-trusted-public-keys = "bevel.cachix.org-1:LaYFysrJKkFZDRCWRsa95GC21eijfHh+IevNeZTqL00=";
   };
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-25.11";
-    home-manager.url = "github:nix-community/home-manager?ref=release-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-26.05";
+    home-manager.url = "github:nix-community/home-manager?ref=release-26.05";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     weeder-nix.url = "github:NorfairKing/weeder-nix";
     weeder-nix.flake = false;
@@ -53,6 +53,18 @@
           (import (weeder-nix + "/nix/overlay.nix"))
         ];
       };
+      bevel-nixos-module-factory = import ./nix/nixos-module.nix {
+        inherit (pkgs.bevelReleasePackages) bevel-api-server;
+        inherit (pkgs.haskellPackages) opt-env-conf;
+      };
+      bevel-home-manager-module = import ./nix/home-manager-module.nix {
+        inherit (pkgs.bevelReleasePackages)
+          bevel-cli
+          bevel-gather
+          bevel-harness
+          bevel-select;
+        inherit (pkgs.haskellPackages) opt-env-conf;
+      };
     in
     {
       overlays.${system} = import ./nix/overlay.nix;
@@ -63,8 +75,7 @@
         nixos-module-test = import ./nix/nixos-module-test.nix {
           inherit (pkgs.testers) runNixOSTest;
           home-manager = home-manager.nixosModules.home-manager;
-          bevel-nixos-module-factory = self.nixosModuleFactories.${system}.default;
-          bevel-home-manager-module = self.homeManagerModules.${system}.default;
+          inherit bevel-nixos-module-factory bevel-home-manager-module;
         };
         coverage-report = pkgs.dekking.makeCoverageReport {
           name = "test-coverage-report";
@@ -122,18 +133,8 @@
         ] ++ self.checks.${system}.pre-commit.enabledPackages;
         shellHook = self.checks.${system}.pre-commit.shellHook;
       };
-      nixosModules.${system}.default = self.nixosModuleFactories.${system}.default { envname = "production"; };
-      nixosModuleFactories.${system}.default = import ./nix/nixos-module.nix {
-        inherit (pkgs.bevelReleasePackages) bevel-api-server;
-        inherit (pkgs.haskellPackages) opt-env-conf;
-      };
-      homeManagerModules.${system}.default = import ./nix/home-manager-module.nix {
-        inherit (pkgs.bevelReleasePackages)
-          bevel-cli
-          bevel-gather
-          bevel-harness
-          bevel-select;
-        inherit (pkgs.haskellPackages) opt-env-conf;
-      };
+      nixosModules.${system}.default = bevel-nixos-module-factory { envname = "production"; };
+      nixosModuleFactories.${system}.default = bevel-nixos-module-factory;
+      homeManagerModules.${system}.default = bevel-home-manager-module;
     };
 }

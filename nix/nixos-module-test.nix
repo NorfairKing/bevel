@@ -32,11 +32,12 @@ runNixOSTest {
       users.users.testuser.isNormalUser = true;
       home-manager = {
         useGlobalPkgs = true;
-        users.testuser = { pkgs, ... }: {
+        users.testuser = { config, pkgs, ... }: {
           imports = [
             bevel-home-manager-module
           ];
           home.stateVersion = "25.11";
+          programs.zsh.dotDir = "${config.xdg.configHome}/zsh";
           home.packages = with pkgs; [
             sqlite
           ];
@@ -77,7 +78,8 @@ runNixOSTest {
     server.wait_for_open_port(${builtins.toString port})
 
     client.wait_for_unit("multi-user.target")
-    client.require_unit_state("home-manager-testuser.service", "inactive")
+    client.wait_for_unit("home-manager-testuser.service")
+    client.require_unit_state("home-manager-testuser.service", "active")
     client.succeed("curl server:${builtins.toString port}")
 
 

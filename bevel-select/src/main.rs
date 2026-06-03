@@ -20,7 +20,7 @@ use tui::{
     widgets::{List, ListItem, ListState, Paragraph},
     Frame, Terminal,
 };
-use whoami::fallible::{hostname, username};
+use whoami::{hostname, username};
 
 use sqlite::State;
 

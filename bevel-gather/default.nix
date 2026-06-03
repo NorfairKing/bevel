@@ -1,6 +1,5 @@
 { musl
-, sqlite
-, gnutar
+, pkgsStatic
 , stdenv
 }:
 
@@ -8,19 +7,15 @@
 stdenv.mkDerivation {
   name = "bevel-gather";
   src = ./.;
-  buildInputs = [ musl gnutar ];
-  nativeBuildInputs = [ sqlite.dev ];
+  buildInputs = [ musl pkgsStatic.sqlite ];
   buildCommand = ''
-    mkdir -p $out/
-
-    tar xzf ${sqlite.src} --one-top-level=sqlite
-    ln -s sqlite/*/sqlite3.c sqlite3.c
-
     mkdir -p $out/bin
     musl-gcc \
       -Wall -Wextra -pedantic -O2 -s -static -Wl,--gc-sections -Wl,--strip-all \
       $src/bevel-gather.c \
-      sqlite3.c \
+      -I${pkgsStatic.sqlite.dev}/include \
+      ${pkgsStatic.sqlite.out}/lib/libsqlite3.a \
+      -lpthread \
       -o $out/bin/bevel-gather
 
     ldd $out/bin/bevel-gather || true
