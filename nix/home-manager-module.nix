@@ -63,11 +63,29 @@ in
   };
   config =
     let
+      migrateBevelName = "bevel-migrate";
+      # Without this, the database has no schema until the user happens to run
+      # some 'bevel' subcommand, and bevel-gather cannot record anything.
+      migrateBevelService = opt-env-conf.addSettingsCheckToUserService { read-secret = false; } {
+        Unit = {
+          Description = "Migrate the bevel database";
+        };
+        Install = {
+          WantedBy = [ "default.target" ];
+        };
+        Service = {
+          Environment = [ "BEVEL_CONFIG_FILE=${bevelConfigFile}" ];
+          ExecStart = "${cfg.bevel-cli}/bin/bevel migrate";
+          Type = "oneshot";
+        };
+      };
+
       syncBevelName = "bevel-sync";
       syncBevelService = opt-env-conf.addSettingsCheckToUserService { read-secret = false; } {
         Unit = {
           Description = "Sync bevel";
-          Wants = [ "network-online.target" ];
+          Wants = [ "network-online.target" "${migrateBevelName}.service" ];
+          After = [ "${migrateBevelName}.service" ];
         };
         Service = {
           Environment = [ "BEVEL_CONFIG_FILE=${bevelConfigFile}" ];
@@ -98,7 +116,9 @@ in
       # The keys will not be in the "right" order but that's fine.
       bevelConfigFile = (pkgs.formats.yaml { }).generate "bevel-config.yaml" bevelConfig;
 
-      services = optionalAttrs (cfg.sync.enable or false) {
+      services = {
+        "${migrateBevelName}" = migrateBevelService;
+      } // optionalAttrs (cfg.sync.enable or false) {
         "${syncBevelName}" = syncBevelService;
       };
       timers = optionalAttrs ((cfg.sync.enable or false) && (cfg.sync.autosync or false)) {
@@ -116,6 +136,15 @@ in
       # systemd service instead of an activation script.
 
       home.packages = packages;
+
+      # The user's systemd instance is not necessarily running while
+      # home-manager activates, so the bevel-migrate service alone does not
+      # guarantee that the database exists before the harness first runs on a
+      # machine that has never been logged into.
+      home.activation.bevelMigrate = hm.dag.entryAfter [ "writeBoundary" ] ''
+        run env BEVEL_CONFIG_FILE=${bevelConfigFile} ${cfg.bevel-cli}/bin/bevel migrate
+      '';
+
       xdg.configFile = {
         "bevel/config.yaml".source = bevelConfigFile;
       };

@@ -66,6 +66,9 @@
   default: [33mLevelWarn[m
 
 [36mAll commands[m:
+  [34mapply any pending database migrations[m
+  command: [35mmigrate[m
+  
   [34mregister an account[m
   command: [35mregister[m
   
@@ -83,6 +86,7 @@
   [37m-h[m[36m|[m[37m--help[m [34mShow this help text[m
   [37m--version[m [34mOutput version information[m
   [37m--config-file[m [34mPath to the configuration file[m
+  [35mmigrate[m [34mapply any pending database migrations[m
   [35mregister[m [34mregister an account[m
   [35mlogin[m [34mauthenticate an account[m
   [35msync[m [34msynchronise commands[m

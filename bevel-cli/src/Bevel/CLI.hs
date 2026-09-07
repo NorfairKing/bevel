@@ -26,23 +26,29 @@ bevelCLI = do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     pure $ mkClientEnv man burl
   ensureDir $ parent settingDbFile
-  let runC lockType func = do
+  let withPool :: SharedExclusive -> (ConnectionPool -> LoggingT IO ()) -> IO ()
+      withPool lockType func =
         -- Block until locking succeeds
         withFileLock (fromAbsFile settingDbFile ++ ".lock") lockType $ \_ ->
           runStderrLoggingT $
             filterLogger (\_ ll -> ll >= settingLogLevel) $
-              withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 $ \pool -> do
-                _ <- runSqlPool (completeCliMigrations False) pool
-                let env =
-                      Env
-                        { envClientEnv = mCenv,
-                          envUsername = settingUsername,
-                          envPassword = settingPassword,
-                          envMaxOptions = settingMaxOptions,
-                          envConnectionPool = pool
-                        }
-                runReaderT func env
+              withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 func
+  let migrateDb :: ConnectionPool -> LoggingT IO ()
+      migrateDb = void . runSqlPool (completeCliMigrations False)
+  let runC lockType func =
+        withPool lockType $ \pool -> do
+          migrateDb pool
+          let env =
+                Env
+                  { envClientEnv = mCenv,
+                    envUsername = settingUsername,
+                    envPassword = settingPassword,
+                    envMaxOptions = settingMaxOptions,
+                    envConnectionPool = pool
+                  }
+          runReaderT func env
   case dispatch of
+    DispatchMigrate -> withPool Exclusive migrateDb
     DispatchRegister -> runC Shared Commands.register
     DispatchLogin -> runC Shared Commands.login
     DispatchSync -> runC Exclusive Commands.sync
