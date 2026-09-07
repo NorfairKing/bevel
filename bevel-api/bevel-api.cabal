@@ -33,6 +33,7 @@ library
     , bevel-api-server-data
     , bevel-client-data
     , bevel-data
+    , containers
     , persistent
     , servant
     , servant-auth

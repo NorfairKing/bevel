@@ -39,6 +39,7 @@ bevelAPIServer = do
               Env
                 { envConnectionPool = pool,
                   envHashDifficulty = 10,
+                  envDownloadBatchSize = settingDownloadBatchSize,
                   envCookieSettings = defaultCookieSettings,
                   envJWTSettings = defaultJWTSettings jwk
                 }
@@ -81,6 +82,7 @@ setUpIndices :: (MonadIO m) => SqlPersistT m ()
 setUpIndices = do
   rawExecute "CREATE UNIQUE INDEX IF NOT EXISTS command_server_id ON command (id)" []
   rawExecute "CREATE INDEX IF NOT EXISTS command_server_user ON command (server_user)" []
+  rawExecute "CREATE INDEX IF NOT EXISTS command_server_user_id ON command (server_user, id)" []
 
 {-# ANN bevelAPIServerApp ("NOCOVER" :: String) #-}
 bevelAPIServerApp ::
@@ -101,6 +103,7 @@ bevelHandlers =
   BevelRoutes
     { postRegister = handlePostRegister,
       postLogin = handlePostLogin,
+      postDownload = protected handlePostDownload,
       postSync = protected handlePostSync
     }
 

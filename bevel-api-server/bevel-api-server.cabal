@@ -23,6 +23,7 @@ library
       Bevel.API.Server.Env
       Bevel.API.Server.Handler
       Bevel.API.Server.Handler.Auth
+      Bevel.API.Server.Handler.Download
       Bevel.API.Server.Handler.Import
       Bevel.API.Server.Handler.Sync
       Bevel.API.Server.OptParse
@@ -41,6 +42,7 @@ library
     , bevel-api
     , bevel-api-server-data
     , bevel-data
+    , containers
     , envparse
     , jose
     , monad-logger

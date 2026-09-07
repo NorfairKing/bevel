@@ -44,6 +44,7 @@ withTestServer func man =
               Env
                 { envConnectionPool = pool,
                   envHashDifficulty = 4,
+                  envDownloadBatchSize = testDownloadBatchSize,
                   envCookieSettings = defaultCookieSettings,
                   envJWTSettings = defaultJWTSettings jwk
                 }
@@ -92,3 +93,8 @@ testLogin cenv lf = do
       case jwtCookie of
         Nothing -> expectationFailure "No JWT-Cookie was found in the Set-Cookie session header."
         Just setCookie -> pure $ Token $ setCookieValue setCookie
+
+-- | Small enough that tests exercise more than one batch without having to
+-- make thousands of commands.
+testDownloadBatchSize :: Int
+testDownloadBatchSize = 5
