@@ -19,3 +19,4 @@ spec = do
   jsonSpec @DownloadRequest
   genValidSpec @DownloadResponse
   jsonSpec @DownloadResponse
+  genValidSpec @SyncRequest

@@ -55,14 +55,14 @@ getEnvUsername :: C Username
 getEnvUsername = do
   mUsername <- asks envUsername
   case mUsername of
-    Nothing -> liftIO $ die "No username configured." -- TODO prompt
+    Nothing -> liftIO $ die "No username configured."
     Just un -> pure un
 
 getEnvPassword :: C Text
 getEnvPassword = do
   mPassword <- asks envPassword
   case mPassword of
-    Nothing -> liftIO $ die "No password configured." -- TODO prompt
+    Nothing -> liftIO $ die "No password configured."
     Just pw -> pure pw
 
 withLogin :: ClientEnv -> (Token -> C a) -> C a

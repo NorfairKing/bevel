@@ -25,7 +25,7 @@ spec = serverSpec $ do
         case errOrRes of
           Left err -> case err of
             FailureResponse _ resp | responseStatusCode resp == HTTP.unauthorized401 -> pure ()
-            _ -> expectationFailure $ "Should have errored with code 401, got this instead: " <> show err
+            _ -> expectationFailure $ unwords ["Should have errored with code 401, got this instead:", show err]
           _ -> expectationFailure "Should have errored"
     it "shows no difference between a login failure for a user that exists and a user that doesn't exist" $ \cenv ->
       forAllValid $ \un1 ->

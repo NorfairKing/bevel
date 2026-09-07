@@ -29,7 +29,7 @@ bevelCLI = do
   let withPool :: SharedExclusive -> (ConnectionPool -> LoggingT IO ()) -> IO ()
       withPool lockType func =
         -- Block until locking succeeds
-        withFileLock (fromAbsFile settingDbFile ++ ".lock") lockType $ \_ ->
+        withFileLock (concat [fromAbsFile settingDbFile, ".lock"]) lockType $ \_ ->
           runStderrLoggingT $
             filterLogger (\_ ll -> ll >= settingLogLevel) $
               withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 func

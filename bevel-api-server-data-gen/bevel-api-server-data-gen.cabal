@@ -43,6 +43,7 @@ test-suite bevel-api-server-data-test
   main-is: Spec.hs
   other-modules:
       Bevel.API.Server.Data.DBSpec
+      Bevel.API.Server.Data.UsernameSpec
       Paths_bevel_api_server_data_gen
   hs-source-dirs:
       test

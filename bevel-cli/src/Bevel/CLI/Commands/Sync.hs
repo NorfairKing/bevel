@@ -9,6 +9,7 @@ import Data.Aeson.Encode.Pretty as JSON
 import qualified Data.Appendful.Persistent as Appendful
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Database.Persist.Sql (SqlPersistT)
 import System.Exit
@@ -76,9 +77,9 @@ appendfulSync cenv token = do
         clientMakeCommand
         ClientCommandServerId
     pure SyncRequest {..}
-  logDebugN $ "Request: " <> TE.decodeUtf8 (LB.toStrict $ JSON.encodePretty req)
+  logDebugN $ T.unwords ["Request:", TE.decodeUtf8 (LB.toStrict (JSON.encodePretty req))]
   resp@SyncResponse {..} <- runClientOrDie cenv $ postSync bevelClient token req
-  logDebugN $ "Response: " <> TE.decodeUtf8 (LB.toStrict $ JSON.encodePretty resp)
+  logDebugN $ T.unwords ["Response:", TE.decodeUtf8 (LB.toStrict (JSON.encodePretty resp))]
   runDB $
     Appendful.clientMergeSyncResponseQuery
       makeSyncedClientCommand
