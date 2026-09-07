@@ -127,7 +127,8 @@ getDefaultDataDir = getXdgDir XdgData (Just [reldir|bevel|])
 
 -- | A sum type for the commands and their specific settings
 data Dispatch
-  = DispatchRegister
+  = DispatchMigrate
+  | DispatchRegister
   | DispatchLogin
   | DispatchSync
   | DispatchLast
@@ -139,7 +140,8 @@ instance HasParser Dispatch where
 parseDispatch :: Parser Dispatch
 parseDispatch = do
   commands
-    [ command "register" "register an account" $ pure DispatchRegister,
+    [ command "migrate" "apply any pending database migrations" $ pure DispatchMigrate,
+      command "register" "register an account" $ pure DispatchRegister,
       command "login" "authenticate an account" $ pure DispatchLogin,
       command "sync" "synchronise commands" $ pure DispatchSync,
       command "last" "show the most recent command" $ pure DispatchLast
