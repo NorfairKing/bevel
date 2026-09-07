@@ -1,4 +1,4 @@
-[36mUsage: [m[33mbevel-api-server[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m [36m[[m[37m--port[m [33mPORT[m[36m][m [36m[[m[37m--log-level[m [33mLOG_LEVEL[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--signing-key[m [33mFILE_PATH[m[36m][m [36m[[m[37m--download-batch-size[m [33mINT[m[36m][m
+[36mUsage: [m[33mbevel-api-server[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m [36m[[m[37m--port[m [33mPORT[m[36m][m [36m[[m[37m--log-level[m [33mLOG_LEVEL[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--signing-key[m [33mFILE_PATH[m[36m][m
 
 [36mAll settings[m:
   [34mShow this help text[m
@@ -48,31 +48,21 @@
       [33m<string>[m
   default: [33m"signing-key.dat"[m
 
-  [34mmaximum number of commands to send in one download response[m
-  option: [37m--download-batch-size[m [33mINT[m
-  env: [37mBEVEL_API_SERVER_DOWNLOAD_BATCH_SIZE[m [33mINT[m
-  config:
-    [37mdownload-batch-size[m: # [32mor null[m
-      [33m<integer>[m # [32m64 bit signed integer[m
-  default: [33m1024[m
-
 [36mOptions[m:
-  [37m-h[m[36m|[m[37m--help[m             [34mShow this help text[m                                                                   
-  [37m--version[m             [34mOutput version information[m                                                            
-  [37m--config-file[m         [34mPath to the configuration file[m                                                        
-  [37m--port[m                [34mport to serve requests on[m                                   default: [33m8000[m             
-  [37m--log-level[m           [34mminimal severity of log messages[m                            default: [33mLevelWarn[m        
-  [37m--database[m            [34mdatabase file[m                                               default: [33m"bevel.sqlite"[m   
-  [37m--signing-key[m         [34msigning key file[m                                            default: [33m"signing-key.dat"[m
-  [37m--download-batch-size[m [34mmaximum number of commands to send in one download response[m default: [33m1024[m             
+  [37m-h[m[36m|[m[37m--help[m     [34mShow this help text[m                                        
+  [37m--version[m     [34mOutput version information[m                                 
+  [37m--config-file[m [34mPath to the configuration file[m                             
+  [37m--port[m        [34mport to serve requests on[m        default: [33m8000[m             
+  [37m--log-level[m   [34mminimal severity of log messages[m default: [33mLevelWarn[m        
+  [37m--database[m    [34mdatabase file[m                    default: [33m"bevel.sqlite"[m   
+  [37m--signing-key[m [34msigning key file[m                 default: [33m"signing-key.dat"[m
 
 [36mEnvironment Variables[m:
-  [37mBEVEL_API_SERVER_CONFIG_FILE[m [33mFILE_PATH[m     [34mPath to the configuration file[m                                                          
-  [37mBEVEL_API_SERVER_PORT[m [33mPORT[m                 [34mport to serve requests on[m                                     default: [33m8000[m             
-  [37mBEVEL_API_SERVER_LOG_LEVEL[m [33mLOG_LEVEL[m       [34mminimal severity of log messages[m                              default: [33mLevelWarn[m        
-  [37mBEVEL_API_SERVER_DATABASE[m [33mFILE_PATH[m        [34mdatabase file[m                                                 default: [33m"bevel.sqlite"[m   
-  [37mBEVEL_API_SERVER_SIGNING_KEY[m [33mFILE_PATH[m     [34msigning key file[m                                              default: [33m"signing-key.dat"[m
-  [37mBEVEL_API_SERVER_DOWNLOAD_BATCH_SIZE[m [33mINT[m   [34mmaximum number of commands to send in one download response[m   default: [33m1024[m             
+  [37mBEVEL_API_SERVER_CONFIG_FILE[m [33mFILE_PATH[m   [34mPath to the configuration file[m                               
+  [37mBEVEL_API_SERVER_PORT[m [33mPORT[m               [34mport to serve requests on[m          default: [33m8000[m             
+  [37mBEVEL_API_SERVER_LOG_LEVEL[m [33mLOG_LEVEL[m     [34mminimal severity of log messages[m   default: [33mLevelWarn[m        
+  [37mBEVEL_API_SERVER_DATABASE[m [33mFILE_PATH[m      [34mdatabase file[m                      default: [33m"bevel.sqlite"[m   
+  [37mBEVEL_API_SERVER_SIGNING_KEY[m [33mFILE_PATH[m   [34msigning key file[m                   default: [33m"signing-key.dat"[m
 
 [36mConfiguration Values[m:
   [34mport to serve requests on[m
@@ -100,9 +90,4 @@
   [37msigning-key[m:
     # [32mor null[m
     [33m<string>[m
-  [34mmaximum number of commands to send in one download response[m
-  default: [33m1024[m
-  [37mdownload-batch-size[m:
-    # [32mor null[m
-    [33m<integer>[m # [32m64 bit signed integer[m
 

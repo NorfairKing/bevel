@@ -39,7 +39,7 @@ bevelAPIServer = do
               Env
                 { envConnectionPool = pool,
                   envHashDifficulty = 10,
-                  envDownloadBatchSize = settingDownloadBatchSize,
+                  envDownloadBatchSize = 1024,
                   envCookieSettings = defaultCookieSettings,
                   envJWTSettings = defaultJWTSettings jwk
                 }

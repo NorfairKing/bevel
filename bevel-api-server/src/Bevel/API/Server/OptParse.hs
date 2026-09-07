@@ -21,8 +21,7 @@ data Settings = Settings
   { settingPort :: !Int,
     settingLogLevel :: !LogLevel,
     settingDbFile :: !(Path Abs File),
-    settingSigningKeyFile :: !(Path Abs File),
-    settingDownloadBatchSize :: !Int
+    settingSigningKeyFile :: !(Path Abs File)
   }
 
 instance HasParser Settings where
@@ -63,14 +62,6 @@ parseSettings = subEnv_ "bevel-api-server" $ withLocalYamlConfig $ do
       [ help "signing key file",
         name "signing-key",
         value "signing-key.dat"
-      ]
-  settingDownloadBatchSize <-
-    setting
-      [ help "maximum number of commands to send in one download response",
-        reader auto,
-        name "download-batch-size",
-        value 1024,
-        metavar "INT"
       ]
   pure Settings {..}
 

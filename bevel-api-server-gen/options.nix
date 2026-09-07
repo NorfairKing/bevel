@@ -5,11 +5,6 @@
     description = "database file";
     type = lib.types.nullOr lib.types.str;
   };
-  download-batch-size = lib.mkOption {
-    default = null;
-    description = "maximum number of commands to send in one download response";
-    type = lib.types.nullOr lib.types.int;
-  };
   log-level = lib.mkOption {
     default = null;
     description = "minimal severity of log messages";
