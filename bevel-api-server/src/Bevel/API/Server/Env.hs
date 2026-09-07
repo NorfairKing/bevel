@@ -13,6 +13,7 @@ type H = ReaderT Env (LoggingT Handler)
 data Env = Env
   { envConnectionPool :: !ConnectionPool,
     envHashDifficulty :: !Int,
+    envDownloadBatchSize :: !Int,
     envCookieSettings :: !CookieSettings,
     envJWTSettings :: !JWTSettings
   }

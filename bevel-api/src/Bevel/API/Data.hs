@@ -17,6 +17,8 @@ import Bevel.Data
 import Data.Aeson (FromJSON, FromJSONKey (..), ToJSON, ToJSONKey (..))
 import qualified Data.Appendful as Appendful
 import Data.Functor.Contravariant
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Validity
@@ -79,6 +81,34 @@ instance ToJSON AuthCookie
 instance FromJWT AuthCookie
 
 instance ToJWT AuthCookie
+
+data DownloadRequest = DownloadRequest
+  { downloadRequestMaximumSynced :: !(Maybe ServerCommandId)
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec DownloadRequest)
+
+instance Validity DownloadRequest
+
+instance HasCodec DownloadRequest where
+  codec =
+    object "DownloadRequest" $
+      DownloadRequest
+        <$> optionalFieldOrNull "max-synced" "largest server id the client already has" .= downloadRequestMaximumSynced
+
+data DownloadResponse = DownloadResponse
+  { downloadResponseCommands :: !(Map ServerCommandId Command)
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec DownloadResponse)
+
+instance Validity DownloadResponse
+
+instance HasCodec DownloadResponse where
+  codec =
+    object "DownloadResponse" $
+      DownloadResponse
+        <$> optionalFieldWithOmittedDefault "commands" M.empty "the next batch of commands the client does not have yet" .= downloadResponseCommands
 
 data SyncRequest = SyncRequest
   { syncRequestCommandSyncRequest :: Appendful.SyncRequest ClientCommandId ServerCommandId Command

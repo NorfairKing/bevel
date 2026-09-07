@@ -1,7 +1,8 @@
-{ mkDerivation, aeson-pretty, appendful-persistent, async
-, autodocodec, autodocodec-yaml, autoexporter, base, bevel-api
-, bevel-api-server-data, bevel-api-server-gen, bevel-client
-, bevel-client-data, bevel-client-data-gen, bevel-data, bytestring
+{ mkDerivation, aeson-pretty, appendful, appendful-persistent
+, async, autodocodec, autodocodec-yaml, autoexporter, base
+, bevel-api, bevel-api-gen, bevel-api-server-data
+, bevel-api-server-gen, bevel-client, bevel-client-data
+, bevel-client-data-gen, bevel-data, bevel-data-gen, bytestring
 , conduit, containers, cookie, envparse, esqueleto, filelock
 , filepath, genvalidity-sydtest, genvalidity-text, genvalidity-time
 , hostname, http-client, http-client-tls, lib, monad-logger, mtl
@@ -28,11 +29,12 @@ mkDerivation {
   libraryToolDepends = [ autoexporter ];
   executableHaskellDepends = [ base ];
   testHaskellDepends = [
-    async base bevel-api bevel-api-server-data bevel-api-server-gen
-    bevel-client-data bevel-client-data-gen genvalidity-sydtest
-    genvalidity-text genvalidity-time monad-logger opt-env-conf-test
-    path path-io persistent-sqlite QuickCheck servant-client sydtest
-    text typed-process
+    appendful async base bevel-api bevel-api-gen bevel-api-server-data
+    bevel-api-server-gen bevel-client bevel-client-data
+    bevel-client-data-gen bevel-data bevel-data-gen containers
+    genvalidity-sydtest genvalidity-text genvalidity-time monad-logger
+    mtl opt-env-conf-test path path-io persistent persistent-sqlite
+    QuickCheck servant-client sydtest text typed-process
   ];
   testToolDepends = [ sydtest-discover ];
   homepage = "https://github.com/NorfairKing/bevel#readme";

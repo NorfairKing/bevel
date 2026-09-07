@@ -28,6 +28,7 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - genvalidity-sydtest
+    - genvalidity-sydtest-aeson
     - sydtest
     - bevel-api
     - bevel-api-gen

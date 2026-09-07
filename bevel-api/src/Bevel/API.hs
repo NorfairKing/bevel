@@ -14,6 +14,7 @@ import Servant.Auth
 data BevelRoutes route = BevelRoutes
   { postRegister :: !(route :- PostRegister),
     postLogin :: !(route :- PostLogin),
+    postDownload :: !(route :- PostDownload),
     postSync :: !(route :- PostSync)
   }
   deriving (Generic)
@@ -29,6 +30,17 @@ type PostLogin =
     :> Post '[JSON] (Headers '[Header "Set-Cookie" Text] NoContent)
 
 type ProtectAPI = Auth '[JWT] AuthCookie
+
+-- | Download the commands that the server already has, in batches.
+--
+-- Appendful's sync is fine for small deltas, but its server-side read is
+-- unbounded, so the first sync on a new machine would have to fit every
+-- command the server has into a single response.
+type PostDownload =
+  ProtectAPI
+    :> "download"
+    :> ReqBody '[JSON] DownloadRequest
+    :> Post '[JSON] DownloadResponse
 
 type PostSync =
   ProtectAPI

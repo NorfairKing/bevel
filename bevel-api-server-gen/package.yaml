@@ -46,20 +46,23 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - QuickCheck
+    - appendful
     - bevel-api
-    - bevel-api-gen
     - bevel-api-gen
     - bevel-api-server
     - bevel-api-server-data
     - bevel-api-server-gen
     - bevel-client
+    - bevel-data
     - bevel-data-gen
+    - containers
     - cookie
     - genvalidity-sydtest
     - http-client
     - http-types
     - monad-logger
     - opt-env-conf-test
+    - persistent
     - persistent-sqlite
     - servant
     - servant-auth-server

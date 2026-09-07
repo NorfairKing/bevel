@@ -49,5 +49,6 @@ test-suite bevel-api-test
     , bevel-api
     , bevel-api-gen
     , genvalidity-sydtest
+    , genvalidity-sydtest-aeson
     , sydtest
   default-language: Haskell2010

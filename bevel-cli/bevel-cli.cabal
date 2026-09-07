@@ -96,6 +96,7 @@ test-suite bevel-cli-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Bevel.CLI.Commands.SyncSpec
       Bevel.CLI.OptParseSpec
       Bevel.CLISpec
       Bevel.GatherSpec
@@ -107,21 +108,29 @@ test-suite bevel-cli-test
       sydtest-discover:sydtest-discover
   build-depends:
       QuickCheck
+    , appendful
     , async
     , base >=4.7 && <5
     , bevel-api
+    , bevel-api-gen
     , bevel-api-server-data
     , bevel-api-server-gen
     , bevel-cli
+    , bevel-client
     , bevel-client-data
     , bevel-client-data-gen
+    , bevel-data
+    , bevel-data-gen
+    , containers
     , genvalidity-sydtest
     , genvalidity-text
     , genvalidity-time
     , monad-logger
+    , mtl
     , opt-env-conf-test
     , path
     , path-io
+    , persistent
     , persistent-sqlite
     , servant-client
     , sydtest

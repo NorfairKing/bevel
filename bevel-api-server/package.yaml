@@ -18,6 +18,7 @@ library:
     - bevel-api
     - bevel-api-server-data
     - bevel-data
+    - containers
     - envparse
     - jose
     - monad-logger

@@ -78,13 +78,20 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - QuickCheck
+    - appendful
     - async
     - bevel-api
+    - bevel-api-gen
     - bevel-api-server-data
     - bevel-api-server-gen
     - bevel-cli
+    - bevel-client
     - bevel-client-data
     - bevel-client-data-gen
+    - bevel-data
+    - bevel-data-gen
+    - containers
+    - mtl
     - genvalidity-sydtest
     - genvalidity-text
     - genvalidity-time
@@ -92,6 +99,7 @@ tests:
     - opt-env-conf-test
     - path
     - path-io
+    - persistent
     - persistent-sqlite
     - servant-client
     - sydtest

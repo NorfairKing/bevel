@@ -1,6 +1,6 @@
 { mkDerivation, aeson, appendful, autodocodec, base
-, bevel-api-server-data, bevel-client-data, bevel-data, lib
-, persistent, servant, servant-auth, servant-auth-server, text
+, bevel-api-server-data, bevel-client-data, bevel-data, containers
+, lib, persistent, servant, servant-auth, servant-auth-server, text
 , validity, validity-text
 }:
 mkDerivation {
@@ -9,8 +9,8 @@ mkDerivation {
   src = ./.;
   libraryHaskellDepends = [
     aeson appendful autodocodec base bevel-api-server-data
-    bevel-client-data bevel-data persistent servant servant-auth
-    servant-auth-server text validity validity-text
+    bevel-client-data bevel-data containers persistent servant
+    servant-auth servant-auth-server text validity validity-text
   ];
   homepage = "https://github.com/NorfairKing/bevel-api-cli-login#readme";
   license = lib.licenses.unfree;

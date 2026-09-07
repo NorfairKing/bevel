@@ -1,6 +1,7 @@
 { mkDerivation, base, bevel-api, bevel-api-server-data-gen
 , genvalidity, genvalidity-appendful, genvalidity-sydtest
-, genvalidity-text, lib, sydtest, sydtest-discover
+, genvalidity-sydtest-aeson, genvalidity-text, lib, sydtest
+, sydtest-discover
 }:
 mkDerivation {
   pname = "bevel-api-gen";
@@ -11,7 +12,8 @@ mkDerivation {
     genvalidity-appendful genvalidity-text
   ];
   testHaskellDepends = [
-    base bevel-api genvalidity-sydtest sydtest
+    base bevel-api genvalidity-sydtest genvalidity-sydtest-aeson
+    sydtest
   ];
   testToolDepends = [ sydtest-discover ];
   homepage = "https://github.com/NorfairKing/bevel-api-cli-login#readme";

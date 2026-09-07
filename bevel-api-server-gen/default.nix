@@ -1,7 +1,8 @@
-{ mkDerivation, base, bevel-api, bevel-api-gen, bevel-api-server
-, bevel-api-server-data, bevel-client, bevel-data-gen, cookie
-, genvalidity-sydtest, http-client, http-types, lib, monad-logger
-, opt-env-conf-test, persistent-sqlite, QuickCheck, servant
+{ mkDerivation, appendful, base, bevel-api, bevel-api-gen
+, bevel-api-server, bevel-api-server-data, bevel-client, bevel-data
+, bevel-data-gen, containers, cookie, genvalidity-sydtest
+, http-client, http-types, lib, monad-logger, opt-env-conf-test
+, persistent, persistent-sqlite, QuickCheck, servant
 , servant-auth-server, sydtest, sydtest-discover, text, warp
 }:
 mkDerivation {
@@ -15,9 +16,10 @@ mkDerivation {
     servant-auth-server sydtest text warp
   ];
   testHaskellDepends = [
-    base bevel-api bevel-api-gen bevel-api-server bevel-api-server-data
-    bevel-client bevel-data-gen cookie genvalidity-sydtest http-client
-    http-types monad-logger opt-env-conf-test persistent-sqlite
+    appendful base bevel-api bevel-api-gen bevel-api-server
+    bevel-api-server-data bevel-client bevel-data bevel-data-gen
+    containers cookie genvalidity-sydtest http-client http-types
+    monad-logger opt-env-conf-test persistent persistent-sqlite
     QuickCheck servant servant-auth-server sydtest text warp
   ];
   testToolDepends = [ sydtest-discover ];

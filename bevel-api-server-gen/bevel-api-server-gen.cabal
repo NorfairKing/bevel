@@ -54,6 +54,7 @@ test-suite bevel-api-server-tests
   main-is: Spec.hs
   other-modules:
       Bevel.API.Server.Handler.AuthSpec
+      Bevel.API.Server.Handler.DownloadSpec
       Bevel.API.Server.Handler.SyncSpec
       Bevel.API.Server.OptParseSpec
       Paths_bevel_api_server_gen
@@ -64,6 +65,7 @@ test-suite bevel-api-server-tests
       sydtest-discover:sydtest-discover
   build-depends:
       QuickCheck
+    , appendful
     , base >=4.7 && <5
     , bevel-api
     , bevel-api-gen
@@ -71,13 +73,16 @@ test-suite bevel-api-server-tests
     , bevel-api-server-data
     , bevel-api-server-gen
     , bevel-client
+    , bevel-data
     , bevel-data-gen
+    , containers
     , cookie
     , genvalidity-sydtest
     , http-client
     , http-types
     , monad-logger
     , opt-env-conf-test
+    , persistent
     , persistent-sqlite
     , servant
     , servant-auth-server
