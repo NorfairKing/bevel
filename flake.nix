@@ -22,6 +22,8 @@
     appendful.flake = false;
     dekking.url = "github:NorfairKing/dekking";
     dekking.flake = false;
+    hopinion.url = "github:NorfairKing/hopinion";
+    hopinion.flake = false;
   };
 
   outputs =
@@ -36,6 +38,7 @@
     , looper
     , appendful
     , dekking
+    , hopinion
     }:
     let
       system = "x86_64-linux";
@@ -50,6 +53,7 @@
           (import (prometheus-wai + "/nix/overlay.nix"))
           (import (prometheus-ghc-stats + "/nix/overlay.nix"))
           (import (dekking + "/nix/overlay.nix"))
+          (import (hopinion + "/nix/overlay.nix"))
           (import (weeder-nix + "/nix/overlay.nix"))
         ];
       };
@@ -97,6 +101,10 @@
           # "bevel-gather"
           # "bevel-harness"
           # "bevel-select"
+        };
+        hopinion-check = pkgs.hopinion.makeHopinionCheck {
+          src = ./.;
+          packages = builtins.attrNames pkgs.haskellPackages.bevelPackages;
         };
         weeder-check = pkgs.weeder-nix.makeWeederCheck {
           weederToml = ./weeder.toml;

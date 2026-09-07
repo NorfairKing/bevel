@@ -88,6 +88,22 @@
         "type": "github"
       }
     },
+    "hopinion": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788779331,
+        "narHash": "sha256-f70h3CaJG6UYJuPusMJBDCHqh8GSP2QMCc7eXurjiI0=",
+        "owner": "NorfairKing",
+        "repo": "hopinion",
+        "rev": "97ba51535327b96bd28eba94b3b42cc629021e61",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NorfairKing",
+        "repo": "hopinion",
+        "type": "github"
+      }
+    },
     "looper": {
       "flake": false,
       "locked": {
@@ -225,6 +241,7 @@
         "appendful": "appendful",
         "dekking": "dekking",
         "home-manager": "home-manager",
+        "hopinion": "hopinion",
         "looper": "looper",
         "nixpkgs": "nixpkgs_2",
         "opt-env-conf": "opt-env-conf",
