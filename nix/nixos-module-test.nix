@@ -89,6 +89,18 @@ runNixOSTest {
 
     client.succeed(su("testuser", "cat ~/.config/bevel/config.yaml"))
 
+    # Gathering must work on a fresh machine, before any 'bevel' subcommand has
+    # ever been run to apply the migrations as a side effect.
+    command_id = client.succeed(su("testuser", "bevel-gather 'echo hi'")).strip()
+    client.succeed(su("testuser", f"bevel-gather {command_id} 0"))
+    gathered = client.succeed(
+        su(
+            "testuser",
+            "sqlite3 ~/.local/share/bevel/history.sqlite3 \"select text from command\"",
+        )
+    )
+    assert gathered.strip() == "echo hi", gathered
+
     client.succeed(su("testuser", "bevel register"))
     client.succeed(su("testuser", "bevel login"))
     client.succeed(su("testuser", "bevel sync"))
