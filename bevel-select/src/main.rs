@@ -213,8 +213,14 @@ fn select(
     let app = App::new(connection, query_maker);
     let selection = run_app(&mut terminal, app);
 
-    restore_terminal()?;
-    selection
+    let restored = restore_terminal();
+    // Whatever went wrong in the picker says more than a failure to tidy up
+    // after it, and neither is worth throwing away a selection over.
+    let selection = selection?;
+    if let Err(error) = restored {
+        eprintln!("Could not restore the terminal: {error}");
+    }
+    Ok(selection)
 }
 
 fn restore_terminal() -> io::Result<()> {
@@ -295,24 +301,23 @@ fn action_for(key: KeyEvent) -> Action {
     if key.kind == KeyEventKind::Release {
         return Action::Ignore;
     }
-    // Raw mode stops the terminal turning Ctrl-C into a signal, so the picker
-    // has to quit on it itself.  Typing the plain letter of a chord would be
-    // worse than doing nothing, so the rest are ignored rather than typed.
-    if key.modifiers.contains(KeyModifiers::CONTROL) {
-        return match key.code {
-            KeyCode::Char('c') | KeyCode::Char('d') => Action::Cancel,
-            _ => Action::Ignore,
-        };
-    }
-    if key.modifiers.contains(KeyModifiers::ALT) {
-        return Action::Ignore;
-    }
+    let chord = key
+        .modifiers
+        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
     match key.code {
+        // Raw mode stops the terminal turning Ctrl-C into a signal, so the
+        // picker has to quit on it itself.
+        KeyCode::Char('c' | 'd') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Cancel,
+        // A terminal that sends 0x08 for backspace is indistinguishable from
+        // one sending Ctrl-H, and readline deletes on both.
+        KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Remove,
+        // Typing the plain letter of a chord would be worse than doing nothing.
+        KeyCode::Char(_) if chord => Action::Ignore,
+        KeyCode::Char(char) => Action::Append(char),
         KeyCode::Up => Action::SelectNext,
         KeyCode::Down => Action::SelectPrevious,
         KeyCode::Enter => Action::Accept,
         KeyCode::Esc => Action::Cancel,
-        KeyCode::Char(char) => Action::Append(char),
         KeyCode::Backspace => Action::Remove,
         _ => Action::Ignore,
     }
@@ -495,6 +500,18 @@ mod tests {
         assert_eq!(
             action_for(press(KeyCode::Esc, KeyModifiers::NONE)),
             Action::Cancel
+        );
+    }
+
+    #[test]
+    fn deletes_on_the_other_byte_a_terminal_may_send_for_backspace() {
+        assert_eq!(
+            action_for(press(KeyCode::Backspace, KeyModifiers::NONE)),
+            Action::Remove
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('h'), KeyModifiers::CONTROL)),
+            Action::Remove
         );
     }
 
