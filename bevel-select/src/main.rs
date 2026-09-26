@@ -3,12 +3,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
-use ordered_float::OrderedFloat;
 use std::{
-    cmp::Reverse,
-    collections::HashMap,
     env, io,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -23,6 +18,10 @@ use tui::{
 use whoami::{hostname, username};
 
 use sqlite::State;
+
+mod choices;
+
+use choices::{next_selection, previous_selection, Choices};
 
 struct CdQueryMaker {
     hostname: String,
@@ -112,7 +111,9 @@ impl SomeQueryMaker {
                     statement
                 } else {
                     connection
-                        .prepare("SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT 8096")
+                        .prepare(
+                            "SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT 8096",
+                        )
                         .unwrap()
                 }
             }
@@ -322,7 +323,7 @@ impl<'a> App<'a> {
             query_maker,
             connection,
             list_state,
-            choices: Choices::new(String::new()),
+            choices: Choices::new(String::new(), now_nanos()),
             last_begin_loaded: None,
             loaded: 0,
             total: total as u64,
@@ -330,31 +331,14 @@ impl<'a> App<'a> {
     }
 
     pub fn select_next(&mut self) {
-        let i = match self.list_state.selected() {
-            Some(i) => {
-                if i >= self.choices.top_items.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.list_state.select(Some(i));
+        let selection = next_selection(self.list_state.selected(), self.choices.top_items.len());
+        self.list_state.select(selection);
     }
 
     pub fn select_previous(&mut self) {
-        let i = match self.list_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.choices.top_items.len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.list_state.select(Some(i));
+        let selection =
+            previous_selection(self.list_state.selected(), self.choices.top_items.len());
+        self.list_state.select(selection);
     }
 
     pub fn selected(&self) -> Option<String> {
@@ -377,7 +361,7 @@ impl<'a> App<'a> {
         self.loaded = 0;
         self.last_begin_loaded = None;
         let text = self.choices.search_text.clone();
-        self.choices = Choices::new(text);
+        self.choices = Choices::new(text, now_nanos());
     }
 
     pub fn load_rows(&mut self) {
@@ -398,101 +382,9 @@ impl<'a> App<'a> {
     }
 }
 
-struct Choices {
-    now: i64,
-    search_text: String,
-    matcher: SkimMatcherV2,
-    top_items: Vec<Choice>,
-    item_scores: HashMap<String, f64>,
-    minimum_score: f64,
-}
-
-const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
-const MAX_ITEMS: usize = 20;
-impl Choices {
-    pub fn new(search_text: String) -> Self {
-        Choices {
-            now: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos() as i64,
-            search_text,
-            matcher: SkimMatcherV2::default(),
-            top_items: Vec::with_capacity(MAX_ITEMS),
-            item_scores: HashMap::new(),
-            minimum_score: 0.0,
-        }
-    }
-
-    // Add a (workdir, begin) pair after computing its score
-    pub fn add(&mut self, key: String, begin: i64, exit: Option<i64>) {
-        let fuzziness = if self.search_text.is_empty() {
-            1
-        } else {
-            self.matcher
-                .fuzzy_match(&key, &self.search_text)
-                .unwrap_or(0)
-        };
-        if fuzziness <= 0 {
-            return;
-        }
-
-        // Compute the score of this item
-        let timediff = (self.now - begin) as f64;
-        let exit_multiplier = match exit {
-            // If the command is still running or was interrupted, it's less relevant.
-            None => 0.5f64,
-            // If the command is succesful, it's more relevant.
-            Some(0) => 2f64,
-            Some(_) => 1f64,
-        };
-        let score = exit_multiplier * NANOSECONDS_IN_A_DAY / timediff;
-
-        // Add to the item scores
-        let total_score: f64 = *self
-            .item_scores
-            .entry(key.clone())
-            .and_modify(|s| {
-                *s += score;
-            })
-            .or_insert(score);
-
-        if total_score > self.minimum_score {
-            let choice = Choice {
-                fuzziness,
-                score: total_score,
-                key: key.clone(),
-            };
-            // If the item is already there, remove it.
-            for i in 0..self.top_items.len() {
-                if key == self.top_items[i].key {
-                    self.top_items.remove(i);
-                    break;
-                }
-            }
-            // Add the item again
-            self.top_items.push(choice);
-            // Sort by score
-            self.top_items
-                .sort_by_key(|c| (Reverse(c.fuzziness), Reverse(OrderedFloat(c.score))));
-            // Remove any extra items
-            if self.top_items.len() >= MAX_ITEMS {
-                self.top_items.pop();
-            }
-            // There might be a new minimal top item, so we recompute the minimum score.
-            self.recompute_minimum_score();
-        }
-    }
-    fn recompute_minimum_score(&self) -> f64 {
-        match self.top_items.last() {
-            None => 0.0,
-            // We can 'unwrap' because the top_items MUST be in the item_scores too.
-            Some(least_top) => *self.item_scores.get(&least_top.key).unwrap(),
-        }
-    }
-}
-struct Choice {
-    fuzziness: i64,
-    score: f64,
-    key: String,
+fn now_nanos() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos() as i64
 }
