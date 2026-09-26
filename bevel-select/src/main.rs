@@ -5,6 +5,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::{
+    collections::HashSet,
     env, io,
     process::ExitCode,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -23,7 +24,7 @@ use sqlite::State;
 
 mod choices;
 
-use choices::{next_selection, previous_selection, Choices};
+use choices::{clamped_selection, next_selection, previous_selection, Choices};
 
 struct CdQueryMaker {
     hostname: String,
@@ -80,24 +81,30 @@ impl SomeQueryMaker {
             }
         }
     }
+    /// Prepare a page of the history, most recent command first.
+    ///
+    /// The boundary is inclusive, so a page repeats the commands that share the
+    /// timestamp it started from. An exclusive boundary would page straight
+    /// past all but one of them, and ordering on the id as well to avoid that
+    /// costs a sort that the index cannot serve. The caller drops the repeats.
     fn bind_load_query<'a>(
         &self,
         connection: &'a sqlite::Connection,
-        last_begin: Option<i64>,
+        last_begin_loaded: Option<i64>,
     ) -> sqlite::Statement<'a> {
         match self {
             SomeQueryMaker::Cd(cqm) => {
-                if let Some(last) = last_begin {
+                if let Some(begin) = last_begin_loaded {
                     let mut statement = connection
-                        .prepare("SELECT workdir, begin, exit FROM command WHERE begin < ? AND host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
+                        .prepare("SELECT workdir, begin, exit, id FROM command WHERE begin <= ? AND host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
                         .unwrap();
-                    statement.bind((1, last)).unwrap();
+                    statement.bind((1, begin)).unwrap();
                     statement.bind((2, cqm.hostname.as_str())).unwrap();
                     statement.bind((3, cqm.username.as_str())).unwrap();
                     statement
                 } else {
                     let mut statement = connection
-                        .prepare("SELECT workdir, begin, exit FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
+                        .prepare("SELECT workdir, begin, exit, id FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
                         .unwrap();
                     statement.bind((1, cqm.hostname.as_str())).unwrap();
                     statement.bind((2, cqm.username.as_str())).unwrap();
@@ -105,31 +112,31 @@ impl SomeQueryMaker {
                 }
             }
             SomeQueryMaker::Repeat => {
-                if let Some(last) = last_begin {
+                if let Some(begin) = last_begin_loaded {
                     let mut statement = connection
-                        .prepare("SELECT text, begin, exit FROM command WHERE begin < ? ORDER BY begin DESC LIMIT 8096")
+                        .prepare("SELECT text, begin, exit, id FROM command WHERE begin <= ? ORDER BY begin DESC LIMIT 8096")
                         .unwrap();
-                    statement.bind((1, last)).unwrap();
+                    statement.bind((1, begin)).unwrap();
                     statement
                 } else {
                     connection
                         .prepare(
-                            "SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT 8096",
+                            "SELECT text, begin, exit, id FROM command ORDER BY begin DESC LIMIT 8096",
                         )
                         .unwrap()
                 }
             }
             SomeQueryMaker::RepeatLocal(rlqm) => {
-                if let Some(last) = last_begin {
+                if let Some(begin) = last_begin_loaded {
                     let mut statement = connection
-                        .prepare("SELECT text, begin, exit FROM command WHERE begin < ? AND workdir = ? ORDER BY begin DESC LIMIT 8096")
+                        .prepare("SELECT text, begin, exit, id FROM command WHERE begin <= ? AND workdir = ? ORDER BY begin DESC LIMIT 8096")
                         .unwrap();
-                    statement.bind((1, last)).unwrap();
+                    statement.bind((1, begin)).unwrap();
                     statement.bind((2, rlqm.workdir.as_str())).unwrap();
                     statement
                 } else {
                     let mut statement = connection
-                        .prepare("SELECT text, begin, exit FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT 8096")
+                        .prepare("SELECT text, begin, exit, id FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT 8096")
                         .unwrap();
                     statement.bind((1, rlqm.workdir.as_str())).unwrap();
                     statement
@@ -237,7 +244,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
 
-        let more_rows_to_load = app.loaded < app.total;
+        let more_rows_to_load = !app.finished_loading;
 
         // We want to check for the next event.
         // If there are no more rows to load, then we can use the time that would normally spend in
@@ -273,7 +280,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
         else {
             // If there are more rows to load, we will try loading them
             // as long as we still have time within this tick, load some more rows
-            while app.loaded < app.total && last_tick.elapsed() <= tick_rate {
+            while !app.finished_loading && last_tick.elapsed() <= tick_rate {
                 app.load_rows();
             }
         }
@@ -341,7 +348,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     // The items at the top.
     let items: Vec<ListItem> = app
         .choices
-        .top_items
+        .top_items()
         .iter()
         .enumerate()
         .map(|(ix, command)| {
@@ -362,7 +369,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     f.render_stateful_widget(choices_list, chunks[0], &mut app.list_state);
 
     let search_text_span = Span::styled(
-        &app.choices.search_text,
+        app.choices.search_text(),
         Style::default().fg(Color::Rgb(0xa0, 0xa0, 0xa0)),
     );
     let width = search_text_span.width() as u16;
@@ -375,7 +382,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     f.set_cursor(chunk_to_the_right.x + width, chunk_to_the_right.y);
 
     // The counter on the bottom right
-    let loaded_colour = if app.loaded >= app.total {
+    let loaded_colour = if app.finished_loading {
         Color::Green
     } else {
         Color::Red
@@ -397,7 +404,11 @@ struct App<'a> {
     connection: &'a sqlite::Connection,
     list_state: ListState,
     choices: Choices,
+    finished_loading: bool,
     last_begin_loaded: Option<i64>,
+    /// The commands already loaded that started at `last_begin_loaded`, so that
+    /// the overlap between one page and the next can be dropped.
+    ids_loaded_at_last_begin: HashSet<i64>,
     loaded: u64,
     total: u64,
 }
@@ -413,45 +424,55 @@ impl<'a> App<'a> {
             query_maker,
             connection,
             list_state,
-            choices: Choices::new(String::new(), now_nanos()),
+            choices: Choices::new(now_nanos()),
             last_begin_loaded: None,
+            ids_loaded_at_last_begin: HashSet::new(),
+            finished_loading: false,
             loaded: 0,
             total: total as u64,
         }
     }
 
     pub fn select_next(&mut self) {
-        let selection = next_selection(self.list_state.selected(), self.choices.top_items.len());
+        let selection = next_selection(self.list_state.selected(), self.choices.top_items().len());
         self.list_state.select(selection);
     }
 
     pub fn select_previous(&mut self) {
         let selection =
-            previous_selection(self.list_state.selected(), self.choices.top_items.len());
+            previous_selection(self.list_state.selected(), self.choices.top_items().len());
         self.list_state.select(selection);
     }
 
     pub fn selected(&self) -> Option<String> {
         self.list_state
             .selected()
-            .and_then(|ix| self.choices.top_items.get(ix))
+            .and_then(|ix| self.choices.top_items().get(ix))
             .map(|c| c.key.clone())
     }
 
     pub fn append(&mut self, c: char) {
-        self.choices.search_text.push(c);
-        self.reset_search();
-    }
-    pub fn remove(&mut self) {
-        self.choices.search_text.pop();
-        self.reset_search();
+        self.choices.append(c);
+        self.select_first();
     }
 
-    fn reset_search(&mut self) {
-        self.loaded = 0;
-        self.last_begin_loaded = None;
-        let text = self.choices.search_text.clone();
-        self.choices = Choices::new(text, now_nanos());
+    pub fn remove(&mut self) {
+        if self.choices.remove() {
+            self.select_first();
+        }
+    }
+
+    /// The list is a different list after the search text changes, so the item
+    /// that was highlighted has nothing to do with the one now in its place.
+    fn select_first(&mut self) {
+        let selection = clamped_selection(Some(0), self.choices.top_items().len());
+        self.list_state.select(selection);
+    }
+
+    fn clamp_selection(&mut self) {
+        let selection =
+            clamped_selection(self.list_state.selected(), self.choices.top_items().len());
+        self.list_state.select(selection);
     }
 
     pub fn load_rows(&mut self) {
@@ -459,16 +480,43 @@ impl<'a> App<'a> {
             .query_maker
             .bind_load_query(self.connection, self.last_begin_loaded);
 
-        while let Ok(State::Row) = statement.next() {
-            let workdir = statement.read::<String, _>(0).unwrap();
+        // Stepping is unwrapped like every other call against the database
+        // here.  Treating an error as the end of the history instead would
+        // report a truncated history as the whole of it.
+        let mut new_in_page = 0;
+        while statement.next().unwrap() == State::Row {
+            let key = statement.read::<String, _>(0).unwrap();
             let begin = statement.read::<i64, _>(1).unwrap();
             let exit = statement.read::<Option<i64>, _>(2).unwrap();
+            let id = statement.read::<i64, _>(3).unwrap();
 
-            self.choices.add(workdir, begin, exit);
+            if self.last_begin_loaded == Some(begin) {
+                if !self.ids_loaded_at_last_begin.insert(id) {
+                    continue;
+                }
+            } else {
+                self.last_begin_loaded = Some(begin);
+                self.ids_loaded_at_last_begin.clear();
+                self.ids_loaded_at_last_begin.insert(id);
+            }
+
+            self.choices.add(key, begin, exit);
 
             self.loaded += 1;
-            self.last_begin_loaded = Some(begin);
+            new_in_page += 1;
         }
+
+        // The total is counted separately from the pages, so it cannot say when
+        // the history has run out.  A page with nothing new in it can mean
+        // that, or that more commands share one timestamp than fit in a page,
+        // which leaves nowhere to page on to.  Either way there is no next
+        // page to ask for.
+        if new_in_page == 0 {
+            self.finished_loading = true;
+        }
+
+        self.choices.recompute_top_items();
+        self.clamp_selection();
     }
 }
 
@@ -564,5 +612,71 @@ mod tests {
         let mut key = press(KeyCode::Char('c'), KeyModifiers::NONE);
         key.kind = KeyEventKind::Release;
         assert_eq!(action_for(key), Action::Ignore);
+    }
+
+    /// A history in which every timestamp is shared by `per_timestamp`
+    /// commands, so that a page boundary is bound to fall inside a group.
+    fn history_of_simultaneous_commands(count: usize, per_timestamp: usize) -> sqlite::Connection {
+        let connection = sqlite::Connection::open(":memory:").unwrap();
+        connection
+            .execute(
+                "CREATE TABLE command (id INTEGER PRIMARY KEY, text VARCHAR NOT NULL, begin INTEGER NOT NULL, end INTEGER, workdir VARCHAR NOT NULL, user VARCHAR NOT NULL, host VARCHAR NOT NULL, exit INTEGER, server_id INTEGER)",
+            )
+            .unwrap();
+        connection.execute("BEGIN").unwrap();
+        for i in 0..count {
+            let mut statement = connection
+                .prepare("INSERT INTO command (text, begin, workdir, user, host, exit) VALUES (?, ?, '/tmp', 'user', 'host', 0)")
+                .unwrap();
+            statement
+                .bind((1, format!("command {i}").as_str()))
+                .unwrap();
+            statement.bind((2, (i / per_timestamp) as i64 + 1)).unwrap();
+            statement.next().unwrap();
+        }
+        connection.execute("COMMIT").unwrap();
+        connection
+    }
+
+    fn load_everything(connection: &sqlite::Connection) -> App<'_> {
+        let query_maker: &'static SomeQueryMaker = &SomeQueryMaker::Repeat;
+        let mut app = App::new(connection, query_maker);
+        while !app.finished_loading {
+            app.load_rows();
+        }
+        app
+    }
+
+    #[test]
+    fn loads_every_command_when_commands_share_a_timestamp() {
+        let count = 9000;
+        let connection = history_of_simultaneous_commands(count, 3);
+
+        let app = load_everything(&connection);
+
+        assert_eq!(app.total, count as u64);
+        assert_eq!(app.loaded, count as u64);
+    }
+
+    #[test]
+    fn loads_every_command_when_no_two_share_a_timestamp() {
+        let count = 9000;
+        let connection = history_of_simultaneous_commands(count, 1);
+
+        let app = load_everything(&connection);
+
+        assert_eq!(app.total, count as u64);
+        assert_eq!(app.loaded, count as u64);
+    }
+
+    /// More commands sharing one timestamp than fit in a page leaves nowhere to
+    /// page on to. Loading stops rather than asking for that page forever.
+    #[test]
+    fn stops_loading_when_more_commands_share_a_timestamp_than_fit_in_a_page() {
+        let connection = history_of_simultaneous_commands(9000, 9000);
+
+        let app = load_everything(&connection);
+
+        assert!(app.loaded < app.total);
     }
 }

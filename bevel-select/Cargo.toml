@@ -11,3 +11,6 @@ ordered-float = "*"
 whoami = "*"
 fuzzy-matcher = "*"
 xdg = "*"
+
+[dev-dependencies]
+proptest = "1.11.0"
