@@ -1,10 +1,12 @@
 use crossterm::{
-    event::{self, Event, KeyCode},
+    cursor::Show,
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::{
     env, io,
+    process::ExitCode,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tui::{
@@ -136,45 +138,88 @@ impl SomeQueryMaker {
         }
     }
 }
-fn main() -> Result<(), io::Error> {
-    let command = env::args().nth(1).expect("No command given.");
+const USAGE: &str = "Usage: bevel-select (cd | repeat | repeat-local)";
+
+/// Anything but the selection goes to stderr, because the shell bindings
+/// substitute stdout straight into a `cd` or into the command line.
+fn main() -> ExitCode {
+    let Some(command) = env::args().nth(1) else {
+        eprintln!("No command given.");
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
     let query_maker: SomeQueryMaker = match command.as_str() {
         "cd" => SomeQueryMaker::Cd(CdQueryMaker::new()),
         "repeat" => SomeQueryMaker::Repeat,
         "repeat-local" => SomeQueryMaker::RepeatLocal(RepeatLocalQueryMaker::new()),
         _ => {
-            println!("Unknown command");
-            return Ok(());
+            eprintln!("Unknown command: {command}");
+            eprintln!("{USAGE}");
+            return ExitCode::FAILURE;
         }
     };
 
-    // setup terminal
+    // Open the history before touching the terminal, so that a missing one is
+    // a message the user can read instead of a panic painted into a screen
+    // that is torn down immediately afterwards.
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel");
+    let Some(path) = xdg_dirs.find_data_file("history.sqlite3") else {
+        eprintln!("No bevel history found. Is bevel set up in this shell?");
+        return ExitCode::FAILURE;
+    };
+    let open_flags = sqlite::OpenFlags::new().with_read_only();
+    let connection = match sqlite::Connection::open_with_flags(&path, open_flags) {
+        Ok(connection) => connection,
+        Err(error) => {
+            eprintln!("Could not read {}: {error}", path.display());
+            return ExitCode::FAILURE;
+        }
+    };
+
+    match select(&connection, &query_maker) {
+        Ok(None) => ExitCode::SUCCESS,
+        Ok(Some(selected)) => {
+            println!("{selected}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("{error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Show the picker, leaving the terminal the way it was found.
+fn select(
+    connection: &sqlite::Connection,
+    query_maker: &SomeQueryMaker,
+) -> io::Result<Option<String>> {
     enable_raw_mode()?;
-    // Output the tui to stderr so we can capture stdout from the shell afterwards
+    // A panic unwinds past the restore below, which would leave the terminal in
+    // raw mode inside the alternate screen, where the panic message cannot even
+    // be read.
+    let panicked_before = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = restore_terminal();
+        panicked_before(info);
+    }));
+
+    // Draw to stderr so that the shell can capture the selection from stdout.
     let mut stderr = io::stderr();
     execute!(stderr, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel");
-    let path = xdg_dirs.find_data_file("history.sqlite3").unwrap();
-    let open_flags = sqlite::OpenFlags::new().with_read_only();
+    let app = App::new(connection, query_maker);
+    let selection = run_app(&mut terminal, app);
 
-    let connection = sqlite::Connection::open_with_flags(path, open_flags).unwrap();
+    restore_terminal()?;
+    selection
+}
 
-    let app = App::new(&connection, &query_maker);
-    let res = run_app(&mut terminal, app);
-
-    // restore terminal
+fn restore_terminal() -> io::Result<()> {
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-
-    let selection = res?;
-    if let Some(selected) = selection {
-        println!("{selected}");
-    }
-    Ok(())
+    execute!(io::stderr(), LeaveAlternateScreen, Show)
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<Option<String>> {
@@ -207,14 +252,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
         if event_available {
             let event = event::read()?;
             if let Event::Key(key) = event {
-                match key.code {
-                    KeyCode::Up => app.select_next(),
-                    KeyCode::Down => app.select_previous(),
-                    KeyCode::Enter => return Ok(app.selected()),
-                    KeyCode::Esc => return Ok(None),
-                    KeyCode::Char(char) => app.append(char),
-                    KeyCode::Backspace => app.remove(),
-                    _ => {}
+                match action_for(key) {
+                    Action::SelectNext => app.select_next(),
+                    Action::SelectPrevious => app.select_previous(),
+                    Action::Accept => return Ok(app.selected()),
+                    Action::Cancel => return Ok(None),
+                    Action::Append(char) => app.append(char),
+                    Action::Remove => app.remove(),
+                    Action::Ignore => {}
                 }
             }
         }
@@ -230,6 +275,46 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
         if last_tick.elapsed() >= tick_rate {
             last_tick = Instant::now();
         }
+    }
+}
+
+/// What a key press means, kept apart from carrying it out so that it can be
+/// tested without a terminal.
+#[derive(Debug, PartialEq, Eq)]
+enum Action {
+    SelectNext,
+    SelectPrevious,
+    Accept,
+    Cancel,
+    Append(char),
+    Remove,
+    Ignore,
+}
+
+fn action_for(key: KeyEvent) -> Action {
+    if key.kind == KeyEventKind::Release {
+        return Action::Ignore;
+    }
+    // Raw mode stops the terminal turning Ctrl-C into a signal, so the picker
+    // has to quit on it itself.  Typing the plain letter of a chord would be
+    // worse than doing nothing, so the rest are ignored rather than typed.
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        return match key.code {
+            KeyCode::Char('c') | KeyCode::Char('d') => Action::Cancel,
+            _ => Action::Ignore,
+        };
+    }
+    if key.modifiers.contains(KeyModifiers::ALT) {
+        return Action::Ignore;
+    }
+    match key.code {
+        KeyCode::Up => Action::SelectNext,
+        KeyCode::Down => Action::SelectPrevious,
+        KeyCode::Enter => Action::Accept,
+        KeyCode::Esc => Action::Cancel,
+        KeyCode::Char(char) => Action::Append(char),
+        KeyCode::Backspace => Action::Remove,
+        _ => Action::Ignore,
     }
 }
 
@@ -387,4 +472,80 @@ fn now_nanos() -> i64 {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos() as i64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn press(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
+    }
+
+    #[test]
+    fn quits_on_the_chords_that_quit_everything_else() {
+        assert_eq!(
+            action_for(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Action::Cancel
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('d'), KeyModifiers::CONTROL)),
+            Action::Cancel
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Action::Cancel
+        );
+    }
+
+    #[test]
+    fn does_not_type_the_letter_of_a_chord() {
+        assert_eq!(
+            action_for(press(KeyCode::Char('a'), KeyModifiers::CONTROL)),
+            Action::Ignore
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('x'), KeyModifiers::ALT)),
+            Action::Ignore
+        );
+    }
+
+    #[test]
+    fn types_letters_including_capitals() {
+        assert_eq!(
+            action_for(press(KeyCode::Char('c'), KeyModifiers::NONE)),
+            Action::Append('c')
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('C'), KeyModifiers::SHIFT)),
+            Action::Append('C')
+        );
+    }
+
+    #[test]
+    fn moves_accepts_and_deletes() {
+        assert_eq!(
+            action_for(press(KeyCode::Up, KeyModifiers::NONE)),
+            Action::SelectNext
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Down, KeyModifiers::NONE)),
+            Action::SelectPrevious
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Action::Accept
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Backspace, KeyModifiers::NONE)),
+            Action::Remove
+        );
+    }
+
+    #[test]
+    fn ignores_a_key_being_let_go_of() {
+        let mut key = press(KeyCode::Char('c'), KeyModifiers::NONE);
+        key.kind = KeyEventKind::Release;
+        assert_eq!(action_for(key), Action::Ignore);
+    }
 }

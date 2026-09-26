@@ -37,5 +37,6 @@ bind -x '"\C-h": _bevel_repeat_local'
 
 
 _bevel_last () {
-  cd $(bevel-select last)
+  local path="$(bevel last)"
+  [[ -z $path ]] || cd "$path"
 }
