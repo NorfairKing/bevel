@@ -4,19 +4,19 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use ratatui::{
+    backend::{Backend, CrosstermBackend},
+    layout::{Alignment, Constraint, Direction, Layout, Position},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{List, ListDirection, ListItem, ListState, Paragraph},
+    Frame, Terminal,
+};
 use std::{
     collections::HashSet,
     env, io,
     process::ExitCode,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
-};
-use tui::{
-    backend::{Backend, CrosstermBackend},
-    layout::{Alignment, Constraint, Corner, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Span, Spans},
-    widgets::{List, ListItem, ListState, Paragraph},
-    Frame, Terminal,
 };
 use whoami::{hostname, username};
 
@@ -235,7 +235,12 @@ fn restore_terminal() -> io::Result<()> {
     execute!(io::stderr(), LeaveAlternateScreen, Show)
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<Option<String>> {
+// Ratatui lets a backend choose its own error type.  The one here writes to a
+// terminal, so it fails the way writing to anything else does.
+fn run_app<B: Backend<Error = io::Error>>(
+    terminal: &mut Terminal<B>,
+    mut app: App,
+) -> io::Result<Option<String>> {
     // 1000 milliseconds is a second.
     let frames_per_second = 25;
     let tick_rate = Duration::from_millis(1000 / frames_per_second);
@@ -360,7 +365,7 @@ fn action_for(key: KeyEvent) -> Action {
     }
 }
 
-fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -373,7 +378,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         )
         .vertical_margin(0)
         .horizontal_margin(1)
-        .split(f.size());
+        .split(f.area());
 
     // The items at the top.
     let items: Vec<ListItem> = app
@@ -390,15 +395,15 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 Style::default().fg(Color::Yellow)
             };
 
-            let lines: Vec<Spans> = shown_lines(&command.key)
+            let lines: Vec<Line> = shown_lines(&command.key)
                 .into_iter()
-                .map(Spans::from)
+                .map(Line::from)
                 .collect();
             ListItem::new(lines).style(style)
         })
         .collect();
     let choices_list = List::new(items)
-        .start_corner(Corner::BottomLeft)
+        .direction(ListDirection::BottomToTop)
         .highlight_symbol("❯ ");
     f.render_stateful_widget(choices_list, chunks[0], &mut app.list_state);
 
@@ -407,13 +412,16 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         Style::default().fg(Color::Rgb(0xa0, 0xa0, 0xa0)),
     );
     let width = search_text_span.width() as u16;
-    let search_text_styled = vec![Spans::from(vec![search_text_span])];
+    let search_text_styled = vec![Line::from(vec![search_text_span])];
     let search_text_widget = Paragraph::new(search_text_styled).alignment(Alignment::Left);
     let mut chunk_to_the_right = chunks[1];
     chunk_to_the_right.x += 2;
     chunk_to_the_right.width -= 2;
     f.render_widget(search_text_widget, chunk_to_the_right);
-    f.set_cursor(chunk_to_the_right.x + width, chunk_to_the_right.y);
+    f.set_cursor_position(Position::new(
+        chunk_to_the_right.x + width,
+        chunk_to_the_right.y,
+    ));
 
     // The counter on the bottom right
     let loaded_colour = if app.finished_loading {
@@ -421,7 +429,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     } else {
         Color::Red
     };
-    let loaded_text = vec![Spans::from(vec![
+    let loaded_text = vec![Line::from(vec![
         Span::styled(
             format!("{}", app.loaded),
             Style::default().fg(loaded_colour),
