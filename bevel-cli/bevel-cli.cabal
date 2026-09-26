@@ -39,6 +39,7 @@ library
       autoexporter:autoexporter
   build-depends:
       aeson-pretty
+    , appendful
     , appendful-persistent
     , async
     , autodocodec

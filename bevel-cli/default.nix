@@ -18,7 +18,7 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    aeson-pretty appendful-persistent async autodocodec
+    aeson-pretty appendful appendful-persistent async autodocodec
     autodocodec-yaml base bevel-api bevel-api-server-data bevel-client
     bevel-client-data bevel-data bytestring conduit containers cookie
     envparse esqueleto filelock filepath hostname http-client

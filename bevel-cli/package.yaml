@@ -17,6 +17,7 @@ library:
   build-tools: autoexporter
   dependencies:
   - aeson-pretty
+  - appendful
   - appendful-persistent
   - async
   - autodocodec
