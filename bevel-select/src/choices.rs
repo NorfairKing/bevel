@@ -1,5 +1,5 @@
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
+use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization};
+use nucleo_matcher::{Config, Matcher, Utf32Str};
 use ordered_float::OrderedFloat;
 use std::{cmp::Ordering, collections::HashMap};
 
@@ -8,7 +8,7 @@ const MAX_ITEMS: usize = 20;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Choice {
-    pub fuzziness: i64,
+    pub fuzziness: u32,
     pub score: f64,
     pub key: String,
 }
@@ -26,13 +26,17 @@ struct Entry {
 #[derive(Clone, Copy)]
 struct Candidate {
     entry: usize,
-    fuzziness: i64,
+    fuzziness: u32,
 }
 
 pub struct Choices {
     now: i64,
     search_text: String,
-    matcher: SkimMatcherV2,
+    matcher: Matcher,
+    /// The search text prepared for matching, or `None` while it is empty.
+    needle: Option<Atom>,
+    /// Scratch space the matcher needs to look at a command.
+    haystack: Vec<char>,
     entries: Vec<Entry>,
     entry_indices: HashMap<String, usize>,
     candidates: Vec<Candidate>,
@@ -41,10 +45,16 @@ pub struct Choices {
 
 impl Choices {
     pub fn new(now: i64) -> Self {
+        let mut config = Config::DEFAULT;
+        // A command is usually recognised by how it starts, so a match at the
+        // front of one counts for more.
+        config.prefer_prefix = true;
         Choices {
             now,
             search_text: String::new(),
-            matcher: SkimMatcherV2::default(),
+            matcher: Matcher::new(config),
+            needle: None,
+            haystack: Vec::new(),
             entries: Vec::new(),
             entry_indices: HashMap::new(),
             candidates: Vec::new(),
@@ -62,7 +72,12 @@ impl Choices {
             Some(&index) => self.entries[index].score += score,
             None => {
                 let index = self.entries.len();
-                let fuzziness = self.fuzziness(&key);
+                let fuzziness = fuzziness(
+                    &mut self.matcher,
+                    &mut self.haystack,
+                    self.needle.as_ref(),
+                    &key,
+                );
                 self.entry_indices.insert(key.clone(), index);
                 self.entries.push(Entry { key, score });
                 if let Some(fuzziness) = fuzziness {
@@ -77,13 +92,26 @@ impl Choices {
 
     pub fn append(&mut self, c: char) {
         self.search_text.push(c);
+        self.rebuild_needle();
         // A command that does not contain the search text as a subsequence
         // cannot contain a longer one either, so adding a character can only
         // take matches away and the commands that already fail to match need
         // not be looked at again.
         let mut candidates = std::mem::take(&mut self.candidates);
+        let Choices {
+            matcher,
+            haystack,
+            needle,
+            entries,
+            ..
+        } = self;
         candidates.retain_mut(|candidate| {
-            match self.fuzziness(&self.entries[candidate.entry].key) {
+            match fuzziness(
+                matcher,
+                haystack,
+                needle.as_ref(),
+                &entries[candidate.entry].key,
+            ) {
                 Some(fuzziness) => {
                     candidate.fuzziness = fuzziness;
                     true
@@ -98,16 +126,25 @@ impl Choices {
     /// Returns whether there was a character to remove.
     pub fn remove(&mut self) -> bool {
         if self.search_text.pop().is_some() {
+            self.rebuild_needle();
             // Removing a character can bring matches back, so every command has
             // to be considered again.
-            let candidates: Vec<Candidate> = self
-                .entries
+            let Choices {
+                matcher,
+                haystack,
+                needle,
+                entries,
+                ..
+            } = self;
+            let candidates: Vec<Candidate> = entries
                 .iter()
                 .enumerate()
                 .filter_map(|(index, entry)| {
-                    self.fuzziness(&entry.key).map(|fuzziness| Candidate {
-                        entry: index,
-                        fuzziness,
+                    fuzziness(matcher, haystack, needle.as_ref(), &entry.key).map(|fuzziness| {
+                        Candidate {
+                            entry: index,
+                            fuzziness,
+                        }
                     })
                 })
                 .collect();
@@ -182,19 +219,20 @@ impl Choices {
         &self.top_items
     }
 
-    /// How well a command matches the search text, or `None` when it does not
-    /// match at all.
-    ///
-    /// Whether this is `None` is decided by looking for the search text as a
-    /// subsequence of the command, which depends on nothing else.  The number
-    /// that comes back when it does match also depends on which commands were
-    /// matched before it, so it settles the order of the list but never who is
-    /// in it.  See `the_matcher_scores_the_same_match_differently_over_time`.
-    fn fuzziness(&self, key: &str) -> Option<i64> {
-        if self.search_text.is_empty() {
-            return Some(1);
-        }
-        self.matcher.fuzzy_match(key, &self.search_text)
+    /// Prepare the search text for matching, which only has to be done when it
+    /// changes rather than once per command.
+    fn rebuild_needle(&mut self) {
+        self.needle = if self.search_text.is_empty() {
+            None
+        } else {
+            Some(Atom::new(
+                &self.search_text,
+                CaseMatching::Smart,
+                Normalization::Smart,
+                AtomKind::Fuzzy,
+                false,
+            ))
+        };
     }
 
     #[cfg(test)]
@@ -206,6 +244,27 @@ impl Choices {
             .collect();
         keys.sort_unstable();
         keys
+    }
+}
+
+/// How well a command matches the search text, or `None` when it does not
+/// match at all.
+///
+/// Both answers depend only on the command and the search text.  This takes
+/// the matcher apart from the rest of `Choices` so that a pass can hold the
+/// entries and the matcher at the same time.
+fn fuzziness(
+    matcher: &mut Matcher,
+    haystack: &mut Vec<char>,
+    needle: Option<&Atom>,
+    key: &str,
+) -> Option<u32> {
+    match needle {
+        // An empty search text matches every command, all equally well.
+        None => Some(0),
+        Some(needle) => needle
+            .score(Utf32Str::new(key, haystack), matcher)
+            .map(u32::from),
     }
 }
 
@@ -291,7 +350,7 @@ mod tests {
             assert_eq!(
                 choices.top_items,
                 vec![Choice {
-                    fuzziness: 1,
+                    fuzziness: 0,
                     score: expected_score,
                     key: String::from("ls"),
                 }]
@@ -311,7 +370,7 @@ mod tests {
         assert_eq!(
             choices.top_items,
             vec![Choice {
-                fuzziness: 1,
+                fuzziness: 0,
                 score: 3.0,
                 key: String::from("ls"),
             }]
@@ -432,49 +491,54 @@ mod tests {
         assert_eq!(clamped_selection(None, 3), Some(0));
     }
 
-    /// The matcher is not a pure function: it keeps a scoring matrix in a
-    /// thread local and only resizes it between calls, so cells left over from
-    /// an earlier, larger match are read again. That is why the properties
-    /// below compare which commands match, and not how well they match.
+    /// The matcher must answer the same way however much it has been used,
+    /// which is what lets the list be rebuilt from what has already been read
+    /// rather than from a fresh pass.  Its predecessor did not: it kept a
+    /// scoring matrix in a thread local and only resized it between calls, so
+    /// cells left over from an earlier, larger match were read again and the
+    /// same match scored differently depending on what came before it.
     #[test]
-    fn the_matcher_scores_the_same_match_differently_over_time() {
-        let matcher = SkimMatcherV2::default();
-        let cold = matcher.fuzzy_match("   ", "   ");
-        let _ = matcher.fuzzy_match("   aa", "   a");
-        let warm = matcher.fuzzy_match("   ", "   ");
+    fn the_matcher_answers_the_same_way_however_much_it_has_been_used() {
+        let mut choices = Choices::new(NOW);
+        let cold = fuzziness(&mut choices.matcher, &mut choices.haystack, None, "   ");
 
-        assert_eq!(cold, Some(79));
-        assert_eq!(warm, Some(87));
-    }
+        let needle = Atom::new(
+            "   a",
+            CaseMatching::Smart,
+            Normalization::Smart,
+            AtomKind::Fuzzy,
+            false,
+        );
+        for key in ["   aa", "a much longer command than any of the others here"] {
+            let _ = fuzziness(
+                &mut choices.matcher,
+                &mut choices.haystack,
+                Some(&needle),
+                key,
+            );
+        }
 
-    #[test]
-    fn the_matcher_decides_the_same_way_over_time() {
-        let matcher = SkimMatcherV2::default();
-        let cold = matcher.fuzzy_match("   ", "   a").is_some();
-        let _ = matcher.fuzzy_match("   aa", "   a");
-        let warm = matcher.fuzzy_match("   ", "   a").is_some();
+        let warm = fuzziness(&mut choices.matcher, &mut choices.haystack, None, "   ");
 
         assert_eq!(cold, warm);
     }
 
     fn row() -> impl Strategy<Value = Row> {
         (
-            // The long runs matter: they space the matched characters far
-            // enough apart that the matcher scores a real match at or below
-            // zero, which is where filtering on the score went wrong.
+            // The long runs space the matched characters far apart, so that
+            // faint matches are generated as well as obvious ones.
             prop_oneof!["[a-c ]{1,5}", "ax{20,60}bx{20,60}c"],
             1i64..(2 * DAY),
             proptest::option::of(0i64..3i64),
         )
     }
 
-    /// A command that the matcher matches, but only faintly enough to score
-    /// below zero from a cold matcher.
+    /// A command whose matched characters lie far apart still matches, and a
+    /// faint match is still a match.
     #[test]
     fn shows_a_command_that_matches_only_faintly() {
         let gap = "x".repeat(40);
         let key = format!("a{gap}b{gap}c");
-        assert_eq!(SkimMatcherV2::default().fuzzy_match(&key, "abc"), Some(-23));
 
         let choices = choices_for("abc", &[(key.clone(), DAY, Some(0))]);
 
@@ -516,8 +580,8 @@ mod tests {
     }
 
     proptest! {
-        /// Typing a character must leave exactly the commands that searching
-        /// for the longer text from the start would have found. This is what
+        /// Typing a character must leave exactly the list that searching for
+        /// the longer text from the start would have produced.  This is what
         /// makes it safe not to read the database again.
         #[test]
         fn appending_a_character_matches_searching_for_the_longer_text(
@@ -534,11 +598,12 @@ mod tests {
             let from_scratch = choices_for(&longer, &rows);
 
             prop_assert_eq!(typed.matching_keys(), from_scratch.matching_keys());
+            prop_assert_eq!(typed.top_items(), from_scratch.top_items());
+            prop_assert_eq!(typed.top_items(), from_scratch.top_items());
         }
 
-        /// However the search text was arrived at, the commands that match it
-        /// must be the same ones.  Typing, and backing out of, a detour must
-        /// leave no trace.
+        /// However the search text was arrived at, the list must be the same.
+        /// Typing, and backing out of, a detour must leave no trace at all.
         #[test]
         fn the_matching_commands_do_not_depend_on_how_the_search_was_typed(
             search_text in "[a-c ]{0,3}",
@@ -556,10 +621,12 @@ mod tests {
             }
 
             prop_assert_eq!(wandered.matching_keys(), direct.matching_keys());
+            prop_assert_eq!(wandered.top_items(), direct.top_items());
+            prop_assert_eq!(wandered.top_items(), direct.top_items());
         }
 
-        /// Backspace must likewise find exactly what searching for the shorter
-        /// text from the start would have found.
+        /// Backspace must likewise produce exactly the list that searching for
+        /// the shorter text from the start would have produced.
         #[test]
         fn removing_a_character_matches_searching_for_the_shorter_text(
             search_text in "[a-c ]{1,4}",
@@ -573,6 +640,8 @@ mod tests {
             let from_scratch = choices_for(&shorter, &rows);
 
             prop_assert_eq!(typed.matching_keys(), from_scratch.matching_keys());
+            prop_assert_eq!(typed.top_items(), from_scratch.top_items());
+            prop_assert_eq!(typed.top_items(), from_scratch.top_items());
         }
 
         /// Editing the search text must not disturb the scores, which is what
