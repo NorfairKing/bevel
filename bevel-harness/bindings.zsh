@@ -7,7 +7,8 @@ function _bevel_cd {
   zle -I # Invalidate current display
   
   # See [Note: stdin zle widgets]
-  cd $(bevel-select cd </dev/tty)
+  local path="$(bevel-select cd </dev/tty)"
+  [[ -z $path ]] || cd "$path"
 
 	zle reset-prompt # Re-expand prompt
 }
@@ -49,5 +50,6 @@ bindkey '^h' _bevel_repeat_local_widget
 
 
 function _bevel_last {
-  cd $(bevel last)
+  local path="$(bevel last)"
+  [[ -z $path ]] || cd "$path"
 }

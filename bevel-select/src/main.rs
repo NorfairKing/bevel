@@ -1,15 +1,12 @@
 use crossterm::{
-    event::{self, Event, KeyCode},
+    cursor::Show,
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
-use ordered_float::OrderedFloat;
 use std::{
-    cmp::Reverse,
-    collections::HashMap,
     env, io,
+    process::ExitCode,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tui::{
@@ -23,6 +20,10 @@ use tui::{
 use whoami::{hostname, username};
 
 use sqlite::State;
+
+mod choices;
+
+use choices::{next_selection, previous_selection, Choices};
 
 struct CdQueryMaker {
     hostname: String,
@@ -112,7 +113,9 @@ impl SomeQueryMaker {
                     statement
                 } else {
                     connection
-                        .prepare("SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT 8096")
+                        .prepare(
+                            "SELECT text, begin, exit FROM command ORDER BY begin DESC LIMIT 8096",
+                        )
                         .unwrap()
                 }
             }
@@ -135,45 +138,94 @@ impl SomeQueryMaker {
         }
     }
 }
-fn main() -> Result<(), io::Error> {
-    let command = env::args().nth(1).expect("No command given.");
+const USAGE: &str = "Usage: bevel-select (cd | repeat | repeat-local)";
+
+/// Anything but the selection goes to stderr, because the shell bindings
+/// substitute stdout straight into a `cd` or into the command line.
+fn main() -> ExitCode {
+    let Some(command) = env::args().nth(1) else {
+        eprintln!("No command given.");
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
     let query_maker: SomeQueryMaker = match command.as_str() {
         "cd" => SomeQueryMaker::Cd(CdQueryMaker::new()),
         "repeat" => SomeQueryMaker::Repeat,
         "repeat-local" => SomeQueryMaker::RepeatLocal(RepeatLocalQueryMaker::new()),
         _ => {
-            println!("Unknown command");
-            return Ok(());
+            eprintln!("Unknown command: {command}");
+            eprintln!("{USAGE}");
+            return ExitCode::FAILURE;
         }
     };
 
-    // setup terminal
+    // Open the history before touching the terminal, so that a missing one is
+    // a message the user can read instead of a panic painted into a screen
+    // that is torn down immediately afterwards.
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel");
+    let Some(path) = xdg_dirs.find_data_file("history.sqlite3") else {
+        eprintln!("No bevel history found. Is bevel set up in this shell?");
+        return ExitCode::FAILURE;
+    };
+    let open_flags = sqlite::OpenFlags::new().with_read_only();
+    let connection = match sqlite::Connection::open_with_flags(&path, open_flags) {
+        Ok(connection) => connection,
+        Err(error) => {
+            eprintln!("Could not read {}: {error}", path.display());
+            return ExitCode::FAILURE;
+        }
+    };
+
+    match select(&connection, &query_maker) {
+        Ok(None) => ExitCode::SUCCESS,
+        Ok(Some(selected)) => {
+            println!("{selected}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("{error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Show the picker, leaving the terminal the way it was found.
+fn select(
+    connection: &sqlite::Connection,
+    query_maker: &SomeQueryMaker,
+) -> io::Result<Option<String>> {
     enable_raw_mode()?;
-    // Output the tui to stderr so we can capture stdout from the shell afterwards
+    // A panic unwinds past the restore below, which would leave the terminal in
+    // raw mode inside the alternate screen, where the panic message cannot even
+    // be read.
+    let panicked_before = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = restore_terminal();
+        panicked_before(info);
+    }));
+
+    // Draw to stderr so that the shell can capture the selection from stdout.
     let mut stderr = io::stderr();
     execute!(stderr, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("bevel");
-    let path = xdg_dirs.find_data_file("history.sqlite3").unwrap();
-    let open_flags = sqlite::OpenFlags::new().with_read_only();
+    let app = App::new(connection, query_maker);
+    let selection = run_app(&mut terminal, app);
 
-    let connection = sqlite::Connection::open_with_flags(path, open_flags).unwrap();
-
-    let app = App::new(&connection, &query_maker);
-    let res = run_app(&mut terminal, app);
-
-    // restore terminal
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-
-    let selection = res?;
-    if let Some(selected) = selection {
-        println!("{selected}");
+    let restored = restore_terminal();
+    // Whatever went wrong in the picker says more than a failure to tidy up
+    // after it, and neither is worth throwing away a selection over.
+    let selection = selection?;
+    if let Err(error) = restored {
+        eprintln!("Could not restore the terminal: {error}");
     }
-    Ok(())
+    Ok(selection)
+}
+
+fn restore_terminal() -> io::Result<()> {
+    disable_raw_mode()?;
+    execute!(io::stderr(), LeaveAlternateScreen, Show)
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<Option<String>> {
@@ -206,14 +258,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
         if event_available {
             let event = event::read()?;
             if let Event::Key(key) = event {
-                match key.code {
-                    KeyCode::Up => app.select_next(),
-                    KeyCode::Down => app.select_previous(),
-                    KeyCode::Enter => return Ok(app.selected()),
-                    KeyCode::Esc => return Ok(None),
-                    KeyCode::Char(char) => app.append(char),
-                    KeyCode::Backspace => app.remove(),
-                    _ => {}
+                match action_for(key) {
+                    Action::SelectNext => app.select_next(),
+                    Action::SelectPrevious => app.select_previous(),
+                    Action::Accept => return Ok(app.selected()),
+                    Action::Cancel => return Ok(None),
+                    Action::Append(char) => app.append(char),
+                    Action::Remove => app.remove(),
+                    Action::Ignore => {}
                 }
             }
         }
@@ -229,6 +281,45 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
         if last_tick.elapsed() >= tick_rate {
             last_tick = Instant::now();
         }
+    }
+}
+
+/// What a key press means, kept apart from carrying it out so that it can be
+/// tested without a terminal.
+#[derive(Debug, PartialEq, Eq)]
+enum Action {
+    SelectNext,
+    SelectPrevious,
+    Accept,
+    Cancel,
+    Append(char),
+    Remove,
+    Ignore,
+}
+
+fn action_for(key: KeyEvent) -> Action {
+    if key.kind == KeyEventKind::Release {
+        return Action::Ignore;
+    }
+    let chord = key
+        .modifiers
+        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
+    match key.code {
+        // Raw mode stops the terminal turning Ctrl-C into a signal, so the
+        // picker has to quit on it itself.
+        KeyCode::Char('c' | 'd') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Cancel,
+        // A terminal that sends 0x08 for backspace is indistinguishable from
+        // one sending Ctrl-H, and readline deletes on both.
+        KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Remove,
+        // Typing the plain letter of a chord would be worse than doing nothing.
+        KeyCode::Char(_) if chord => Action::Ignore,
+        KeyCode::Char(char) => Action::Append(char),
+        KeyCode::Up => Action::SelectNext,
+        KeyCode::Down => Action::SelectPrevious,
+        KeyCode::Enter => Action::Accept,
+        KeyCode::Esc => Action::Cancel,
+        KeyCode::Backspace => Action::Remove,
+        _ => Action::Ignore,
     }
 }
 
@@ -322,7 +413,7 @@ impl<'a> App<'a> {
             query_maker,
             connection,
             list_state,
-            choices: Choices::new(String::new()),
+            choices: Choices::new(String::new(), now_nanos()),
             last_begin_loaded: None,
             loaded: 0,
             total: total as u64,
@@ -330,31 +421,14 @@ impl<'a> App<'a> {
     }
 
     pub fn select_next(&mut self) {
-        let i = match self.list_state.selected() {
-            Some(i) => {
-                if i >= self.choices.top_items.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.list_state.select(Some(i));
+        let selection = next_selection(self.list_state.selected(), self.choices.top_items.len());
+        self.list_state.select(selection);
     }
 
     pub fn select_previous(&mut self) {
-        let i = match self.list_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.choices.top_items.len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.list_state.select(Some(i));
+        let selection =
+            previous_selection(self.list_state.selected(), self.choices.top_items.len());
+        self.list_state.select(selection);
     }
 
     pub fn selected(&self) -> Option<String> {
@@ -377,7 +451,7 @@ impl<'a> App<'a> {
         self.loaded = 0;
         self.last_begin_loaded = None;
         let text = self.choices.search_text.clone();
-        self.choices = Choices::new(text);
+        self.choices = Choices::new(text, now_nanos());
     }
 
     pub fn load_rows(&mut self) {
@@ -398,101 +472,97 @@ impl<'a> App<'a> {
     }
 }
 
-struct Choices {
-    now: i64,
-    search_text: String,
-    matcher: SkimMatcherV2,
-    top_items: Vec<Choice>,
-    item_scores: HashMap<String, f64>,
-    minimum_score: f64,
+fn now_nanos() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos() as i64
 }
 
-const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
-const MAX_ITEMS: usize = 20;
-impl Choices {
-    pub fn new(search_text: String) -> Self {
-        Choices {
-            now: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos() as i64,
-            search_text,
-            matcher: SkimMatcherV2::default(),
-            top_items: Vec::with_capacity(MAX_ITEMS),
-            item_scores: HashMap::new(),
-            minimum_score: 0.0,
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn press(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
     }
 
-    // Add a (workdir, begin) pair after computing its score
-    pub fn add(&mut self, key: String, begin: i64, exit: Option<i64>) {
-        let fuzziness = if self.search_text.is_empty() {
-            1
-        } else {
-            self.matcher
-                .fuzzy_match(&key, &self.search_text)
-                .unwrap_or(0)
-        };
-        if fuzziness <= 0 {
-            return;
-        }
-
-        // Compute the score of this item
-        let timediff = (self.now - begin) as f64;
-        let exit_multiplier = match exit {
-            // If the command is still running or was interrupted, it's less relevant.
-            None => 0.5f64,
-            // If the command is succesful, it's more relevant.
-            Some(0) => 2f64,
-            Some(_) => 1f64,
-        };
-        let score = exit_multiplier * NANOSECONDS_IN_A_DAY / timediff;
-
-        // Add to the item scores
-        let total_score: f64 = *self
-            .item_scores
-            .entry(key.clone())
-            .and_modify(|s| {
-                *s += score;
-            })
-            .or_insert(score);
-
-        if total_score > self.minimum_score {
-            let choice = Choice {
-                fuzziness,
-                score: total_score,
-                key: key.clone(),
-            };
-            // If the item is already there, remove it.
-            for i in 0..self.top_items.len() {
-                if key == self.top_items[i].key {
-                    self.top_items.remove(i);
-                    break;
-                }
-            }
-            // Add the item again
-            self.top_items.push(choice);
-            // Sort by score
-            self.top_items
-                .sort_by_key(|c| (Reverse(c.fuzziness), Reverse(OrderedFloat(c.score))));
-            // Remove any extra items
-            if self.top_items.len() >= MAX_ITEMS {
-                self.top_items.pop();
-            }
-            // There might be a new minimal top item, so we recompute the minimum score.
-            self.recompute_minimum_score();
-        }
+    #[test]
+    fn quits_on_the_chords_that_quit_everything_else() {
+        assert_eq!(
+            action_for(press(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Action::Cancel
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('d'), KeyModifiers::CONTROL)),
+            Action::Cancel
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Esc, KeyModifiers::NONE)),
+            Action::Cancel
+        );
     }
-    fn recompute_minimum_score(&self) -> f64 {
-        match self.top_items.last() {
-            None => 0.0,
-            // We can 'unwrap' because the top_items MUST be in the item_scores too.
-            Some(least_top) => *self.item_scores.get(&least_top.key).unwrap(),
-        }
+
+    #[test]
+    fn deletes_on_the_other_byte_a_terminal_may_send_for_backspace() {
+        assert_eq!(
+            action_for(press(KeyCode::Backspace, KeyModifiers::NONE)),
+            Action::Remove
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('h'), KeyModifiers::CONTROL)),
+            Action::Remove
+        );
     }
-}
-struct Choice {
-    fuzziness: i64,
-    score: f64,
-    key: String,
+
+    #[test]
+    fn does_not_type_the_letter_of_a_chord() {
+        assert_eq!(
+            action_for(press(KeyCode::Char('a'), KeyModifiers::CONTROL)),
+            Action::Ignore
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('x'), KeyModifiers::ALT)),
+            Action::Ignore
+        );
+    }
+
+    #[test]
+    fn types_letters_including_capitals() {
+        assert_eq!(
+            action_for(press(KeyCode::Char('c'), KeyModifiers::NONE)),
+            Action::Append('c')
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('C'), KeyModifiers::SHIFT)),
+            Action::Append('C')
+        );
+    }
+
+    #[test]
+    fn moves_accepts_and_deletes() {
+        assert_eq!(
+            action_for(press(KeyCode::Up, KeyModifiers::NONE)),
+            Action::SelectNext
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Down, KeyModifiers::NONE)),
+            Action::SelectPrevious
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Enter, KeyModifiers::NONE)),
+            Action::Accept
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Backspace, KeyModifiers::NONE)),
+            Action::Remove
+        );
+    }
+
+    #[test]
+    fn ignores_a_key_being_let_go_of() {
+        let mut key = press(KeyCode::Char('c'), KeyModifiers::NONE);
+        key.kind = KeyEventKind::Release;
+        assert_eq!(action_for(key), Action::Ignore);
+    }
 }
