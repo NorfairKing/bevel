@@ -67,6 +67,7 @@ impl Choices {
     /// Occurrences are added whether or not they match the search text, so that
     /// editing the search text never requires reading them again.
     pub fn add(&mut self, key: String, begin: i64, exit: Option<i64>) {
+        let key = without_trailing_whitespace(key);
         let score = self.score(begin, exit);
         match self.entry_indices.get(&key) {
             Some(&index) => self.entries[index].score += score,
@@ -247,6 +248,21 @@ impl Choices {
     }
 }
 
+/// A command without the trailing whitespace a tab completion leaves behind.
+///
+/// Otherwise a command typed out and the same command completed with a tab are
+/// two different commands, each getting its own share of a score that belongs
+/// to one of them.
+fn without_trailing_whitespace(key: String) -> String {
+    let trimmed = key.trim_end();
+    // Most commands have nothing to trim, and those need not be copied.
+    if trimmed.len() == key.len() {
+        key
+    } else {
+        trimmed.to_string()
+    }
+}
+
 /// How well a command matches the search text, or `None` when it does not
 /// match at all.
 ///
@@ -375,6 +391,34 @@ mod tests {
                 key: String::from("ls"),
             }]
         );
+    }
+
+    #[test]
+    fn counts_a_tab_completed_command_as_the_one_that_was_typed_out() {
+        let choices = choices_for(
+            "",
+            &[
+                (String::from("ls"), DAY, Some(0)),
+                (String::from("ls "), DAY, Some(0)),
+                (String::from("ls\t"), DAY, Some(0)),
+            ],
+        );
+
+        assert_eq!(
+            choices.top_items(),
+            [Choice {
+                fuzziness: 0,
+                score: 6.0,
+                key: String::from("ls"),
+            }]
+        );
+    }
+
+    #[test]
+    fn keeps_the_whitespace_a_command_starts_with() {
+        let choices = choices_for("", &[(String::from("  ls"), DAY, Some(0))]);
+
+        assert_eq!(choices.top_items()[0].key, "  ls");
     }
 
     #[test]
@@ -703,14 +747,15 @@ mod tests {
             }
         }
 
-        /// Every command must be shown, as long as there is room for it.
+        /// Every command must be shown, as long as there is room for it, and
+        /// commands that differ only in trailing whitespace are one command.
         #[test]
         fn shows_every_command_while_there_is_room(
             rows in prop::collection::vec(row(), 0..MAX_ITEMS),
         ) {
             let choices = choices_for("", &rows);
 
-            let mut expected: Vec<&str> = rows.iter().map(|(key, _, _)| key.as_str()).collect();
+            let mut expected: Vec<&str> = rows.iter().map(|(key, _, _)| key.trim_end()).collect();
             expected.sort_unstable();
             expected.dedup();
 
