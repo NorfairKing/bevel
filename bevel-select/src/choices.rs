@@ -475,6 +475,26 @@ mod tests {
         assert_eq!(ranking, vec!["common", "rare"]);
     }
 
+    /// A command is recognised by how it starts, but a directory is not: the
+    /// front of a path is boilerplate shared by thousands of them.  Matching
+    /// early in the string must therefore not outrank being used, or every
+    /// directory under /nix/store outranks every project directory for the
+    /// search text "nix".
+    #[test]
+    fn ranks_directories_by_use_rather_than_by_where_the_match_starts() {
+        let store = "/nix/store/lhznlqkn5l53nbsp72fqylhbwkh4qzwn-vmtest-ccr2004";
+        let project = "/home/syd/src/nix-ci";
+        let mut rows: Vec<Row> = vec![(String::from(store), DAY, Some(0))];
+        for _ in 0..5 {
+            rows.push((String::from(project), DAY, Some(0)));
+        }
+
+        let choices = choices_for("nix", &rows);
+
+        let ranking: Vec<&str> = choices.top_items().iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(ranking, vec![project, store]);
+    }
+
     #[test]
     fn keeps_at_most_max_items_top_items() {
         let rows: Vec<Row> = (0..(MAX_ITEMS * 2))
