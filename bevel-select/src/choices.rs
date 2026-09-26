@@ -65,6 +65,14 @@
 //!     is buried under anything recent that matches it even poorly, and no
 //!     amount of typing brings it back.
 //!
+//! * The longer the search text, the less use may weigh. Two commands that
+//!   both match a long search text differ by very little quality, one skipped
+//!   character in thirty, while their use can differ by orders of magnitude,
+//!   so a weight that held steady would answer a long and specific search with
+//!   the command most in the habit rather than the one being typed. Commands
+//!   that match equally well must still be ordered by use however much has
+//!   been typed, so what use may weigh must shrink without ever reaching zero.
+//!
 //! * The order must be total, and must not depend on the order the
 //!   occurrences arrived in, so the command text settles whatever ties the
 //!   rank leaves.
@@ -94,6 +102,15 @@ const USE_SPAN: f64 = 0.15;
 /// The scale, in doublings of use, over which use fades from counting for
 /// everything it can to counting for nothing.
 const USE_WIDTH: f64 = 6.0;
+
+/// What use may weigh is halved for every this many characters of search text.
+///
+/// Two commands that both match a long search text differ by very little
+/// quality, one skipped character in thirty, while their use can differ by
+/// orders of magnitude. A span that did not shrink would answer a long and
+/// specific search with the command most in the habit rather than the one
+/// being typed.
+const SEARCH_HALF_LIFE_IN_CHARS: f64 = 7.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Choice {
@@ -288,11 +305,13 @@ impl Choices {
             .map(|entry| entry.usage)
             .fold(0.0f64, f64::max);
         let best_fuzziness = self.best_fuzziness;
+        let search_length = self.search_text.chars().count();
         for candidate in self.candidates.iter_mut() {
             candidate.rank = rank(
                 quality(candidate.fuzziness, best_fuzziness),
                 self.entries[candidate.entry].usage,
                 most_usage,
+                search_length,
             );
         }
 
@@ -444,8 +463,17 @@ fn quality(fuzziness: u32, best_fuzziness: Option<f64>) -> f64 {
 }
 
 /// Where a command belongs in the list, largest first.
-fn rank(quality: f64, usage: f64, most_usage: f64) -> f64 {
-    quality + USE_SPAN * use_term(usage, most_usage)
+fn rank(quality: f64, usage: f64, most_usage: f64, search_length: usize) -> f64 {
+    quality + span(search_length) * use_term(usage, most_usage)
+}
+
+/// The most that use may add to a rank, which shrinks as the search text grows.
+///
+/// Commands that match the search text equally well are still ordered by use,
+/// however much has been typed, because this never reaches zero.
+fn span(search_length: usize) -> f64 {
+    let typed = search_length.saturating_sub(1) as f64;
+    USE_SPAN * (-typed / SEARCH_HALF_LIFE_IN_CHARS).exp2()
 }
 
 /// What use is worth, as a fraction of everything it could be worth.
@@ -716,6 +744,38 @@ mod tests {
         let choices = choices_for("config", &rows);
 
         assert_eq!(choices.top_items()[0].key, exact);
+    }
+
+    /// A long search text is a specific one, and the two commands here differ
+    /// by a single character in thirty-five. Unless what use may weigh has
+    /// shrunk by the time that much has been typed, the habit answers instead
+    /// of what was typed.
+    #[test]
+    fn answers_a_long_search_with_what_was_typed_rather_than_the_habit() {
+        let typed = "nix run ./src/nix-ci#worker-keygen";
+        let habit = "nix run ./src/nix-ci7#worker-keygen";
+
+        let mut rows = vec![(String::from(typed), NOW, Some(0))];
+        for _ in 0..5000 {
+            rows.push((String::from(habit), NOW, Some(0)));
+        }
+
+        let choices = choices_for(typed, &rows);
+
+        assert_eq!(choices.top_items()[0].key, typed);
+    }
+
+    #[test]
+    fn halves_what_use_may_weigh_every_search_half_life() {
+        let half_life = SEARCH_HALF_LIFE_IN_CHARS as usize;
+
+        assert_eq!(span(0), USE_SPAN);
+        assert_eq!(span(1), USE_SPAN);
+        assert_eq!(span(1 + half_life), USE_SPAN / 2.0);
+        assert_eq!(span(1 + 2 * half_life), USE_SPAN / 4.0);
+        // Commands that match equally well are still ordered by use, however
+        // much has been typed.
+        assert!(span(1000) > 0.0);
     }
 
     #[test]
