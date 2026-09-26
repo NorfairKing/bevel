@@ -1,7 +1,7 @@
 _bevel_cd () {
 	tput rmkx
-  local path="$(bevel-select cd)"
-  [[ -z $path ]] || cd "$path"
+  local dir="$(bevel-select cd)"
+  [[ -z $dir ]] || cd "$dir"
   tput smkx
 }
 
@@ -37,6 +37,6 @@ bind -x '"\C-h": _bevel_repeat_local'
 
 
 _bevel_last () {
-  local path="$(bevel last)"
-  [[ -z $path ]] || cd "$path"
+  local dir="$(bevel last)"
+  [[ -z $dir ]] || cd "$dir"
 }

@@ -101,6 +101,24 @@ runNixOSTest {
     )
     assert gathered.strip() == "echo hi", gathered
 
+    # 'bevel last' deliberately skips the most recent command, so the history
+    # needs a second one before it will report the directory of the first.
+    command_id = client.succeed(su("testuser", "bevel-gather 'echo again'")).strip()
+    client.succeed(su("testuser", f"bevel-gather {command_id} 0"))
+
+    # zsh ties the 'path' parameter to PATH, so a binding that declares a local
+    # named 'path' empties PATH for the rest of its body, and the commands that
+    # the user's own cd hooks run can no longer be found.  A cd hook only fires
+    # when the directory really changes, hence starting somewhere else.
+    path_check = """
+      cd /
+      expected=$PATH
+      chpwd() { [[ $PATH == "$expected" ]] || { print -u2 "PATH became $PATH"; exit 1; } }
+      _bevel_last
+      [[ $PWD == /home/testuser ]] || { print -u2 "_bevel_last went to $PWD"; exit 1; }
+    """
+    client.succeed(su("testuser", f"zsh -ic {quote(path_check)}"))
+
     client.succeed(su("testuser", "bevel register"))
     client.succeed(su("testuser", "bevel login"))
     client.succeed(su("testuser", "bevel sync"))
