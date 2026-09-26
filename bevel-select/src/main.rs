@@ -291,6 +291,36 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<O
     }
 }
 
+/// How many lines of one command the list will show before saying how many it
+/// left out.
+const MAX_LINES: usize = 5;
+
+/// The lines of a command to put in the list, with a note standing in for the
+/// rest of them.
+///
+/// A command gets a row per line, so a long one would fill the list on its own
+/// and crowd out everything it was being compared against.  The command itself
+/// is untouched: all of it goes onto the command line when it is chosen.
+fn shown_lines(command: &str) -> Vec<String> {
+    let total = command.lines().count();
+    let mut lines: Vec<String> = command
+        .lines()
+        .take(MAX_LINES)
+        .map(str::to_string)
+        .collect();
+    let left_out = total.saturating_sub(MAX_LINES);
+    if left_out > 0 {
+        let lines_or_line = if left_out == 1 { "line" } else { "lines" };
+        lines.push(format!("\u{2026} {left_out} more {lines_or_line}"));
+    }
+    // A list item of no lines has no height, and would be invisible rather
+    // than empty.
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
 /// What a key press means, kept apart from carrying it out so that it can be
 /// tested without a terminal.
 #[derive(Debug, PartialEq, Eq)]
@@ -360,7 +390,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 Style::default().fg(Color::Yellow)
             };
 
-            ListItem::new(command.key.clone()).style(style)
+            let lines: Vec<Spans> = shown_lines(&command.key)
+                .into_iter()
+                .map(Spans::from)
+                .collect();
+            ListItem::new(lines).style(style)
         })
         .collect();
     let choices_list = List::new(items)
@@ -533,6 +567,62 @@ mod tests {
 
     fn press(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
         KeyEvent::new(code, modifiers)
+    }
+
+    #[test]
+    fn shows_a_short_command_whole() {
+        assert_eq!(shown_lines("nix flake check"), vec!["nix flake check"]);
+        assert_eq!(
+            shown_lines("sudo swapoff -a\nsudo swapon -a"),
+            vec!["sudo swapoff -a", "sudo swapon -a"]
+        );
+    }
+
+    #[test]
+    fn shows_a_command_of_exactly_the_cap_without_a_note() {
+        let command = (1..=MAX_LINES)
+            .map(|i| format!("line {i}"))
+            .collect::<Vec<String>>()
+            .join("\n");
+        assert_eq!(shown_lines(&command).len(), MAX_LINES);
+        assert_eq!(shown_lines(&command).last().unwrap(), "line 5");
+        assert!(!shown_lines(&command).iter().any(|l| l.contains("more")));
+    }
+
+    #[test]
+    fn says_how_many_lines_of_a_long_command_it_left_out() {
+        let command = (1..=8)
+            .map(|i| format!("line {i}"))
+            .collect::<Vec<String>>()
+            .join("\n");
+        assert_eq!(
+            shown_lines(&command),
+            vec![
+                "line 1",
+                "line 2",
+                "line 3",
+                "line 4",
+                "line 5",
+                "\u{2026} 3 more lines"
+            ]
+        );
+    }
+
+    #[test]
+    fn counts_a_single_left_out_line_as_one_line() {
+        let command = (1..=MAX_LINES + 1)
+            .map(|i| format!("line {i}"))
+            .collect::<Vec<String>>()
+            .join("\n");
+        assert_eq!(
+            shown_lines(&command).last().unwrap(),
+            "\u{2026} 1 more line"
+        );
+    }
+
+    #[test]
+    fn gives_an_empty_command_a_row_to_be_empty_in() {
+        assert_eq!(shown_lines(""), vec![""]);
     }
 
     #[test]
