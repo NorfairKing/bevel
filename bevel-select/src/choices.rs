@@ -1,3 +1,89 @@
+//! What the ranking has to satisfy.
+//!
+//! Commands are ordered by how well they match the search text, and among
+//! those that match it equally well, by how much they are used:
+//!
+//! ```text
+//! order by  (fuzziness, use)  largest first, ties settled on the command
+//!
+//! use     = sum over the occurrences of one command of
+//!               exit_weight * 2^(-age_in_days / HALF_LIFE_IN_DAYS)
+//!           age_in_days = max(0, now - begin), in days
+//!           exit_weight = 2 succeeded, 1 failed, 0.5 running or interrupted
+//! ```
+//!
+//! Each requirement below says what breaks when it does not hold.
+//!
+//! # Use
+//!
+//! * It must not depend on the search text. This is what lets the history be
+//!   read once per run instead of once per keystroke: a new search text
+//!   re-matches what has already been read rather than reading it again.
+//!
+//! * It must not depend on the order the occurrences arrive in, nor on where
+//!   the batches between them are cut. A batch ends when a frame runs out of
+//!   time, so anything that depended on the batching would depend on how
+//!   loaded the machine was. A sum of independent terms gives this: exactly
+//!   for the batching, which does not reorder anything, and up to
+//!   floating-point associativity for the order.
+//!
+//! * No occurrence may contribute an infinity, a NaN, or a negative amount,
+//!   whatever its timestamp, including a timestamp at or after the moment the
+//!   picker opened. A history gathered on a machine whose clock has moved
+//!   backwards must still rank. Bounding each occurrence by its exit weight
+//!   gives this, and is why no command has to be dropped for being
+//!   unrankable.
+//!
+//! * An occurrence must never lower the use of its command, and occurrences
+//!   at one moment must count for as much as their number. Otherwise running
+//!   a command would be a reason to stop offering it.
+//!
+//! * Of two occurrences alike but for their age, the more recent must count
+//!   for at least as much.
+//!
+//! * Multiplying every use by one common factor must leave the ranking alone,
+//!   which is what moving the moment the picker opened does. Otherwise the
+//!   list would be ordered differently depending on when it was opened, and a
+//!   command would drift through it while the history stood still. Only uses
+//!   are ever compared against each other, so this holds for any decay that
+//!   depends on age alone; dividing by the age does not, because it is not
+//!   such a decay.
+//!
+//! # Matching
+//!
+//! * Fuzziness must be a function of the search text and the command alone,
+//!   and give the same answer however much the matcher has been used before.
+//!
+//! * A command that does not match the search text at all must never be
+//!   offered, however much it is used.
+//!
+//! # Putting the two together
+//!
+//! * Matching decides, and use only settles the ties. This is the whole of
+//!   the trade, and it is deliberate: it is what keeps a command last run
+//!   three years ago reachable, because once enough has been typed that it
+//!   matches better than anything else, nothing recent can bury it.
+//!
+//! * What it costs is the other direction. Any difference in fuzziness,
+//!   however small and however spurious, outranks any amount of use. That is
+//!   only safe while the matcher is not asked to produce differences it
+//!   cannot justify: preferring a match near the front of a path invented a
+//!   seven point difference out of nothing and put every directory under
+//!   /nix/store above every project directory, which is why `Subject` exists.
+//!   Any further matching option has to be weighed the same way.
+//!
+//! * The order must be total, and must not depend on the order the
+//!   occurrences arrived in, so the command text settles whatever ties are
+//!   left.
+//!
+//! * The list must depend on the search text alone and not on the way it was
+//!   arrived at: typing a character and deleting it again must leave no
+//!   trace.
+//!
+//! * Typing a character must only ever take matches away. This is what lets a
+//!   keystroke narrow the candidates that survived the last one instead of
+//!   looking at every command again.
+
 use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 use ordered_float::OrderedFloat;
@@ -6,20 +92,27 @@ use std::{cmp::Ordering, collections::HashMap};
 const NANOSECONDS_IN_A_DAY: f64 = 86_400_000_000_000_f64;
 const MAX_ITEMS: usize = 20;
 
+/// An occurrence is worth half as much for every this many days of its age.
+const HALF_LIFE_IN_DAYS: f64 = 30.0;
+
 #[derive(Debug, Clone, PartialEq)]
+/// A command to offer, and the two numbers it was ordered by.
+///
+/// Only the command itself is anyone else's business; the other two are here
+/// so that the tests can assert the order rather than infer it.
 pub struct Choice {
-    pub fuzziness: u32,
-    pub score: f64,
+    fuzziness: u32,
+    usage: f64,
     pub key: String,
 }
 
-/// One distinct command, with the scores of all its occurrences added up.
+/// One distinct command, with the use of all its occurrences added up.
 ///
-/// The score does not depend on the search text, which is what lets the
+/// The use does not depend on the search text, which is what lets the
 /// database be read only once per run.
 struct Entry {
     key: String,
-    score: f64,
+    usage: f64,
 }
 
 /// An entry that matches the search text, with the fuzziness of that match.
@@ -81,9 +174,9 @@ impl Choices {
     /// editing the search text never requires reading them again.
     pub fn add(&mut self, key: String, begin: i64, exit: Option<i64>) {
         let key = without_trailing_whitespace(key);
-        let score = self.score(begin, exit);
+        let usage = self.usage(begin, exit);
         match self.entry_indices.get(&key) {
-            Some(&index) => self.entries[index].score += score,
+            Some(&index) => self.entries[index].usage += usage,
             None => {
                 let index = self.entries.len();
                 let fuzziness = fuzziness(
@@ -93,7 +186,7 @@ impl Choices {
                     &key,
                 );
                 self.entry_indices.insert(key.clone(), index);
-                self.entries.push(Entry { key, score });
+                self.entries.push(Entry { key, usage });
                 if let Some(fuzziness) = fuzziness {
                     self.candidates.push(Candidate {
                         entry: index,
@@ -170,7 +263,7 @@ impl Choices {
         }
     }
 
-    /// Bring the top items back in line with the scores.
+    /// Bring the top items back in line with the use and the search text.
     ///
     /// Call this after adding occurrences. Adding does not do it itself, so
     /// that a whole batch of occurrences costs only one pass over the
@@ -184,9 +277,6 @@ impl Choices {
         let mut top: Vec<Candidate> = Vec::with_capacity(MAX_ITEMS);
 
         for candidate in &self.candidates {
-            if !is_rankable(entries[candidate.entry].score) {
-                continue;
-            }
             let full = top.len() >= MAX_ITEMS;
             if full && compare(entries, candidate, &top[MAX_ITEMS - 1]) != Ordering::Less {
                 continue;
@@ -205,23 +295,30 @@ impl Choices {
                 let entry = &entries[candidate.entry];
                 Choice {
                     fuzziness: candidate.fuzziness,
-                    score: entry.score,
+                    usage: entry.usage,
                     key: entry.key.clone(),
                 }
             })
             .collect();
     }
 
-    fn score(&self, begin: i64, exit: Option<i64>) -> f64 {
-        let timediff = (self.now - begin) as f64;
-        let exit_multiplier = match exit {
+    /// `exit_weight * 2^(-age_in_days / HALF_LIFE_IN_DAYS)`: what one
+    /// occurrence of a command is worth.
+    ///
+    /// A timestamp at or after the moment the picker opened counts as one from
+    /// that moment, rather than being worth more than any amount of use or
+    /// having to be thrown away, so that a history gathered while the clock
+    /// moved backwards still ranks.
+    fn usage(&self, begin: i64, exit: Option<i64>) -> f64 {
+        let exit_weight = match exit {
             // If the command is still running or was interrupted, it's less relevant.
             None => 0.5f64,
             // If the command is succesful, it's more relevant.
             Some(0) => 2f64,
             Some(_) => 1f64,
         };
-        exit_multiplier * NANOSECONDS_IN_A_DAY / timediff
+        let age_in_days = (self.now - begin).max(0) as f64 / NANOSECONDS_IN_A_DAY;
+        exit_weight * (-age_in_days / HALF_LIFE_IN_DAYS).exp2()
     }
 
     pub fn search_text(&self) -> &str {
@@ -264,7 +361,7 @@ impl Choices {
 /// A command without the trailing whitespace a tab completion leaves behind.
 ///
 /// Otherwise a command typed out and the same command completed with a tab are
-/// two different commands, each getting its own share of a score that belongs
+/// two different commands, each getting its own share of the use that belongs
 /// to one of them.
 fn without_trailing_whitespace(key: String) -> String {
     let trimmed = key.trim_end();
@@ -297,20 +394,14 @@ fn fuzziness(
     }
 }
 
-/// A command scores negatively if its timestamp lies in the future, and
-/// non-finitely if its timestamp is exactly now. Neither belongs in the list.
-fn is_rankable(score: f64) -> bool {
-    score > 0.0 && score.is_finite()
-}
-
-/// Order the candidates best-first: fuzziest match, then highest score, then by
+/// Order the candidates best-first: best match, then most used, then by
 /// command so that the order never depends on how the occurrences arrived.
 fn compare(entries: &[Entry], a: &Candidate, b: &Candidate) -> Ordering {
     let left = &entries[a.entry];
     let right = &entries[b.entry];
     b.fuzziness
         .cmp(&a.fuzziness)
-        .then_with(|| OrderedFloat(right.score).cmp(&OrderedFloat(left.score)))
+        .then_with(|| OrderedFloat(right.usage).cmp(&OrderedFloat(left.usage)))
         .then_with(|| left.key.cmp(&right.key))
 }
 
@@ -356,7 +447,8 @@ mod tests {
     use proptest::prelude::*;
 
     const DAY: i64 = 86_400_000_000_000;
-    const NOW: i64 = 2 * DAY;
+    const HALF_LIFE: i64 = (HALF_LIFE_IN_DAYS as i64) * DAY;
+    const NOW: i64 = 4 * HALF_LIFE;
 
     type Row = (String, i64, Option<i64>);
 
@@ -373,14 +465,14 @@ mod tests {
     }
 
     #[test]
-    fn scores_a_command_from_a_day_ago_by_its_exit_multiplier() {
-        for (exit, expected_score) in [(Some(0), 2.0), (Some(1), 1.0), (None, 0.5)] {
-            let choices = choices_for("", &[(String::from("ls"), DAY, exit)]);
+    fn weighs_an_occurrence_by_how_it_exited() {
+        for (exit, expected_usage) in [(Some(0), 2.0), (Some(1), 1.0), (None, 0.5)] {
+            let choices = choices_for("", &[(String::from("ls"), NOW, exit)]);
             assert_eq!(
                 choices.top_items,
                 vec![Choice {
                     fuzziness: 0,
-                    score: expected_score,
+                    usage: expected_usage,
                     key: String::from("ls"),
                 }]
             );
@@ -388,19 +480,41 @@ mod tests {
     }
 
     #[test]
-    fn accumulates_the_scores_of_repeated_commands_into_one_item() {
+    fn halves_the_weight_of_an_occurrence_every_half_life() {
         let choices = choices_for(
             "",
             &[
-                (String::from("ls"), DAY, Some(0)),
-                (String::from("ls"), DAY, Some(1)),
+                (String::from("fresh"), NOW, Some(0)),
+                (String::from("stale"), NOW - HALF_LIFE, Some(0)),
+                (String::from("staler"), NOW - 2 * HALF_LIFE, Some(0)),
+            ],
+        );
+
+        let use_of: Vec<(&str, f64)> = choices
+            .top_items()
+            .iter()
+            .map(|c| (c.key.as_str(), c.usage))
+            .collect();
+        assert_eq!(
+            use_of,
+            vec![("fresh", 2.0), ("stale", 1.0), ("staler", 0.5)]
+        );
+    }
+
+    #[test]
+    fn accumulates_the_use_of_repeated_commands_into_one_item() {
+        let choices = choices_for(
+            "",
+            &[
+                (String::from("ls"), NOW, Some(0)),
+                (String::from("ls"), NOW, Some(1)),
             ],
         );
         assert_eq!(
             choices.top_items,
             vec![Choice {
                 fuzziness: 0,
-                score: 3.0,
+                usage: 3.0,
                 key: String::from("ls"),
             }]
         );
@@ -411,9 +525,9 @@ mod tests {
         let choices = choices_for(
             "",
             &[
-                (String::from("ls"), DAY, Some(0)),
-                (String::from("ls "), DAY, Some(0)),
-                (String::from("ls\t"), DAY, Some(0)),
+                (String::from("ls"), NOW, Some(0)),
+                (String::from("ls "), NOW, Some(0)),
+                (String::from("ls\t"), NOW, Some(0)),
             ],
         );
 
@@ -421,7 +535,7 @@ mod tests {
             choices.top_items(),
             [Choice {
                 fuzziness: 0,
-                score: 6.0,
+                usage: 6.0,
                 key: String::from("ls"),
             }]
         );
@@ -440,24 +554,51 @@ mod tests {
         assert_eq!(choices.top_items, vec![]);
     }
 
+    /// A clock that has moved backwards must not cost the commands that were
+    /// gathered before it did.
     #[test]
-    fn leaves_out_commands_from_the_future() {
-        let mut choices = Choices::new(DAY, Subject::Command);
-        choices.add(String::from("ls"), 2 * DAY, Some(0));
+    fn counts_a_command_from_the_future_as_one_from_just_now() {
+        let mut choices = Choices::new(NOW, Subject::Command);
+        choices.add(String::from("ls"), NOW + DAY, Some(0));
         choices.recompute_top_items();
-        assert_eq!(choices.top_items, vec![]);
+        assert_eq!(
+            choices.top_items,
+            vec![Choice {
+                fuzziness: 0,
+                usage: 2.0,
+                key: String::from("ls"),
+            }]
+        );
+    }
+
+    /// Only uses are ever compared against each other, so moving the moment
+    /// the picker opened, which multiplies every one of them by the same
+    /// amount, must leave the order alone.
+    #[test]
+    fn ranks_the_same_however_much_later_the_picker_was_opened() {
+        let rows = [
+            (String::from("cabal build"), NOW - HALF_LIFE, Some(0)),
+            (String::from("cargo build"), NOW - 2 * HALF_LIFE, Some(0)),
+            (String::from("cargo build"), NOW - 3 * HALF_LIFE, Some(0)),
+            (String::from("carry on"), NOW - HALF_LIFE, Some(1)),
+        ];
+        let mut later = Choices::new(NOW + 7 * HALF_LIFE, Subject::Command);
+        for c in "car".chars() {
+            later.append(c);
+        }
+        for (key, begin, exit) in &rows {
+            later.add(key.clone(), *begin, *exit);
+        }
+        later.recompute_top_items();
+
+        let earlier = choices_for("car", &rows);
+        let earlier_keys: Vec<&str> = earlier.top_items().iter().map(|c| c.key.as_str()).collect();
+        let later_keys: Vec<&str> = later.top_items().iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(earlier_keys, later_keys);
     }
 
     #[test]
-    fn leaves_out_commands_from_exactly_now() {
-        let mut choices = Choices::new(DAY, Subject::Command);
-        choices.add(String::from("ls"), DAY, Some(0));
-        choices.recompute_top_items();
-        assert_eq!(choices.top_items, vec![]);
-    }
-
-    #[test]
-    fn ranks_a_fuzzier_match_above_a_better_scoring_one() {
+    fn ranks_a_better_match_above_a_more_used_one() {
         let choices = choices_for(
             "ls",
             &[
@@ -470,11 +611,11 @@ mod tests {
         let ranking: Vec<&str> = choices.top_items.iter().map(|c| c.key.as_str()).collect();
         assert_eq!(ranking, vec!["ls", "lets"]);
         assert!(choices.top_items[0].fuzziness > choices.top_items[1].fuzziness);
-        assert!(choices.top_items[0].score > choices.top_items[1].score);
+        assert!(choices.top_items[0].usage > choices.top_items[1].usage);
     }
 
     #[test]
-    fn ranks_a_higher_scoring_command_first_among_equally_fuzzy_matches() {
+    fn ranks_a_more_used_command_first_among_equally_good_matches() {
         let choices = choices_for(
             "",
             &[
@@ -608,7 +749,7 @@ mod tests {
             // The long runs space the matched characters far apart, so that
             // faint matches are generated as well as obvious ones.
             prop_oneof!["[a-c ]{1,5}", "ax{20,60}bx{20,60}c"],
-            1i64..(2 * DAY),
+            1i64..NOW,
             proptest::option::of(0i64..3i64),
         )
     }
@@ -640,11 +781,7 @@ mod tests {
     /// the whole result can be compared and not just its first page.
     fn few_rows() -> impl Strategy<Value = Vec<Row>> {
         prop::collection::vec(
-            (
-                "[ab]{1,2}",
-                1i64..(2 * DAY),
-                proptest::option::of(0i64..3i64),
-            ),
+            ("[ab]{1,2}", 1i64..NOW, proptest::option::of(0i64..3i64)),
             0..30,
         )
     }
@@ -653,7 +790,7 @@ mod tests {
         let mut items: Vec<(&str, f64)> = choices
             .top_items
             .iter()
-            .map(|c| (c.key.as_str(), c.score))
+            .map(|c| (c.key.as_str(), c.usage))
             .collect();
         items.sort_unstable_by(|a, b| a.0.cmp(b.0));
         items
@@ -724,10 +861,10 @@ mod tests {
             prop_assert_eq!(typed.top_items(), from_scratch.top_items());
         }
 
-        /// Editing the search text must not disturb the scores, which is what
+        /// Editing the search text must not disturb the use, which is what
         /// lets them be added up once and kept.
         #[test]
-        fn editing_the_search_text_leaves_the_scores_alone(
+        fn editing_the_search_text_leaves_the_use_alone(
             search_text in "[ab]{0,2}",
             c in "[ab]",
             rows in few_rows(),
@@ -773,12 +910,15 @@ mod tests {
             let choices = choices_for(&search_text, &rows);
 
             prop_assert!(choices.top_items.len() <= MAX_ITEMS);
+            // Every occurrence is worth something, and no more than its exit
+            // weight, whatever its timestamp.
             for item in &choices.top_items {
-                prop_assert!(is_rankable(item.score));
+                prop_assert!(item.usage > 0.0);
+                prop_assert!(item.usage.is_finite());
             }
             for pair in choices.top_items.windows(2) {
-                let better = (pair[0].fuzziness, OrderedFloat(pair[0].score));
-                let worse = (pair[1].fuzziness, OrderedFloat(pair[1].score));
+                let better = (pair[0].fuzziness, OrderedFloat(pair[0].usage));
+                let worse = (pair[1].fuzziness, OrderedFloat(pair[1].usage));
                 prop_assert!(better >= worse);
             }
         }
