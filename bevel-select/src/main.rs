@@ -861,6 +861,88 @@ mod tests {
         assert_eq!(offered, vec!["here", "there"]);
     }
 
+    /// Cd offers the directories of this account on this machine, and only
+    /// those. Its query is the one that binds the machine and the account, and
+    /// nothing else exercises it.
+    #[test]
+    fn cd_offers_the_directories_of_this_account_on_this_machine() {
+        let connection = sqlite::Connection::open(":memory:").unwrap();
+        connection
+            .execute(
+                "CREATE TABLE command (id INTEGER PRIMARY KEY, text VARCHAR NOT NULL, begin INTEGER NOT NULL, end INTEGER, workdir VARCHAR NOT NULL, user VARCHAR NOT NULL, host VARCHAR NOT NULL, exit INTEGER, server_id INTEGER)",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO command (text, begin, workdir, user, host, exit) VALUES \
+                 ('a', 1, '/mine', 'me', 'here', 0), \
+                 ('b', 2, '/another-machine', 'me', 'elsewhere', 0), \
+                 ('c', 3, '/another-account', 'you', 'here', 0)",
+            )
+            .unwrap();
+        let query_maker: &'static SomeQueryMaker =
+            Box::leak(Box::new(SomeQueryMaker::Cd(Context {
+                workdir: Some(String::from("/mine")),
+                hostname: String::from("here"),
+                username: String::from("me"),
+            })));
+
+        let mut app = App::new(&connection, query_maker);
+        while !app.finished_loading {
+            app.load_rows();
+        }
+
+        let offered: Vec<&str> = app
+            .choices
+            .top_items()
+            .iter()
+            .map(|c| c.key.as_str())
+            .collect();
+        assert_eq!(offered, vec!["/mine"]);
+        assert_eq!(app.total, 1);
+    }
+
+    /// Repeat-local offers the commands run in this directory, and only those,
+    /// whichever machine or account they came from.
+    #[test]
+    fn repeat_local_offers_the_commands_run_in_this_directory() {
+        let connection = sqlite::Connection::open(":memory:").unwrap();
+        connection
+            .execute(
+                "CREATE TABLE command (id INTEGER PRIMARY KEY, text VARCHAR NOT NULL, begin INTEGER NOT NULL, end INTEGER, workdir VARCHAR NOT NULL, user VARCHAR NOT NULL, host VARCHAR NOT NULL, exit INTEGER, server_id INTEGER)",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO command (text, begin, workdir, user, host, exit) VALUES \
+                 ('here', 1, '/here', 'me', 'here', 0), \
+                 ('synced', 2, '/here', 'you', 'elsewhere', 0), \
+                 ('elsewhere', 3, '/there', 'me', 'here', 0)",
+            )
+            .unwrap();
+        let query_maker: &'static SomeQueryMaker =
+            Box::leak(Box::new(SomeQueryMaker::RepeatLocal(Context {
+                workdir: Some(String::from("/here")),
+                hostname: String::from("here"),
+                username: String::from("me"),
+            })));
+
+        let mut app = App::new(&connection, query_maker);
+        while !app.finished_loading {
+            app.load_rows();
+        }
+
+        let mut offered: Vec<&str> = app
+            .choices
+            .top_items()
+            .iter()
+            .map(|c| c.key.as_str())
+            .collect();
+        offered.sort_unstable();
+        assert_eq!(offered, vec!["here", "synced"]);
+        assert_eq!(app.total, 2);
+    }
+
     /// A shell outlives the directory it sits in. Repeating a command must
     /// still work from one that has been removed, with no directory preferred
     /// and the rest of the ranking standing.
@@ -899,6 +981,40 @@ mod tests {
             .map(|c| c.key.as_str())
             .collect();
         assert_eq!(offered, vec!["twice", "once"]);
+    }
+
+    /// The page boundary is bound as a different parameter from the rest, and
+    /// only when there is one, so every mode has to page as well as start.
+    #[test]
+    fn every_mode_pages_through_a_history_that_does_not_fit_in_one_page() {
+        for query_maker in [
+            SomeQueryMaker::Cd(Context {
+                workdir: Some(String::from("/tmp")),
+                hostname: String::from("host"),
+                username: String::from("user"),
+            }),
+            SomeQueryMaker::Repeat(Context {
+                workdir: Some(String::from("/tmp")),
+                hostname: String::from("host"),
+                username: String::from("user"),
+            }),
+            SomeQueryMaker::RepeatLocal(Context {
+                workdir: Some(String::from("/tmp")),
+                hostname: String::from("host"),
+                username: String::from("user"),
+            }),
+        ] {
+            let count = 9000;
+            let connection = history_of_simultaneous_commands(count, 1);
+
+            let mut app = App::new(&connection, &query_maker);
+            while !app.finished_loading {
+                app.load_rows();
+            }
+
+            assert_eq!(app.total, count as u64);
+            assert_eq!(app.loaded, count as u64);
+        }
     }
 
     #[test]
