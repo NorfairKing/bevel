@@ -66,11 +66,28 @@ completeCliMigrations quiet = do
   setUpIndices
   logInfoN "Migrations done."
 
+-- | The indices the history is read through, and the ones it no longer is.
+--
+-- Each of these is paid for on the way in, on every command, so an index that
+-- nothing reads is not merely idle.  Keep this in step with what actually
+-- queries the history: `bevel-select`, `Sync`, and `lastDir`.
 setUpIndices :: (MonadIO m) => SqlPersistT m ()
 setUpIndices = do
-  rawExecute "CREATE INDEX IF NOT EXISTS command_text ON command (text)" []
+  -- Paging the history most recent first, for 'bevel-select repeat' and for
+  -- 'lastDir'.
   rawExecute "CREATE INDEX IF NOT EXISTS command_begin ON command (begin DESC)" []
+  -- The same, for 'bevel-select cd', which asks only for this user on this
+  -- host.
   rawExecute "CREATE INDEX IF NOT EXISTS command_user_host_begin ON command (user, host, begin DESC)" []
-  rawExecute "CREATE INDEX IF NOT EXISTS command_exit ON command (exit)" []
-  rawExecute "CREATE INDEX IF NOT EXISTS command_server_id ON command (server_id)" []
+  -- The same, for 'bevel-select repeat-local', which asks only for this
+  -- directory.
   rawExecute "CREATE INDEX IF NOT EXISTS command_workdir_begin ON command (workdir, begin DESC)" []
+  -- Finding what has been synced, and what has not, in 'Sync'.
+  rawExecute "CREATE INDEX IF NOT EXISTS command_server_id ON command (server_id)" []
+  -- Nothing selects a command by its text or by its exit status, so these two
+  -- were only ever written to.  Dropping them takes about thirty megabytes off
+  -- a history of eight hundred thousand commands, and two index writes off
+  -- every command gathered: the exit one was written twice, since the status
+  -- goes from null to a value when the command finishes and the entry moves.
+  rawExecute "DROP INDEX IF EXISTS command_text" []
+  rawExecute "DROP INDEX IF EXISTS command_exit" []
