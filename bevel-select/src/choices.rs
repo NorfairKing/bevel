@@ -6,10 +6,14 @@
 //! ```text
 //! order by  (fuzziness, use)  largest first, ties settled on the command
 //!
-//! use     = sum over the occurrences of one command of
-//!               exit_weight * 2^(-age_in_days / HALF_LIFE_IN_DAYS)
-//!           age_in_days = max(0, now - begin), in days
-//!           exit_weight = 2 succeeded, 1 failed, 0.5 running or interrupted
+//! use = sum over the occurrences of one command of
+//!           exit_weight * here_factor * 2^(-age_in_days / HALF_LIFE_IN_DAYS)
+//!
+//!       age_in_days = max(0, now - begin), in days
+//!       exit_weight = 2 succeeded, 1 failed, 0.5 running or interrupted
+//!       here_factor = 2^HERE_HALF_LIVES for an occurrence in the directory
+//!                     the picker was opened in, otherwise 1, which is the
+//!                     same as counting it that many half-lives younger
 //! ```
 //!
 //! Each requirement below says what breaks when it does not hold.
@@ -64,6 +68,20 @@
 //!   three years ago reachable, because once enough has been typed that it
 //!   matches better than anything else, nothing recent can bury it.
 //!
+//! * An occurrence in the directory the picker was opened in must count for
+//!   much more than one anywhere else. Where you are says more about what you
+//!   are about to run than anything else on offer: replaying the history and
+//!   asking where the command actually run next would have ranked, this moves
+//!   it to the top of the list in 25 percent of cases instead of 9, and after
+//!   three characters in 90 percent instead of 72.
+//!
+//! * It must count for more and not for everything. A command never run here
+//!   must still be offered, since the directory is a hint and not a filter,
+//!   and a single run here long ago must not hold the top of the list against
+//!   a command run every day elsewhere. Weighing those occurrences more heavily
+//!   keeps both; ordering by them ahead of everything else keeps neither, since
+//!   any use here at all, however decayed, is still more than none.
+//!
 //! * What it costs is the other direction. Any difference in fuzziness,
 //!   however small and however spurious, outranks any amount of use. That is
 //!   only safe while the matcher is not asked to produce differences it
@@ -95,6 +113,69 @@ const MAX_ITEMS: usize = 20;
 /// An occurrence is worth half as much for every this many days of its age.
 const HALF_LIFE_IN_DAYS: f64 = 30.0;
 
+/// How much younger an occurrence counts as when it happened in the directory
+/// the picker was opened in, in half-lives.
+///
+/// Weighing an occurrence more and treating it as younger are the same thing,
+/// since both multiply it: a factor of `2^n` is exactly a shift of `n`
+/// half-lives. Saying it in half-lives puts it in the same currency as the
+/// decay, where a bare factor would be a number out of nowhere.
+///
+/// Ten of them, so about three hundred days. It has to be this large because
+/// use spans four orders of magnitude: a command in constant use sits near a
+/// thousand and one fresh run here is worth two, so anything smaller is lost in
+/// the noise. Over 2000 held-out commands, doubling puts the command actually
+/// run next at the top 8.9 percent of the time against 8.8 for ignoring the
+/// directory altogether, and this puts it there 25.0 percent of the time.
+const HERE_HALF_LIVES: f64 = 10.0;
+
+/// What that comes to as a multiplier on an occurrence.
+///
+/// It is deliberately finite. Ordering by what was run here ahead of everything
+/// else would give a single run here three years ago an absolute hold over a
+/// command run fifty times a day elsewhere, because its decayed use here is
+/// still above zero while the other is exactly zero. Over the same 2000
+/// commands that put a near dead command at the top of the list five times,
+/// and this never did, while predicting the next command just as well.
+pub fn here_factor() -> f64 {
+    HERE_HALF_LIVES.exp2()
+}
+
+/// What one occurrence is worth before its age is taken off, as SQL.
+///
+/// `here` is a condition that holds for the rows run in the directory the
+/// picker was opened in, or `None` where no directory counts for more than
+/// another, which leaves the term out of the query altogether rather than
+/// making the database work out a constant once a row.
+///
+/// The database works this out rather than sending an exit status over for
+/// Rust to branch on and a path for it to compare, so that what arrives is the
+/// one number the ranking wants. It lives here beside the rest of the ranking
+/// rather than next to the queries, because it is part of the ranking. The
+/// decay cannot join it: it needs `POWER`, which the bundled SQLite does not
+/// have, and which measures about five times the cost of `exp2` per row even
+/// where it does.
+///
+/// There is deliberately no term for the machine or the account. Preferring
+/// either was measured at no effect whatever on my own history, at two, at ten
+/// and at a hundred, because only one host and one account are active in any
+/// thirty day window across the last two years and the decay has buried the
+/// rest long before a preference could matter. Two more conditions a row cost
+/// about a seventh of the time it takes to read the history, 173 against 197
+/// milliseconds over 822857 rows, so the pair was all cost and no measurable
+/// benefit. Add them when there is a history that moves between machines
+/// within a month, and they can be shown to do something.
+pub fn occurrence_weight_sql(here: Option<&str>) -> String {
+    let exit_weight = "CASE WHEN exit IS NULL THEN 0.5 WHEN exit = 0 THEN 2.0 ELSE 1.0 END";
+    match here {
+        None => format!("({exit_weight})"),
+        Some(here) => format!(
+            "({exit_weight}) * (CASE WHEN {here} THEN {here_factor} ELSE 1.0 END)",
+            here_factor = here_factor()
+        ),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 /// A command to offer, and the two numbers it was ordered by.
 ///
@@ -108,8 +189,8 @@ pub struct Choice {
 
 /// One distinct command, with the use of all its occurrences added up.
 ///
-/// The use does not depend on the search text, which is what lets the
-/// database be read only once per run.
+/// The use does not depend on the search text, which is what lets the database
+/// be read only once per run.
 struct Entry {
     key: String,
     usage: f64,
@@ -172,9 +253,9 @@ impl Choices {
     ///
     /// Occurrences are added whether or not they match the search text, so that
     /// editing the search text never requires reading them again.
-    pub fn add(&mut self, key: String, begin: i64, exit: Option<i64>) {
+    pub fn add(&mut self, key: String, begin: i64, weight: f64) {
         let key = without_trailing_whitespace(key);
-        let usage = self.usage(begin, exit);
+        let usage = self.usage(begin, weight);
         match self.entry_indices.get(&key) {
             Some(&index) => self.entries[index].usage += usage,
             None => {
@@ -303,22 +384,16 @@ impl Choices {
     }
 
     /// `exit_weight * 2^(-age_in_days / HALF_LIFE_IN_DAYS)`: what one
-    /// occurrence of a command is worth.
+    /// occurrence of a command is worth. The database has already worked out
+    /// the exit weight, see `EXIT_WEIGHT_SQL`.
     ///
     /// A timestamp at or after the moment the picker opened counts as one from
     /// that moment, rather than being worth more than any amount of use or
     /// having to be thrown away, so that a history gathered while the clock
     /// moved backwards still ranks.
-    fn usage(&self, begin: i64, exit: Option<i64>) -> f64 {
-        let exit_weight = match exit {
-            // If the command is still running or was interrupted, it's less relevant.
-            None => 0.5f64,
-            // If the command is succesful, it's more relevant.
-            Some(0) => 2f64,
-            Some(_) => 1f64,
-        };
+    fn usage(&self, begin: i64, weight: f64) -> f64 {
         let age_in_days = (self.now - begin).max(0) as f64 / NANOSECONDS_IN_A_DAY;
-        exit_weight * (-age_in_days / HALF_LIFE_IN_DAYS).exp2()
+        weight * (-age_in_days / HALF_LIFE_IN_DAYS).exp2()
     }
 
     pub fn search_text(&self) -> &str {
@@ -450,24 +525,26 @@ mod tests {
     const HALF_LIFE: i64 = (HALF_LIFE_IN_DAYS as i64) * DAY;
     const NOW: i64 = 4 * HALF_LIFE;
 
-    type Row = (String, i64, Option<i64>);
+    /// A command, when it ran, and what its exit status was worth. The database
+    /// works the last one out, see `EXIT_WEIGHT_SQL`.
+    type Row = (String, i64, f64);
 
     fn choices_for(search_text: &str, rows: &[Row]) -> Choices {
         let mut choices = Choices::new(NOW, Subject::Command);
         for c in search_text.chars() {
             choices.append(c);
         }
-        for (key, begin, exit) in rows {
-            choices.add(key.clone(), *begin, *exit);
+        for (key, begin, weight) in rows {
+            choices.add(key.clone(), *begin, *weight);
         }
         choices.recompute_top_items();
         choices
     }
 
     #[test]
-    fn weighs_an_occurrence_by_how_it_exited() {
-        for (exit, expected_usage) in [(Some(0), 2.0), (Some(1), 1.0), (None, 0.5)] {
-            let choices = choices_for("", &[(String::from("ls"), NOW, exit)]);
+    fn weighs_a_fresh_occurrence_by_what_its_exit_was_worth() {
+        for expected_usage in [2.0, 1.0, 0.5] {
+            let choices = choices_for("", &[(String::from("ls"), NOW, expected_usage)]);
             assert_eq!(
                 choices.top_items,
                 vec![Choice {
@@ -484,9 +561,9 @@ mod tests {
         let choices = choices_for(
             "",
             &[
-                (String::from("fresh"), NOW, Some(0)),
-                (String::from("stale"), NOW - HALF_LIFE, Some(0)),
-                (String::from("staler"), NOW - 2 * HALF_LIFE, Some(0)),
+                (String::from("fresh"), NOW, 2.0),
+                (String::from("stale"), NOW - HALF_LIFE, 2.0),
+                (String::from("staler"), NOW - 2 * HALF_LIFE, 2.0),
             ],
         );
 
@@ -506,8 +583,8 @@ mod tests {
         let choices = choices_for(
             "",
             &[
-                (String::from("ls"), NOW, Some(0)),
-                (String::from("ls"), NOW, Some(1)),
+                (String::from("ls"), NOW, 2.0),
+                (String::from("ls"), NOW, 1.0),
             ],
         );
         assert_eq!(
@@ -525,9 +602,9 @@ mod tests {
         let choices = choices_for(
             "",
             &[
-                (String::from("ls"), NOW, Some(0)),
-                (String::from("ls "), NOW, Some(0)),
-                (String::from("ls\t"), NOW, Some(0)),
+                (String::from("ls"), NOW, 2.0),
+                (String::from("ls "), NOW, 2.0),
+                (String::from("ls\t"), NOW, 2.0),
             ],
         );
 
@@ -543,14 +620,14 @@ mod tests {
 
     #[test]
     fn keeps_the_whitespace_a_command_starts_with() {
-        let choices = choices_for("", &[(String::from("  ls"), DAY, Some(0))]);
+        let choices = choices_for("", &[(String::from("  ls"), DAY, 2.0)]);
 
         assert_eq!(choices.top_items()[0].key, "  ls");
     }
 
     #[test]
     fn leaves_out_commands_that_do_not_match_the_search_text() {
-        let choices = choices_for("zzz", &[(String::from("ls"), DAY, Some(0))]);
+        let choices = choices_for("zzz", &[(String::from("ls"), DAY, 2.0)]);
         assert_eq!(choices.top_items, vec![]);
     }
 
@@ -559,7 +636,7 @@ mod tests {
     #[test]
     fn counts_a_command_from_the_future_as_one_from_just_now() {
         let mut choices = Choices::new(NOW, Subject::Command);
-        choices.add(String::from("ls"), NOW + DAY, Some(0));
+        choices.add(String::from("ls"), NOW + DAY, 2.0);
         choices.recompute_top_items();
         assert_eq!(
             choices.top_items,
@@ -577,17 +654,17 @@ mod tests {
     #[test]
     fn ranks_the_same_however_much_later_the_picker_was_opened() {
         let rows = [
-            (String::from("cabal build"), NOW - HALF_LIFE, Some(0)),
-            (String::from("cargo build"), NOW - 2 * HALF_LIFE, Some(0)),
-            (String::from("cargo build"), NOW - 3 * HALF_LIFE, Some(0)),
-            (String::from("carry on"), NOW - HALF_LIFE, Some(1)),
+            (String::from("cabal build"), NOW - HALF_LIFE, 2.0),
+            (String::from("cargo build"), NOW - 2 * HALF_LIFE, 2.0),
+            (String::from("cargo build"), NOW - 3 * HALF_LIFE, 2.0),
+            (String::from("carry on"), NOW - HALF_LIFE, 1.0),
         ];
         let mut later = Choices::new(NOW + 7 * HALF_LIFE, Subject::Command);
         for c in "car".chars() {
             later.append(c);
         }
-        for (key, begin, exit) in &rows {
-            later.add(key.clone(), *begin, *exit);
+        for (key, begin, weight) in &rows {
+            later.add(key.clone(), *begin, *weight);
         }
         later.recompute_top_items();
 
@@ -602,9 +679,9 @@ mod tests {
         let choices = choices_for(
             "ls",
             &[
-                (String::from("ls"), DAY, Some(0)),
-                (String::from("ls"), DAY, Some(0)),
-                (String::from("lets"), DAY, Some(0)),
+                (String::from("ls"), DAY, 2.0),
+                (String::from("ls"), DAY, 2.0),
+                (String::from("lets"), DAY, 2.0),
             ],
         );
 
@@ -619,9 +696,9 @@ mod tests {
         let choices = choices_for(
             "",
             &[
-                (String::from("rare"), DAY, Some(0)),
-                (String::from("common"), DAY, Some(0)),
-                (String::from("common"), DAY, Some(0)),
+                (String::from("rare"), DAY, 2.0),
+                (String::from("common"), DAY, 2.0),
+                (String::from("common"), DAY, 2.0),
             ],
         );
 
@@ -642,9 +719,9 @@ mod tests {
         for c in "nix".chars() {
             choices.append(c);
         }
-        choices.add(String::from(store), DAY, Some(0));
+        choices.add(String::from(store), DAY, 2.0);
         for _ in 0..5 {
-            choices.add(String::from(project), DAY, Some(0));
+            choices.add(String::from(project), DAY, 2.0);
         }
         choices.recompute_top_items();
 
@@ -652,10 +729,65 @@ mod tests {
         assert_eq!(ranking, vec![project, store]);
     }
 
+    /// Where you are says more about what you are about to run than how much
+    /// you run it elsewhere, so one run here outranks many runs anywhere.
+    #[test]
+    fn ranks_a_command_run_here_above_a_more_used_one_that_was_not() {
+        let here = "stack test";
+        let elsewhere = "stack build";
+        let mut choices = Choices::new(NOW, Subject::Command);
+        choices.add(String::from(here), NOW, 2.0 * here_factor());
+        for _ in 0..500 {
+            choices.add(String::from(elsewhere), NOW, 2.0);
+        }
+        choices.recompute_top_items();
+
+        let ranking: Vec<&str> = choices.top_items().iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(ranking, vec![here, elsewhere]);
+    }
+
+    /// The directory is a hint, not a filter: a command never run here must
+    /// still be offered, and among such commands use decides as before.
+    #[test]
+    fn still_offers_commands_never_run_here() {
+        let mut choices = Choices::new(NOW, Subject::Command);
+        choices.add(String::from("here"), NOW, 2.0 * here_factor());
+        choices.add(String::from("rare"), NOW, 2.0);
+        choices.add(String::from("common"), NOW, 2.0);
+        choices.add(String::from("common"), NOW, 2.0);
+        choices.recompute_top_items();
+
+        let ranking: Vec<&str> = choices.top_items().iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(ranking, vec!["here", "common", "rare"]);
+    }
+
+    /// Being run here counts for more, not for everything. One run here long
+    /// enough ago must lose to a command still being run every day elsewhere,
+    /// which is what ordering by what was run here ahead of everything else
+    /// could not do: any use here at all, however decayed, is more than none.
+    #[test]
+    fn lets_a_command_still_in_use_outrank_one_run_here_long_ago() {
+        let long_ago = "stack test";
+        let every_day = "stack build";
+        let mut choices = Choices::new(NOW, Subject::Command);
+        choices.add(
+            String::from(long_ago),
+            NOW - 10 * HALF_LIFE,
+            2.0 * here_factor(),
+        );
+        for _ in 0..100 {
+            choices.add(String::from(every_day), NOW, 2.0);
+        }
+        choices.recompute_top_items();
+
+        let ranking: Vec<&str> = choices.top_items().iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(ranking, vec![every_day, long_ago]);
+    }
+
     #[test]
     fn keeps_at_most_max_items_top_items() {
         let rows: Vec<Row> = (0..(MAX_ITEMS * 2))
-            .map(|i| (format!("command {i}"), DAY, Some(0)))
+            .map(|i| (format!("command {i}"), DAY, 2.0))
             .collect();
         let choices = choices_for("", &rows);
         assert_eq!(choices.top_items.len(), MAX_ITEMS);
@@ -664,12 +796,12 @@ mod tests {
     #[test]
     fn narrows_and_widens_without_reading_the_commands_again() {
         let rows = [
-            (String::from("cabal build"), DAY, Some(0)),
-            (String::from("cargo build"), DAY, Some(0)),
+            (String::from("cabal build"), DAY, 2.0),
+            (String::from("cargo build"), DAY, 2.0),
         ];
         let mut choices = Choices::new(NOW, Subject::Command);
-        for (key, begin, exit) in &rows {
-            choices.add(key.clone(), *begin, *exit);
+        for (key, begin, weight) in &rows {
+            choices.add(key.clone(), *begin, *weight);
         }
         choices.recompute_top_items();
 
@@ -750,7 +882,7 @@ mod tests {
             // faint matches are generated as well as obvious ones.
             prop_oneof!["[a-c ]{1,5}", "ax{20,60}bx{20,60}c"],
             1i64..NOW,
-            proptest::option::of(0i64..3i64),
+            prop_oneof![Just(0.5f64), Just(1.0f64), Just(2.0f64)],
         )
     }
 
@@ -761,7 +893,7 @@ mod tests {
         let gap = "x".repeat(40);
         let key = format!("a{gap}b{gap}c");
 
-        let choices = choices_for("abc", &[(key.clone(), DAY, Some(0))]);
+        let choices = choices_for("abc", &[(key.clone(), DAY, 2.0)]);
 
         assert_eq!(
             choices
@@ -781,7 +913,11 @@ mod tests {
     /// the whole result can be compared and not just its first page.
     fn few_rows() -> impl Strategy<Value = Vec<Row>> {
         prop::collection::vec(
-            ("[ab]{1,2}", 1i64..NOW, proptest::option::of(0i64..3i64)),
+            (
+                "[ab]{1,2}",
+                1i64..NOW,
+                prop_oneof![Just(0.5f64), Just(1.0f64), Just(2.0f64)],
+            ),
             0..30,
         )
     }
@@ -891,8 +1027,8 @@ mod tests {
                 in_batches.append(c);
             }
             for batch in rows.chunks(batch_size) {
-                for (key, begin, exit) in batch {
-                    in_batches.add(key.clone(), *begin, *exit);
+                for (key, begin, weight) in batch {
+                    in_batches.add(key.clone(), *begin, *weight);
                 }
                 in_batches.recompute_top_items();
             }

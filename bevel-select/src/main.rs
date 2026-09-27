@@ -26,64 +26,65 @@ mod choices;
 
 use choices::{clamped_selection, next_selection, previous_selection, Choices, Subject};
 
-struct CdQueryMaker {
+/// Where the picker was opened: the directory the ranking prefers, and the
+/// machine and account that `cd` filters on.
+struct Context {
+    /// A shell outlives the directory it sits in, which is removed from under
+    /// it often enough, and the history is still worth offering when it has
+    /// been. `repeat` then simply has no directory to prefer.
+    workdir: Option<String>,
     hostname: String,
     username: String,
 }
 
-impl CdQueryMaker {
+impl Context {
     fn new() -> Self {
+        let workdir: Option<String> = env::current_dir()
+            .ok()
+            .and_then(|d| d.into_os_string().into_string().ok());
         let hostname: String = hostname().expect("Unable to read hostname");
         let username: String = username().expect("Unable to read username");
 
-        CdQueryMaker { hostname, username }
-    }
-}
-
-struct RepeatLocalQueryMaker {
-    workdir: String,
-}
-
-impl RepeatLocalQueryMaker {
-    fn new() -> Self {
-        let workdir: String = env::current_dir()
-            .unwrap()
-            .into_os_string()
-            .into_string()
-            .unwrap();
-
-        RepeatLocalQueryMaker { workdir }
+        Context {
+            workdir,
+            hostname,
+            username,
+        }
     }
 }
 enum SomeQueryMaker {
-    Cd(CdQueryMaker),
-    Repeat,
-    RepeatLocal(RepeatLocalQueryMaker),
+    Cd(Context),
+    Repeat(Context),
+    RepeatLocal(Context),
 }
 impl SomeQueryMaker {
     fn subject(&self) -> Subject {
         match self {
             SomeQueryMaker::Cd(_) => Subject::Directory,
-            SomeQueryMaker::Repeat => Subject::Command,
+            SomeQueryMaker::Repeat(_) => Subject::Command,
             SomeQueryMaker::RepeatLocal(_) => Subject::Command,
         }
     }
     fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
         match self {
-            SomeQueryMaker::Cd(cqm) => {
+            SomeQueryMaker::Cd(context) => {
                 let mut statement = connection
                     .prepare("SELECT COUNT(*) from command WHERE host = ? AND user = ?")
                     .unwrap();
-                statement.bind((1, cqm.hostname.as_str())).unwrap();
-                statement.bind((2, cqm.username.as_str())).unwrap();
+                statement.bind((1, context.hostname.as_str())).unwrap();
+                statement.bind((2, context.username.as_str())).unwrap();
                 statement
             }
-            SomeQueryMaker::Repeat => connection.prepare("SELECT COUNT(*) from command").unwrap(),
-            SomeQueryMaker::RepeatLocal(rlqm) => {
+            SomeQueryMaker::Repeat(_) => {
+                connection.prepare("SELECT COUNT(*) from command").unwrap()
+            }
+            SomeQueryMaker::RepeatLocal(context) => {
                 let mut statement = connection
                     .prepare("SELECT COUNT(*) from command WHERE workdir = ?")
                     .unwrap();
-                statement.bind((1, rlqm.workdir.as_str())).unwrap();
+                if let Some(workdir) = &context.workdir {
+                    statement.bind((1, workdir.as_str())).unwrap();
+                }
                 statement
             }
         }
@@ -99,56 +100,78 @@ impl SomeQueryMaker {
         connection: &'a sqlite::Connection,
         last_begin_loaded: Option<i64>,
     ) -> sqlite::Statement<'a> {
+        // The parameters are numbered alike across the modes even though no one
+        // query uses them all, so that the weight expression can be shared:
+        // ?1 the page boundary, ?2 the directory, ?3 the machine, ?4 the
+        // account. Each mode binds only the ones its own query mentions.
+        let boundary = if last_begin_loaded.is_some() {
+            "begin <= ?1 AND"
+        } else {
+            ""
+        };
+        let query = match self {
+            // Ranking directories, so no directory counts for more. Host and
+            // user are filtered here rather than preferred, because a path from
+            // another machine may not be a path on this one.
+            SomeQueryMaker::Cd(_) => format!(
+                "SELECT workdir, begin, {weight}, id FROM command \
+                 WHERE {boundary} host = ?3 AND user = ?4 \
+                 ORDER BY begin DESC LIMIT 8096",
+                weight = choices::occurrence_weight_sql(None)
+            ),
+            // The only mode with no condition of its own to hang the boundary
+            // on, and the only one where the directory is a preference. With no
+            // directory to be in, there is none to prefer, and the rest of the
+            // ranking stands.
+            SomeQueryMaker::Repeat(context) => {
+                let weight = choices::occurrence_weight_sql(
+                    context.workdir.as_ref().map(|_| "workdir = ?2"),
+                );
+                match last_begin_loaded {
+                    Some(_) => format!(
+                        "SELECT text, begin, {weight}, id FROM command \
+                         WHERE begin <= ?1 ORDER BY begin DESC LIMIT 8096"
+                    ),
+                    None => format!(
+                        "SELECT text, begin, {weight}, id FROM command \
+                         ORDER BY begin DESC LIMIT 8096"
+                    ),
+                }
+            }
+            // Every row is from this directory already, so preferring it would
+            // scale the whole list and change nothing.
+            SomeQueryMaker::RepeatLocal(_) => format!(
+                "SELECT text, begin, {weight}, id FROM command \
+                 WHERE {boundary} workdir = ?2 \
+                 ORDER BY begin DESC LIMIT 8096",
+                weight = choices::occurrence_weight_sql(None)
+            ),
+        };
+        let context = self.context();
+        let mut statement = connection.prepare(&query).unwrap();
+        if let Some(begin) = last_begin_loaded {
+            statement.bind((1, begin)).unwrap();
+        }
+        // Cd is the only one that looks at the machine and the account, and it
+        // filters on them rather than preferring them.
         match self {
-            SomeQueryMaker::Cd(cqm) => {
-                if let Some(begin) = last_begin_loaded {
-                    let mut statement = connection
-                        .prepare("SELECT workdir, begin, exit, id FROM command WHERE begin <= ? AND host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
-                        .unwrap();
-                    statement.bind((1, begin)).unwrap();
-                    statement.bind((2, cqm.hostname.as_str())).unwrap();
-                    statement.bind((3, cqm.username.as_str())).unwrap();
-                    statement
-                } else {
-                    let mut statement = connection
-                        .prepare("SELECT workdir, begin, exit, id FROM command WHERE host = ? AND user = ? ORDER BY begin DESC LIMIT 8096")
-                        .unwrap();
-                    statement.bind((1, cqm.hostname.as_str())).unwrap();
-                    statement.bind((2, cqm.username.as_str())).unwrap();
-                    statement
+            SomeQueryMaker::Cd(_) => {
+                statement.bind((3, context.hostname.as_str())).unwrap();
+                statement.bind((4, context.username.as_str())).unwrap();
+            }
+            SomeQueryMaker::Repeat(_) | SomeQueryMaker::RepeatLocal(_) => {
+                if let Some(workdir) = &context.workdir {
+                    statement.bind((2, workdir.as_str())).unwrap();
                 }
             }
-            SomeQueryMaker::Repeat => {
-                if let Some(begin) = last_begin_loaded {
-                    let mut statement = connection
-                        .prepare("SELECT text, begin, exit, id FROM command WHERE begin <= ? ORDER BY begin DESC LIMIT 8096")
-                        .unwrap();
-                    statement.bind((1, begin)).unwrap();
-                    statement
-                } else {
-                    connection
-                        .prepare(
-                            "SELECT text, begin, exit, id FROM command ORDER BY begin DESC LIMIT 8096",
-                        )
-                        .unwrap()
-                }
-            }
-            SomeQueryMaker::RepeatLocal(rlqm) => {
-                if let Some(begin) = last_begin_loaded {
-                    let mut statement = connection
-                        .prepare("SELECT text, begin, exit, id FROM command WHERE begin <= ? AND workdir = ? ORDER BY begin DESC LIMIT 8096")
-                        .unwrap();
-                    statement.bind((1, begin)).unwrap();
-                    statement.bind((2, rlqm.workdir.as_str())).unwrap();
-                    statement
-                } else {
-                    let mut statement = connection
-                        .prepare("SELECT text, begin, exit, id FROM command WHERE workdir = ? ORDER BY begin DESC LIMIT 8096")
-                        .unwrap();
-                    statement.bind((1, rlqm.workdir.as_str())).unwrap();
-                    statement
-                }
-            }
+        }
+        statement
+    }
+    fn context(&self) -> &Context {
+        match self {
+            SomeQueryMaker::Cd(context) => context,
+            SomeQueryMaker::Repeat(context) => context,
+            SomeQueryMaker::RepeatLocal(context) => context,
         }
     }
 }
@@ -163,9 +186,18 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
     let query_maker: SomeQueryMaker = match command.as_str() {
-        "cd" => SomeQueryMaker::Cd(CdQueryMaker::new()),
-        "repeat" => SomeQueryMaker::Repeat,
-        "repeat-local" => SomeQueryMaker::RepeatLocal(RepeatLocalQueryMaker::new()),
+        "cd" => SomeQueryMaker::Cd(Context::new()),
+        "repeat" => SomeQueryMaker::Repeat(Context::new()),
+        "repeat-local" => {
+            let context = Context::new();
+            // This mode is nothing but the directory, so without one there is
+            // nothing to show. The others carry on.
+            if context.workdir.is_none() {
+                eprintln!("No working directory to look in. Has it been removed?");
+                return ExitCode::FAILURE;
+            }
+            SomeQueryMaker::RepeatLocal(context)
+        }
         _ => {
             eprintln!("Unknown command: {command}");
             eprintln!("{USAGE}");
@@ -536,7 +568,7 @@ impl<'a> App<'a> {
         while statement.next().unwrap() == State::Row {
             let key = statement.read::<String, _>(0).unwrap();
             let begin = statement.read::<i64, _>(1).unwrap();
-            let exit = statement.read::<Option<i64>, _>(2).unwrap();
+            let weight = statement.read::<f64, _>(2).unwrap();
             let id = statement.read::<i64, _>(3).unwrap();
 
             if self.last_begin_loaded == Some(begin) {
@@ -549,7 +581,7 @@ impl<'a> App<'a> {
                 self.ids_loaded_at_last_begin.insert(id);
             }
 
-            self.choices.add(key, begin, exit);
+            self.choices.add(key, begin, weight);
 
             self.loaded += 1;
             new_in_page += 1;
@@ -744,12 +776,129 @@ mod tests {
     }
 
     fn load_everything(connection: &sqlite::Connection) -> App<'_> {
-        let query_maker: &'static SomeQueryMaker = &SomeQueryMaker::Repeat;
+        // Leaked so that it outlives the app that borrows it, which a test may
+        // do and a run may not.
+        let query_maker: &'static SomeQueryMaker =
+            Box::leak(Box::new(SomeQueryMaker::Repeat(Context {
+                workdir: Some(String::from("/tmp")),
+                hostname: String::from("host"),
+                username: String::from("user"),
+            })));
         let mut app = App::new(connection, query_maker);
         while !app.finished_loading {
             app.load_rows();
         }
         app
+    }
+
+    /// What an occurrence is worth is worked out by the database, so running it
+    /// is the only way to cover the rule.
+    #[test]
+    fn works_out_in_the_database_what_an_occurrence_is_worth() {
+        let connection = sqlite::Connection::open(":memory:").unwrap();
+        connection
+            .execute("CREATE TABLE command (id INTEGER PRIMARY KEY, exit INTEGER)")
+            .unwrap();
+        connection
+            .execute("INSERT INTO command (id, exit) VALUES (1, 0), (2, 1), (3, NULL)")
+            .unwrap();
+
+        let mut weights: Vec<f64> = Vec::new();
+        for here in [None, Some("1")] {
+            let query = format!(
+                "SELECT {} FROM command ORDER BY id",
+                choices::occurrence_weight_sql(here)
+            );
+            let mut statement = connection.prepare(&query).unwrap();
+            while statement.next().unwrap() == State::Row {
+                weights.push(statement.read::<f64, _>(0).unwrap());
+            }
+        }
+
+        // The second pass counts every row as being in this directory.
+        let here = choices::here_factor();
+        assert_eq!(weights, vec![2.0, 1.0, 0.5, 2.0 * here, here, 0.5 * here]);
+    }
+
+    /// Whether a command was run in the directory the picker was opened in is
+    /// also worked out by the database, and only the whole load shows it.
+    #[test]
+    fn weighs_only_the_commands_run_here_more_heavily() {
+        let connection = sqlite::Connection::open(":memory:").unwrap();
+        connection
+            .execute(
+                "CREATE TABLE command (id INTEGER PRIMARY KEY, text VARCHAR NOT NULL, begin INTEGER NOT NULL, end INTEGER, workdir VARCHAR NOT NULL, user VARCHAR NOT NULL, host VARCHAR NOT NULL, exit INTEGER, server_id INTEGER)",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO command (text, begin, workdir, user, host, exit) VALUES \
+                 ('here', 1, '/here', 'user', 'host', 0), \
+                 ('there', 1, '/there', 'user', 'host', 0)",
+            )
+            .unwrap();
+        let query_maker: &'static SomeQueryMaker =
+            Box::leak(Box::new(SomeQueryMaker::Repeat(Context {
+                workdir: Some(String::from("/here")),
+                hostname: String::from("host"),
+                username: String::from("user"),
+            })));
+
+        let mut app = App::new(&connection, query_maker);
+        while !app.finished_loading {
+            app.load_rows();
+        }
+
+        // Both ran at the same moment, so the whole difference is the
+        // directory. What that is worth exactly is pinned where the database
+        // works it out; this is that it reaches the ranking at all.
+        let offered: Vec<&str> = app
+            .choices
+            .top_items()
+            .iter()
+            .map(|c| c.key.as_str())
+            .collect();
+        assert_eq!(offered, vec!["here", "there"]);
+    }
+
+    /// A shell outlives the directory it sits in. Repeating a command must
+    /// still work from one that has been removed, with no directory preferred
+    /// and the rest of the ranking standing.
+    #[test]
+    fn repeats_from_a_directory_that_is_no_longer_there() {
+        let connection = sqlite::Connection::open(":memory:").unwrap();
+        connection
+            .execute(
+                "CREATE TABLE command (id INTEGER PRIMARY KEY, text VARCHAR NOT NULL, begin INTEGER NOT NULL, end INTEGER, workdir VARCHAR NOT NULL, user VARCHAR NOT NULL, host VARCHAR NOT NULL, exit INTEGER, server_id INTEGER)",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO command (text, begin, workdir, user, host, exit) VALUES \
+                 ('once', 1, '/gone', 'me', 'here', 0), \
+                 ('twice', 2, '/elsewhere', 'me', 'here', 0), \
+                 ('twice', 3, '/elsewhere', 'me', 'here', 0)",
+            )
+            .unwrap();
+        let query_maker: &'static SomeQueryMaker =
+            Box::leak(Box::new(SomeQueryMaker::Repeat(Context {
+                workdir: None,
+                hostname: String::from("here"),
+                username: String::from("me"),
+            })));
+
+        let mut app = App::new(&connection, query_maker);
+        while !app.finished_loading {
+            app.load_rows();
+        }
+
+        let offered: Vec<&str> = app
+            .choices
+            .top_items()
+            .iter()
+            .map(|c| c.key.as_str())
+            .collect();
+        assert_eq!(offered, vec!["twice", "once"]);
     }
 
     #[test]
