@@ -24,7 +24,7 @@ use sqlite::State;
 
 mod choices;
 
-use choices::{clamped_selection, next_selection, previous_selection, Choices};
+use choices::{clamped_selection, next_selection, previous_selection, Choices, Subject};
 
 struct CdQueryMaker {
     hostname: String,
@@ -61,6 +61,13 @@ enum SomeQueryMaker {
     RepeatLocal(RepeatLocalQueryMaker),
 }
 impl SomeQueryMaker {
+    fn subject(&self) -> Subject {
+        match self {
+            SomeQueryMaker::Cd(_) => Subject::Directory,
+            SomeQueryMaker::Repeat => Subject::Command,
+            SomeQueryMaker::RepeatLocal(_) => Subject::Command,
+        }
+    }
     fn bind_count_query<'a>(&self, connection: &'a sqlite::Connection) -> sqlite::Statement<'a> {
         match self {
             SomeQueryMaker::Cd(cqm) => {
@@ -466,7 +473,7 @@ impl<'a> App<'a> {
             query_maker,
             connection,
             list_state,
-            choices: Choices::new(now_nanos()),
+            choices: Choices::new(now_nanos(), query_maker.subject()),
             last_begin_loaded: None,
             ids_loaded_at_last_begin: HashSet::new(),
             finished_loading: false,

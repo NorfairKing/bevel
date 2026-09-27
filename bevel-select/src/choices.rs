@@ -29,6 +29,18 @@ struct Candidate {
     fuzziness: u32,
 }
 
+/// What the choices are, which decides whether matching near the start of one
+/// counts for more than matching further in.
+pub enum Subject {
+    /// A command is usually recognised by how it starts.
+    Command,
+    /// A directory is not. The front of a path is boilerplate shared by
+    /// thousands of them, so preferring a match there ranks every directory
+    /// under /nix/store above every project directory for the search text
+    /// "nix", however long ago the store paths were visited.
+    Directory,
+}
+
 pub struct Choices {
     now: i64,
     search_text: String,
@@ -44,11 +56,12 @@ pub struct Choices {
 }
 
 impl Choices {
-    pub fn new(now: i64) -> Self {
+    pub fn new(now: i64, subject: Subject) -> Self {
         let mut config = Config::DEFAULT;
-        // A command is usually recognised by how it starts, so a match at the
-        // front of one counts for more.
-        config.prefer_prefix = true;
+        config.prefer_prefix = match subject {
+            Subject::Command => true,
+            Subject::Directory => false,
+        };
         Choices {
             now,
             search_text: String::new(),
@@ -348,7 +361,7 @@ mod tests {
     type Row = (String, i64, Option<i64>);
 
     fn choices_for(search_text: &str, rows: &[Row]) -> Choices {
-        let mut choices = Choices::new(NOW);
+        let mut choices = Choices::new(NOW, Subject::Command);
         for c in search_text.chars() {
             choices.append(c);
         }
@@ -429,7 +442,7 @@ mod tests {
 
     #[test]
     fn leaves_out_commands_from_the_future() {
-        let mut choices = Choices::new(DAY);
+        let mut choices = Choices::new(DAY, Subject::Command);
         choices.add(String::from("ls"), 2 * DAY, Some(0));
         choices.recompute_top_items();
         assert_eq!(choices.top_items, vec![]);
@@ -437,7 +450,7 @@ mod tests {
 
     #[test]
     fn leaves_out_commands_from_exactly_now() {
-        let mut choices = Choices::new(DAY);
+        let mut choices = Choices::new(DAY, Subject::Command);
         choices.add(String::from("ls"), DAY, Some(0));
         choices.recompute_top_items();
         assert_eq!(choices.top_items, vec![]);
@@ -475,6 +488,29 @@ mod tests {
         assert_eq!(ranking, vec!["common", "rare"]);
     }
 
+    /// A command is recognised by how it starts, but a directory is not: the
+    /// front of a path is boilerplate shared by thousands of them.  Matching
+    /// early in the string must therefore not outrank being used, or every
+    /// directory under /nix/store outranks every project directory for the
+    /// search text "nix".
+    #[test]
+    fn ranks_directories_by_use_rather_than_by_where_the_match_starts() {
+        let store = "/nix/store/lhznlqkn5l53nbsp72fqylhbwkh4qzwn-vmtest-ccr2004";
+        let project = "/home/syd/src/nix-ci";
+        let mut choices = Choices::new(NOW, Subject::Directory);
+        for c in "nix".chars() {
+            choices.append(c);
+        }
+        choices.add(String::from(store), DAY, Some(0));
+        for _ in 0..5 {
+            choices.add(String::from(project), DAY, Some(0));
+        }
+        choices.recompute_top_items();
+
+        let ranking: Vec<&str> = choices.top_items().iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(ranking, vec![project, store]);
+    }
+
     #[test]
     fn keeps_at_most_max_items_top_items() {
         let rows: Vec<Row> = (0..(MAX_ITEMS * 2))
@@ -490,7 +526,7 @@ mod tests {
             (String::from("cabal build"), DAY, Some(0)),
             (String::from("cargo build"), DAY, Some(0)),
         ];
-        let mut choices = Choices::new(NOW);
+        let mut choices = Choices::new(NOW, Subject::Command);
         for (key, begin, exit) in &rows {
             choices.add(key.clone(), *begin, *exit);
         }
@@ -543,7 +579,7 @@ mod tests {
     /// same match scored differently depending on what came before it.
     #[test]
     fn the_matcher_answers_the_same_way_however_much_it_has_been_used() {
-        let mut choices = Choices::new(NOW);
+        let mut choices = Choices::new(NOW, Subject::Command);
         let cold = fuzziness(&mut choices.matcher, &mut choices.haystack, None, "   ");
 
         let needle = Atom::new(
@@ -713,7 +749,7 @@ mod tests {
             rows in few_rows(),
             batch_size in 1usize..10,
         ) {
-            let mut in_batches = Choices::new(NOW);
+            let mut in_batches = Choices::new(NOW, Subject::Command);
             for c in search_text.chars() {
                 in_batches.append(c);
             }
