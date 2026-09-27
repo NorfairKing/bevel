@@ -1,8 +1,29 @@
 //! What the ranking has to satisfy.
 //!
 //! A command's rank is how well it matches the search text, adjusted by how
-//! much the command is used. Each requirement below says what breaks when it
-//! does not hold.
+//! much the command is used:
+//!
+//! ```text
+//! rank     = quality + span * use_term
+//!
+//! quality  = fuzziness / fuzziness of the search text matched against itself
+//!            (1 while there is no search text: everything matches equally)
+//!
+//! span     = USE_SPAN * 2^(-max(0, length - 1) / SEARCH_HALF_LIFE_IN_CHARS)
+//!            for a search text of `length` characters
+//!
+//! use_term = 2 / (1 + (most_use / use)^(1 / USE_WIDTH))
+//!            where `most_use` is the use of the most used command of all
+//!
+//! use      = sum over the occurrences of one command of
+//!                exit_weight * 2^(-age_in_days / HALF_LIFE_IN_DAYS)
+//!            age_in_days  = max(0, now - begin), in days
+//!            exit_weight  = 2 succeeded, 1 failed, 0.5 running or interrupted
+//! ```
+//!
+//! So `quality` and `use_term` both lie between 0 and 1, and `span` is the
+//! most that use can shift a rank. Each requirement below says what breaks
+//! when it does not hold.
 //!
 //! # Use
 //!
@@ -45,10 +66,12 @@
 //! * It must be a function of the search text and the command alone, and give
 //!   the same answer however much the matcher has been used before it.
 //!
-//! * It must mean the same thing whatever the length of the search text, so
-//!   that the weight it carries against use does not quietly change while the
-//!   search text is being typed. Dividing by the best score that search text
-//!   could reach on any command gives this.
+//! * It must be on one scale whatever the length of the search text. The
+//!   matcher's raw score grows with the search text, so without dividing by
+//!   the best that search text could reach, `USE_SPAN` would stand for a
+//!   different trade at every length and could not be chosen at all. What use
+//!   is allowed to weigh does change with the length, but deliberately and in
+//!   one place, below.
 //!
 //! * A command that does not match the search text at all must never be
 //!   offered, however much it is used.
@@ -96,11 +119,15 @@ const MAX_ITEMS: usize = 20;
 /// An occurrence is worth half as much for every this many days of its age.
 const HALF_LIFE_IN_DAYS: f64 = 30.0;
 
-/// The largest difference in match quality that use can make up for.
+/// The largest difference in match quality that use can make up for, for a
+/// search text of one character or none. It shrinks from there, see `span`.
 const USE_SPAN: f64 = 0.15;
 
-/// The scale, in doublings of use, over which use fades from counting for
-/// everything it can to counting for nothing.
+/// How sharply use tells commands apart: a ratio of use is raised to the power
+/// `1 / USE_WIDTH`, so a command used this many doublings less than the most
+/// used one keeps two thirds of what use can give, and twice that, two fifths.
+/// Larger values flatten the difference between a much used command and a
+/// seldom used one.
 const USE_WIDTH: f64 = 6.0;
 
 /// What use may weigh is halved for every this many characters of search text.
@@ -345,7 +372,8 @@ impl Choices {
             .collect();
     }
 
-    /// What one occurrence of a command is worth.
+    /// `exit_weight * 2^(-age_in_days / HALF_LIFE_IN_DAYS)`: what one
+    /// occurrence of a command is worth.
     ///
     /// A timestamp at or after the moment the picker opened counts as one from
     /// that moment, rather than being worth more than any amount of use or
@@ -449,12 +477,12 @@ fn fuzziness(
     }
 }
 
-/// How well a command matches, as a fraction of the best the search text could
-/// possibly be matched.
+/// `fuzziness / best_fuzziness`: how well a command matches, as a fraction of
+/// the best the search text could possibly be matched.
 ///
-/// Measuring it against that best keeps a difference in quality worth the same
-/// against use however long the search text is, rather than growing with it.
-/// Every command is equally good for an empty search text.
+/// Dividing by that best is what puts a three character search and a twenty
+/// character one on one scale, so that `USE_SPAN` means the same thing
+/// throughout. Every command is equally good for an empty search text.
 fn quality(fuzziness: u32, best_fuzziness: Option<f64>) -> f64 {
     match best_fuzziness {
         None => 1.0,
@@ -462,12 +490,14 @@ fn quality(fuzziness: u32, best_fuzziness: Option<f64>) -> f64 {
     }
 }
 
-/// Where a command belongs in the list, largest first.
+/// `quality + span * use_term`: where a command belongs in the list, largest
+/// first.
 fn rank(quality: f64, usage: f64, most_usage: f64, search_length: usize) -> f64 {
     quality + span(search_length) * use_term(usage, most_usage)
 }
 
-/// The most that use may add to a rank, which shrinks as the search text grows.
+/// `USE_SPAN * 2^(-max(0, length - 1) / SEARCH_HALF_LIFE_IN_CHARS)`: the most
+/// that use may add to a rank, which shrinks as the search text grows.
 ///
 /// Commands that match the search text equally well are still ordered by use,
 /// however much has been typed, because this never reaches zero.
@@ -476,7 +506,8 @@ fn span(search_length: usize) -> f64 {
     USE_SPAN * (-typed / SEARCH_HALF_LIFE_IN_CHARS).exp2()
 }
 
-/// What use is worth, as a fraction of everything it could be worth.
+/// `2 / (1 + (most_usage / usage)^(1 / USE_WIDTH))`: what use is worth, as a
+/// fraction of everything it could be worth.
 ///
 /// Use is compared against the most used command rather than taken on its own,
 /// which is what makes the whole ranking blind to a common factor across every
