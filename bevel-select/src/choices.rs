@@ -1,10 +1,12 @@
 //! What the ranking has to satisfy.
 //!
-//! Commands are ordered by how well they match the search text, and among
-//! those that match it equally well, by how much they are used:
+//! Commands are ordered by one score that adds how well they match the search
+//! text to how much they are used:
 //!
 //! ```text
-//! order by  (fuzziness, use)  largest first, ties settled on the command
+//! order by  score  largest first, ties settled on the command
+//!
+//! score = fuzziness + FUZZINESS_PER_DOUBLING * log2(use)
 //!
 //! use = sum over the occurrences of one command of
 //!           exit_weight * here_factor * 2^(-age_in_days / HALF_LIFE_IN_DAYS)
@@ -63,17 +65,41 @@
 //!
 //! # Putting the two together
 //!
-//! * Matching decides, and use only settles the ties. This is the whole of
-//!   the trade, and it is deliberate: it is what keeps a command last run
-//!   three years ago reachable, because once enough has been typed that it
-//!   matches better than anything else, nothing recent can bury it.
+//! * The two must be added, not ordered one ahead of the other. Settling
+//!   matching first and use afterwards sounds like the sharper rule and is
+//!   the wrong one: the matcher spends most of its range on differences too
+//!   small to mean anything, so a handful of points for where in the command
+//!   a character happened to fall buried every amount of use behind them, and
+//!   a search offered commands last run years ago ahead of the one run every
+//!   day.
+//!
+//! * Use must enter as a logarithm, and the matcher's score must not. Use is
+//!   a product of factors spanning some seventeen orders of magnitude, so its
+//!   differences mean something only as ratios; a logarithm turns those
+//!   ratios into the units the matcher counts in, and
+//!   `FUZZINESS_PER_DOUBLING` is the rate they exchange at.
+//!
+//! * Multiplying the two instead must not be mistaken for a way to say the
+//!   same thing. A use below one has a negative logarithm, which is the
+//!   ordinary case once the decay has bitten, and multiplying by it turns the
+//!   matcher upside down: among those commands the better match scores lower.
+//!   With no search text every fuzziness is zero, so a product is zero for
+//!   every command and the picker opens on an alphabetical slice of the
+//!   history rather than on what is used. Both were measured, and the second
+//!   put the command actually run next outside the list every single time.
+//!
+//! * A command must stay reachable by typing more of it. Ordering on matching
+//!   alone gave this by making a better match unbeatable; adding gives it
+//!   another way, because typing only ever takes matches away, and once
+//!   enough has been typed that nothing else matches at all there is nothing
+//!   left to bury it.
 //!
 //! * An occurrence in the directory the picker was opened in must count for
 //!   much more than one anywhere else. Where you are says more about what you
 //!   are about to run than anything else on offer: replaying the history and
 //!   asking where the command actually run next would have ranked, this moves
-//!   it to the top of the list in 25 percent of cases instead of 9, and after
-//!   three characters in 90 percent instead of 72.
+//!   it to the top of the list in 22 percent of cases instead of 8, and after
+//!   three characters in 74 percent instead of 62.
 //!
 //! * It must count for more and not for everything. A command never run here
 //!   must still be offered, since the directory is a hint and not a filter,
@@ -82,13 +108,13 @@
 //!   keeps both; ordering by them ahead of everything else keeps neither, since
 //!   any use here at all, however decayed, is still more than none.
 //!
-//! * What it costs is the other direction. Any difference in fuzziness,
-//!   however small and however spurious, outranks any amount of use. That is
-//!   only safe while the matcher is not asked to produce differences it
-//!   cannot justify: preferring a match near the front of a path invented a
-//!   seven point difference out of nothing and put every directory under
-//!   /nix/store above every project directory, which is why `Subject` exists.
-//!   Any further matching option has to be weighed the same way.
+//! * The matcher must still not be asked for differences it cannot justify.
+//!   Use can now outweigh a few points of matching, which makes a spurious
+//!   difference cost less than it did, but not nothing: preferring a match
+//!   near the front of a path invented a seven point difference out of
+//!   nothing and put every directory under /nix/store above every project
+//!   directory, which is why `Subject` exists. Any further matching option
+//!   has to be weighed the same way.
 //!
 //! * The order must be total, and must not depend on the order the
 //!   occurrences arrived in, so the command text settles whatever ties are
@@ -112,6 +138,38 @@ const MAX_ITEMS: usize = 20;
 
 /// An occurrence is worth half as much for every this many days of its age.
 const HALF_LIFE_IN_DAYS: f64 = 30.0;
+
+/// How many points of matching one doubling of use is worth.
+///
+/// This is the whole of the trade between the two halves of the ranking, and
+/// the only number that says how much a command being used makes up for its
+/// matching less well.
+///
+/// One. A point of what the matcher counts in buys a doubling, and a doubling
+/// buys a point back. There is no principle that fixes it there, so it was
+/// measured: replaying the history and asking where the command actually run
+/// next would have ranked, over 1000 held-out commands, against the ordering
+/// that settled matching first and use afterwards.
+///
+/// ```text
+///                 0 chars   1 char   2 chars   3 chars
+///   matching first  25.3%     8.5%     73.3%     75.6%
+///   0.5             25.3%    14.2%     73.1%     75.5%
+///   1               25.3%    45.3%     72.7%     75.2%
+///   2               25.3%    46.2%     72.6%     74.8%
+///   8               25.3%    44.7%     67.0%     71.5%
+/// ```
+///
+/// One character typed is where settling matching first went wrong, and it
+/// went wrong badly: the matcher spreads its score over where in the command
+/// the character fell, and those few points buried every amount of use behind
+/// them. Anything below a half leaves that alone, and anything above four
+/// starts spending real matching. Between one and two the measurement cannot
+/// tell, so it is the number that says the plainest thing.
+///
+/// Nothing moves with no search text, where every command matches equally
+/// well and the score is the use alone.
+const FUZZINESS_PER_DOUBLING: f64 = 1.0;
 
 /// How much younger an occurrence counts as when it happened in the directory
 /// the picker was opened in, in half-lives.
@@ -201,6 +259,14 @@ struct Entry {
 struct Candidate {
     entry: usize,
     fuzziness: u32,
+}
+
+/// A candidate with its score worked out, so that a comparison is a
+/// comparison and not a logarithm.
+#[derive(Clone, Copy)]
+struct Ranked {
+    candidate: Candidate,
+    score: OrderedFloat<f64>,
 }
 
 /// What the choices are, which decides whether matching near the start of one
@@ -350,32 +416,40 @@ impl Choices {
     /// that a whole batch of occurrences costs only one pass over the
     /// candidates.
     ///
+    /// Each candidate is scored once here rather than at every comparison it
+    /// takes part in, which is what keeps the logarithm off the hot path.
+    ///
     /// The candidates are read in the order they were discovered and never
     /// reordered, so that this walks the entries from front to back rather
     /// than jumping around them.
     pub fn recompute_top_items(&mut self) {
         let entries = &self.entries;
-        let mut top: Vec<Candidate> = Vec::with_capacity(MAX_ITEMS);
+        let mut top: Vec<Ranked> = Vec::with_capacity(MAX_ITEMS);
 
         for candidate in &self.candidates {
+            let entry = &entries[candidate.entry];
+            let ranked = Ranked {
+                candidate: *candidate,
+                score: OrderedFloat(score(candidate.fuzziness, entry.usage)),
+            };
             let full = top.len() >= MAX_ITEMS;
-            if full && compare(entries, candidate, &top[MAX_ITEMS - 1]) != Ordering::Less {
+            if full && compare(entries, &ranked, &top[MAX_ITEMS - 1]) != Ordering::Less {
                 continue;
             }
             let position =
-                top.partition_point(|other| compare(entries, other, candidate) == Ordering::Less);
+                top.partition_point(|other| compare(entries, other, &ranked) == Ordering::Less);
             if full {
                 top.pop();
             }
-            top.insert(position, *candidate);
+            top.insert(position, ranked);
         }
 
         self.top_items = top
             .iter()
-            .map(|candidate| {
-                let entry = &entries[candidate.entry];
+            .map(|ranked| {
+                let entry = &entries[ranked.candidate.entry];
                 Choice {
-                    fuzziness: candidate.fuzziness,
+                    fuzziness: ranked.candidate.fuzziness,
                     usage: entry.usage,
                     key: entry.key.clone(),
                 }
@@ -385,7 +459,7 @@ impl Choices {
 
     /// `exit_weight * 2^(-age_in_days / HALF_LIFE_IN_DAYS)`: what one
     /// occurrence of a command is worth. The database has already worked out
-    /// the exit weight, see `EXIT_WEIGHT_SQL`.
+    /// the exit weight, see `occurrence_weight_sql`.
     ///
     /// A timestamp at or after the moment the picker opened counts as one from
     /// that moment, rather than being worth more than any amount of use or
@@ -469,15 +543,29 @@ fn fuzziness(
     }
 }
 
-/// Order the candidates best-first: best match, then most used, then by
-/// command so that the order never depends on how the occurrences arrived.
-fn compare(entries: &[Entry], a: &Candidate, b: &Candidate) -> Ordering {
-    let left = &entries[a.entry];
-    let right = &entries[b.entry];
-    b.fuzziness
-        .cmp(&a.fuzziness)
-        .then_with(|| OrderedFloat(right.usage).cmp(&OrderedFloat(left.usage)))
-        .then_with(|| left.key.cmp(&right.key))
+/// What a match is worth once its use is taken into account.
+///
+/// Adding the two rather than ordering on one and then the other is what lets
+/// use outweigh a small difference in matching. The use goes in as a
+/// logarithm because it is a product of factors, spans seventeen orders of
+/// magnitude, and only ever appears here as a ratio against another use: what
+/// the ranking has to say is how much better a match has to be to beat twice
+/// the use, and that is one number whatever the two uses are.
+///
+/// A use of zero scores minus infinity, which orders below every real match
+/// and is not a NaN, so the order stays total.
+fn score(fuzziness: u32, usage: f64) -> f64 {
+    f64::from(fuzziness) + FUZZINESS_PER_DOUBLING * usage.log2()
+}
+
+/// Order the candidates best-first: best score, then by command so that the
+/// order never depends on how the occurrences arrived.
+fn compare(entries: &[Entry], a: &Ranked, b: &Ranked) -> Ordering {
+    b.score.cmp(&a.score).then_with(|| {
+        entries[a.candidate.entry]
+            .key
+            .cmp(&entries[b.candidate.entry].key)
+    })
 }
 
 /// The index to select when moving towards the top of the screen.
@@ -526,7 +614,7 @@ mod tests {
     const NOW: i64 = 4 * HALF_LIFE;
 
     /// A command, when it ran, and what its exit status was worth. The database
-    /// works the last one out, see `EXIT_WEIGHT_SQL`.
+    /// works the last one out, see `occurrence_weight_sql`.
     type Row = (String, i64, f64);
 
     fn choices_for(search_text: &str, rows: &[Row]) -> Choices {
@@ -674,36 +762,64 @@ mod tests {
         assert_eq!(earlier_keys, later_keys);
     }
 
+    /// Use settles a small difference in matching, not a large one: a command
+    /// that matches far better must win however little it is used, which is
+    /// what keeps typing more of a command a way of reaching it.
     #[test]
-    fn ranks_a_better_match_above_a_more_used_one() {
-        let choices = choices_for(
-            "ls",
-            &[
-                (String::from("ls"), DAY, 2.0),
-                (String::from("ls"), DAY, 2.0),
-                (String::from("lets"), DAY, 2.0),
-            ],
-        );
+    fn ranks_a_much_better_match_above_a_more_used_one() {
+        let gap = "x".repeat(40);
+        let faint = format!("l{gap}s");
+        let mut rows: Vec<Row> = vec![(String::from("ls"), DAY, 2.0)];
+        for _ in 0..100 {
+            rows.push((faint.clone(), DAY, 2.0));
+        }
+
+        let choices = choices_for("ls", &rows);
 
         let ranking: Vec<&str> = choices.top_items.iter().map(|c| c.key.as_str()).collect();
-        assert_eq!(ranking, vec!["ls", "lets"]);
-        assert!(choices.top_items[0].fuzziness > choices.top_items[1].fuzziness);
-        assert!(choices.top_items[0].usage > choices.top_items[1].usage);
+        assert_eq!(ranking, vec!["ls", faint.as_str()]);
+        assert!(choices.top_items[0].usage < choices.top_items[1].usage);
+    }
+
+    /// A command used far more must outrank one that matches a little better.
+    /// Ordering on matching first and use afterwards could not do this: the
+    /// matcher spreads a few points over where in the command the match fell,
+    /// and those points stood in front of every amount of use behind them, so a
+    /// search offered commands last run years ago ahead of the one run every
+    /// day.
+    #[test]
+    fn ranks_a_much_more_used_command_above_a_slightly_better_match() {
+        let better_match = "rm report.txt";
+        let more_used = "make --directory build report and clean";
+        let mut rows: Vec<Row> = vec![(String::from(better_match), DAY, 2.0)];
+        for _ in 0..1000 {
+            rows.push((String::from(more_used), DAY, 2.0));
+        }
+
+        let choices = choices_for("report", &rows);
+
+        let ranking: Vec<&str> = choices.top_items.iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(ranking, vec![more_used, better_match]);
+        // The trade is only being made if the command that lost really did
+        // match better.
+        assert!(choices.top_items[1].fuzziness > choices.top_items[0].fuzziness);
     }
 
     #[test]
     fn ranks_a_more_used_command_first_among_equally_good_matches() {
+        // The more used command sorts second alphabetically, so settling the
+        // tie on the command text rather than on use would fail this.
         let choices = choices_for(
             "",
             &[
+                (String::from("common"), DAY, 2.0),
                 (String::from("rare"), DAY, 2.0),
-                (String::from("common"), DAY, 2.0),
-                (String::from("common"), DAY, 2.0),
+                (String::from("rare"), DAY, 2.0),
             ],
         );
 
         let ranking: Vec<&str> = choices.top_items.iter().map(|c| c.key.as_str()).collect();
-        assert_eq!(ranking, vec!["common", "rare"]);
+        assert_eq!(ranking, vec!["rare", "common"]);
     }
 
     /// A command is recognised by how it starts, but a directory is not: the
@@ -1053,8 +1169,8 @@ mod tests {
                 prop_assert!(item.usage.is_finite());
             }
             for pair in choices.top_items.windows(2) {
-                let better = (pair[0].fuzziness, OrderedFloat(pair[0].usage));
-                let worse = (pair[1].fuzziness, OrderedFloat(pair[1].usage));
+                let better = score(pair[0].fuzziness, pair[0].usage);
+                let worse = score(pair[1].fuzziness, pair[1].usage);
                 prop_assert!(better >= worse);
             }
         }
