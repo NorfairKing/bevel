@@ -50,7 +50,6 @@ parseInstructions = do
 data Settings = Settings
   { settingBaseUrl :: !(Maybe BaseUrl),
     settingUsername :: !(Maybe Username),
-    settingPassword :: !(Maybe Text),
     settingMaxOptions :: !Word8,
     settingDbFile :: !(Path Abs File),
     settingLogLevel :: !LogLevel
@@ -78,13 +77,6 @@ parseSettings = do
           reader $ eitherReader (parseUsernameOrErr . T.pack),
           name "username",
           metavar "USERNAME"
-        ]
-  settingPassword <-
-    optional $
-      secretTextFileOrBareSetting
-        [ help "password",
-          name "password",
-          metavar "PASSWORD"
         ]
   settingMaxOptions <-
     setting
@@ -126,11 +118,16 @@ getDefaultDataDir :: IO (Path Abs Dir)
 getDefaultDataDir = getXdgDir XdgData (Just [reldir|bevel|])
 
 -- | A sum type for the commands and their specific settings
+--
+-- The password is only parsed for the commands that use it, because parsing
+-- it reads the password file, and 'bevel migrate' must work before that file
+-- exists: the home-manager module runs it during activation, which at boot
+-- happens before agenix has decrypted the password.
 data Dispatch
   = DispatchMigrate
-  | DispatchRegister
-  | DispatchLogin
-  | DispatchSync
+  | DispatchRegister !(Maybe Text)
+  | DispatchLogin !(Maybe Text)
+  | DispatchSync !(Maybe Text)
   | DispatchLast
 
 instance HasParser Dispatch where
@@ -141,11 +138,21 @@ parseDispatch :: Parser Dispatch
 parseDispatch = do
   commands
     [ command "migrate" "apply any pending database migrations" $ pure DispatchMigrate,
-      command "register" "register an account" $ pure DispatchRegister,
-      command "login" "authenticate an account" $ pure DispatchLogin,
-      command "sync" "synchronise commands" $ pure DispatchSync,
+      command "register" "register an account" $ DispatchRegister <$> parsePassword,
+      command "login" "authenticate an account" $ DispatchLogin <$> parsePassword,
+      command "sync" "synchronise commands" $ DispatchSync <$> parsePassword,
       command "last" "show the most recent command" $ pure DispatchLast
     ]
+
+{-# ANN parsePassword ("NOCOVER" :: String) #-}
+parsePassword :: Parser (Maybe Text)
+parsePassword =
+  optional $
+    secretTextFileOrBareSetting
+      [ help "password",
+        name "password",
+        metavar "PASSWORD"
+      ]
 
 instance HasCodec LogLevel where
   codec =

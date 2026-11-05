@@ -1,4 +1,4 @@
-[36mUsage: [m[33mbevel[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m COMMAND [36m[[m[37m--server-url[m [33mURL[m[36m][m [36m[[m[37m--username[m [33mUSERNAME[m[36m][m [36m[[m[37m--password[m [33mPASSWORD[m [36m|[m [37m--password-file[m [33mPASSWORD[m[36m][m [36m[[m[37m--max-options[m [33mINT[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--log-level[m [33mLOG_LEVEL[m[36m][m
+[36mUsage: [m[33mbevel[m [36m[[m[37m--config-file[m [33mFILE_PATH[m[36m][m COMMAND [36m[[m[37m--server-url[m [33mURL[m[36m][m [36m[[m[37m--username[m [33mUSERNAME[m[36m][m [36m[[m[37m--max-options[m [33mINT[m[36m][m [36m[[m[37m--database[m [33mFILE_PATH[m[36m][m [36m[[m[37m--log-level[m [33mLOG_LEVEL[m[36m][m
 
 [36mAll settings[m:
   [34mShow this help text[m
@@ -23,18 +23,6 @@
   env: [37mBEVEL_USERNAME[m [33mUSERNAME[m
   config:
     [37musername[m: # [32mor null[m
-      [33m<string>[m
-
-  [34mpassword[m
-  option: [37m--password[m [33mPASSWORD[m
-  option: [37m--password-file[m [33mPASSWORD[m
-  env: [37mBEVEL_PASSWORD[m [33mPASSWORD[m
-  env: [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m
-  config:
-    [37mpassword[m: # [32mor null[m
-      [33m<string>[m
-  config:
-    [37mpassword-file[m: # [32mor null[m
       [33m<string>[m
 
   [34mmaximum number of options to show when selecting[m
@@ -71,12 +59,48 @@
   
   [34mregister an account[m
   command: [35mregister[m
+    [34mpassword[m
+    option: [37m--password[m [33mPASSWORD[m
+    option: [37m--password-file[m [33mPASSWORD[m
+    env: [37mBEVEL_PASSWORD[m [33mPASSWORD[m
+    env: [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m
+    config:
+      [37mpassword[m: # [32mor null[m
+        [33m<string>[m
+    config:
+      [37mpassword-file[m: # [32mor null[m
+        [33m<string>[m
+  
   
   [34mauthenticate an account[m
   command: [35mlogin[m
+    [34mpassword[m
+    option: [37m--password[m [33mPASSWORD[m
+    option: [37m--password-file[m [33mPASSWORD[m
+    env: [37mBEVEL_PASSWORD[m [33mPASSWORD[m
+    env: [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m
+    config:
+      [37mpassword[m: # [32mor null[m
+        [33m<string>[m
+    config:
+      [37mpassword-file[m: # [32mor null[m
+        [33m<string>[m
+  
   
   [34msynchronise commands[m
   command: [35msync[m
+    [34mpassword[m
+    option: [37m--password[m [33mPASSWORD[m
+    option: [37m--password-file[m [33mPASSWORD[m
+    env: [37mBEVEL_PASSWORD[m [33mPASSWORD[m
+    env: [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m
+    config:
+      [37mpassword[m: # [32mor null[m
+        [33m<string>[m
+    config:
+      [37mpassword-file[m: # [32mor null[m
+        [33m<string>[m
+  
   
   [34mshow the most recent command[m
   command: [35mlast[m
@@ -88,34 +112,42 @@
   [37m--config-file[m [34mPath to the configuration file[m
   [35mmigrate[m [34mapply any pending database migrations[m
   [35mregister[m [34mregister an account[m
+      [37m--password[m      [34mpassword[m
+      [37m--password-file[m [34mpassword[m
   [35mlogin[m [34mauthenticate an account[m
+      [37m--password[m      [34mpassword[m
+      [37m--password-file[m [34mpassword[m
   [35msync[m [34msynchronise commands[m
+      [37m--password[m      [34mpassword[m
+      [37m--password-file[m [34mpassword[m
   [35mlast[m [34mshow the most recent command[m
   [37m--server-url[m [34mserver base url[m
   [37m--username[m [34muser name[m
-  [37m--password[m      [34mpassword[m
-  [37m--password-file[m [34mpassword[m
   [37m--max-options[m [34mmaximum number of options to show when selecting[m default: [33m15[m
   [37m--database[m [34mpath to the database file[m
   [37m--log-level[m [34mminimal severity of log messages[m default: [33mLevelWarn[m
 
 [36mEnvironment Variables[m:
   [37mBEVEL_CONFIG_FILE[m [33mFILE_PATH[m    [34mPath to the configuration file[m                                       
-  [37mBEVEL_SERVER_URL[m [33mURL[m           [34mserver base url[m                                                      
-  [37mBEVEL_USERNAME[m [33mUSERNAME[m        [34muser name[m                                                            
   [37mBEVEL_PASSWORD[m [33mPASSWORD[m        [34mpassword[m                                                             
   [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m   [34mpassword[m                                                             
+  [37mBEVEL_PASSWORD[m [33mPASSWORD[m        [34mpassword[m                                                             
+  [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m   [34mpassword[m                                                             
+  [37mBEVEL_PASSWORD[m [33mPASSWORD[m        [34mpassword[m                                                             
+  [37mBEVEL_PASSWORD_FILE[m [33mPASSWORD[m   [34mpassword[m                                                             
+  [37mBEVEL_SERVER_URL[m [33mURL[m           [34mserver base url[m                                                      
+  [37mBEVEL_USERNAME[m [33mUSERNAME[m        [34muser name[m                                                            
   [37mBEVEL_MAX_OPTIONS[m [33mINT[m          [34mmaximum number of options to show when selecting[m   default: [33m15[m       
   [37mBEVEL_DATABASE[m [33mFILE_PATH[m       [34mpath to the database file[m                                            
   [37mBEVEL_LOG_LEVEL[m [33mLOG_LEVEL[m      [34mminimal severity of log messages[m                   default: [33mLevelWarn[m
 
 [36mConfiguration Values[m:
-  [34mserver base url[m
-  [37mserver-url[m:
+  [34mpassword[m
+  [37mpassword[m:
     # [32mor null[m
     [33m<string>[m
-  [34muser name[m
-  [37musername[m:
+  [34mpassword[m
+  [37mpassword-file[m:
     # [32mor null[m
     [33m<string>[m
   [34mpassword[m
@@ -124,6 +156,22 @@
     [33m<string>[m
   [34mpassword[m
   [37mpassword-file[m:
+    # [32mor null[m
+    [33m<string>[m
+  [34mpassword[m
+  [37mpassword[m:
+    # [32mor null[m
+    [33m<string>[m
+  [34mpassword[m
+  [37mpassword-file[m:
+    # [32mor null[m
+    [33m<string>[m
+  [34mserver base url[m
+  [37mserver-url[m:
+    # [32mor null[m
+    [33m<string>[m
+  [34muser name[m
+  [37musername[m:
     # [32mor null[m
     [33m<string>[m
   [34mmaximum number of options to show when selecting[m

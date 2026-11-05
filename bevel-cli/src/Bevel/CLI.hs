@@ -35,24 +35,24 @@ bevelCLI = do
               withSqlitePool (T.pack (fromAbsFile settingDbFile)) 1 func
   let migrateDb :: ConnectionPool -> LoggingT IO ()
       migrateDb = void . runSqlPool (completeCliMigrations False)
-  let runC lockType func =
+  let runC mPassword lockType func =
         withPool lockType $ \pool -> do
           migrateDb pool
           let env =
                 Env
                   { envClientEnv = mCenv,
                     envUsername = settingUsername,
-                    envPassword = settingPassword,
+                    envPassword = mPassword,
                     envMaxOptions = settingMaxOptions,
                     envConnectionPool = pool
                   }
           runReaderT func env
   case dispatch of
     DispatchMigrate -> withPool Exclusive migrateDb
-    DispatchRegister -> runC Shared Commands.register
-    DispatchLogin -> runC Shared Commands.login
-    DispatchSync -> runC Exclusive Commands.sync
-    DispatchLast -> runC Shared Commands.lastDir
+    DispatchRegister mPassword -> runC mPassword Shared Commands.register
+    DispatchLogin mPassword -> runC mPassword Shared Commands.login
+    DispatchSync mPassword -> runC mPassword Exclusive Commands.sync
+    DispatchLast -> runC Nothing Shared Commands.lastDir
 
 completeCliMigrations :: (MonadUnliftIO m, MonadLogger m) => Bool -> SqlPersistT m ()
 completeCliMigrations quiet = do

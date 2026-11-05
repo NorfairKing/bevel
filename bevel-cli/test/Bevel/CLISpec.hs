@@ -22,7 +22,22 @@ import Test.Syd.Validity
 -- Sequential because these tests set process-global arguments and environment.
 spec :: Spec
 spec = sequential $ do
-  describe "migrate" $
+  describe "migrate" $ do
+    -- The home-manager module runs 'bevel migrate' during activation, which
+    -- at boot happens before agenix has put the password file in place.
+    it "does not read the password file" $
+      withSystemTempDir "bevel-migrate" $ \tdir -> do
+        dbFile <- resolveFile tdir "history.sqlite3"
+        missingPasswordFile <- resolveFile tdir "does-not-exist"
+        configFile <- resolveFile tdir "config.yaml"
+        writeFile (fromAbsFile configFile) $
+          unlines
+            [ concat ["database: ", fromAbsFile dbFile],
+              concat ["password-file: ", fromAbsFile missingPasswordFile]
+            ]
+        withArgs ["--config-file", fromAbsFile configFile, "migrate"] bevelCLI
+        doesFileExist dbFile `shouldReturn` True
+
     it "sets up a database that bevel-gather can write to" $
       withSystemTempDir "bevel-migrate" $ \tdir -> do
         dataDir <- resolveDir tdir "data"
